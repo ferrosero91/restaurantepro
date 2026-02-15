@@ -132,15 +132,18 @@ CREATE TABLE IF NOT EXISTS productos (
     restaurante_id INT NOT NULL,
     codigo VARCHAR(50) NOT NULL,
     nombre VARCHAR(100) NOT NULL,
+    categoria_id INT NULL,
     precio_kg DECIMAL(10,2) NOT NULL DEFAULT 0,
     precio_unidad DECIMAL(10,2) NOT NULL DEFAULT 0,
     precio_libra DECIMAL(10,2) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+    FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL,
     UNIQUE KEY unique_codigo_restaurante (restaurante_id, codigo),
     INDEX idx_restaurante (restaurante_id),
-    INDEX idx_codigo (codigo)
+    INDEX idx_codigo (codigo),
+    INDEX idx_categoria (categoria_id)
 );
 
 -- Clientes por restaurante (con campos para facturación electrónica)
