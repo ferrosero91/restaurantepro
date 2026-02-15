@@ -65,8 +65,7 @@ class ClienteService {
             const existente = await this.clienteRepo.findByPhone(data.telefono, tenantId);
             if (existente) {
                 // No lanzar error, solo advertir (puede haber clientes con mismo teléfono)
-                console.warn(`Ya existe un cliente con el teléfono ${data.telefono}`);
-            }
+                }
         }
 
         // Crear cliente

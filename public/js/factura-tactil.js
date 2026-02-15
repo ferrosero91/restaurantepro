@@ -9,7 +9,6 @@ async function cargarMediosPagoGlobal() {
         const resp = await fetch('/configuracion/medios-pago/activos');
         const medios = await resp.json();
         
-        console.log('✅ Medios de pago cargados (táctil):', medios);
         mediosPagoGlobal = medios;
         
         if (medios.length === 0) {
@@ -98,8 +97,6 @@ $(function() {
 
         // Renderizar items
         renderizarItems();
-
-        console.log('✅ Estado del carrito restaurado:', items.length, 'items');
       }
     } catch (error) {
       console.error('Error al cargar estado:', error);
@@ -108,22 +105,18 @@ $(function() {
 
   // Cargar categorías y productos
   async function cargarProductosYCategorias() {
-    console.log('=== Cargando productos y categorías ===');
     try {
       // Cargar categorías
       const respCat = await fetch('/api/categorias');
       categorias = await respCat.json();
-      console.log('Categorías cargadas:', categorias.length);
 
       // Cargar productos
       const respProd = await fetch('/api/productos/buscar?q=');
       todosLosProductos = await respProd.json();
-      console.log('Productos cargados:', todosLosProductos.length);
 
       // Renderizar
       renderizarCategorias();
       renderizarProductos();
-      console.log('=== Productos renderizados ===');
     } catch (error) {
       console.error('Error al cargar productos:', error);
     }
@@ -254,7 +247,6 @@ $(function() {
       container.appendChild(card);
     });
 
-    console.log(`✅ ${productosFiltrados.length} productos renderizados`);
   }
 
   // Agregar producto al carrito

@@ -12,8 +12,6 @@ async function cargarMediosPago() {
         const resp = await fetch('/configuracion/medios-pago/activos');
         const medios = await resp.json();
         
-        console.log('✅ Medios de pago cargados:', medios);
-        
         // Guardar en variable global para usar en modal de pago mixto
         mediosPagoDisponibles = medios;
         
@@ -1047,25 +1045,19 @@ $(function() {
 
   // Cargar categorías y productos al abrir el modal
   window.cargarProductosYCategorias = async function() {
-    console.log('=== Cargando productos y categorías ===');
     try {
         // Cargar categorías
         const respCat = await fetch('/api/categorias');
         categorias = await respCat.json();
-        console.log('Categorías cargadas:', categorias.length);
-        
         // Cargar productos con categorías
         const respProd = await fetch('/api/productos/buscar?q=');
         todosLosProductos = await respProd.json();
-        console.log('Productos cargados:', todosLosProductos.length);
-        
         // Renderizar categorías
         renderizarCategorias();
         
         // Renderizar productos
         renderizarProductos();
-        console.log('=== Productos renderizados ===');
-    } catch (error) {
+        } catch (error) {
         console.error('Error al cargar productos:', error);
     }
   }
@@ -1168,7 +1160,6 @@ $(function() {
     
     // Agregar event listeners a las tarjetas
     const cards = container.querySelectorAll('.producto-card');
-    console.log(`🔧 Agregando listeners a ${cards.length} tarjetas`);
     cards.forEach((card, index) => {
         card.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1176,17 +1167,13 @@ $(function() {
             const id = this.dataset.productoId;
             const nombre = this.dataset.productoNombre;
             const precio = this.dataset.productoPrecio;
-            console.log(`✅ Click en tarjeta ${index}:`, {id, nombre, precio});
             seleccionarProductoTactil(id, nombre, precio);
         });
     });
-    console.log(`✅ Listeners agregados correctamente`);
-  }
+    }
 
   // Seleccionar producto desde la interfaz táctil
   async function seleccionarProductoTactil(id, nombre, precio) {
-    console.log('🎯 seleccionarProductoTactil llamada:', {id, nombre, precio, pedidoActual});
-    
     if (!pedidoActual || !pedidoActual.id) {
         console.error('❌ No hay pedido activo:', pedidoActual);
         Swal.fire({icon:'error', title:'No hay pedido activo'});

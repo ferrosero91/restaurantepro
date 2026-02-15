@@ -122,16 +122,11 @@ $(document).ready(function() {
         
         const tryFocus = () => {
             const searchField = $('.select2-container--open .select2-search__field').first();
-            console.log('Intento de focus:', attempts + 1, 'Campo encontrado:', searchField.length > 0);
-            
             if (searchField.length > 0) {
                 searchField[0].focus();
                 // Forzar el focus
                 setTimeout(() => {
                     searchField[0].focus();
-                    if (document.activeElement === searchField[0]) {
-                        console.log('Focus exitoso');
-                    }
                 }, 50);
             } else if (attempts < maxAttempts) {
                 attempts++;
@@ -564,7 +559,6 @@ $(document).ready(function() {
 
     // Función para eliminar pedido
     window.eliminarPedido = function(index) {
-        console.log('Eliminando pedido, índice:', index);
         if (confirm('¿Está seguro de eliminar este pedido?')) {
             pedidosGuardados.splice(index, 1);
             actualizarLocalStorage();

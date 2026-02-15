@@ -6,8 +6,6 @@ async function cargarMediosPagoGlobal() {
         const resp = await fetch('/configuracion/medios-pago/activos');
         const medios = await resp.json();
         
-        console.log('✅ Medios de pago cargados (factura):', medios);
-        
         // Guardar en variable global
         mediosPagoDisponibles = medios;
         
@@ -616,18 +614,15 @@ $(document).ready(function() {
 
     // Guardar pedido
     $('#guardarPedido').click(function() {
-        console.log('=== INICIO GUARDADO DE PEDIDO ===');
         const cliente_id = $('#cliente_id').val();
         const cliente_nombre = $('#cliente').val();
         
         if (!cliente_id) {
-            console.log('Error: No hay cliente seleccionado');
             mostrarAlerta('warning', 'Por favor seleccione un cliente');
             return;
         }
 
         if (productosFactura.length === 0) {
-            console.log('Error: No hay productos en el pedido');
             mostrarAlerta('warning', 'Agregue al menos un producto al pedido');
             return;
         }
@@ -644,28 +639,16 @@ $(document).ready(function() {
             fecha: new Date().toLocaleString()
         };
 
-        console.log('Pedido a guardar:', pedido);
-        console.log('Pedidos guardados antes:', pedidosGuardados);
-        
         pedidosGuardados.push(pedido);
         actualizarLocalStorage();
         
-        console.log('Pedidos guardados después:', pedidosGuardados);
-        console.log('LocalStorage actualizado');
-
         limpiarFormulario();
         mostrarAlerta('success', 'Pedido guardado exitosamente');
-        console.log('=== FIN GUARDADO DE PEDIDO ===');
-    });
+        });
 
     // Función para cargar un pedido guardado
     window.cargarPedido = function(index) {
-        console.log('=== INICIO CARGA DE PEDIDO ===');
-        console.log('Índice del pedido a cargar:', index);
-        
         const pedido = pedidosGuardados[index];
-        console.log('Pedido encontrado:', pedido);
-        
         if (!pedido) {
             console.error('No se encontró el pedido');
             return;
@@ -683,8 +666,7 @@ $(document).ready(function() {
         
         // Guardar el ID del pedido cargado
         localStorage.setItem('pedidoActualId', pedido.id);
-        console.log('ID del pedido guardado en localStorage:', pedido.id);
-        console.log('Verificación del ID guardado:', localStorage.getItem('pedidoActualId'));
+        );
         
         // Cargar información del cliente
         $('#cliente').val(pedido.cliente_nombre);
@@ -706,18 +688,10 @@ $(document).ready(function() {
         // Cerrar el modal de pedidos
         $('#pedidosModal').modal('hide');
         
-        console.log('=== FIN CARGA DE PEDIDO ===');
-        console.log('Estado final:', {
-            pedidoId: pedido.id,
-            cliente: pedido.cliente_nombre,
-            productos: productosFactura,
-            total: totalFactura
-        });
-    };
+        };
 
     // Generar factura
     $('#generarFactura').click(async function() {
-        console.log('=== INICIO GENERACIÓN DE FACTURA ===');
         const cliente_id = $('#cliente_id').val();
         const forma_pago = $('#formaPago').val();
         
@@ -763,8 +737,6 @@ $(document).ready(function() {
             }))
             };
 
-            console.log('Factura a enviar:', factura);
-
             // Mostrar indicador de carga
             Swal.fire({
                 title: 'Generando factura...',
@@ -781,8 +753,6 @@ $(document).ready(function() {
                 contentType: 'application/json',
                 success: function(response) {
                     Swal.close();
-                    console.log('Factura generada exitosamente:', response);
-                    
                     if (response && response.id) {
                         // Eliminar el pedido de localStorage si existe
                         const pedidoId = localStorage.getItem('pedidoActualId');
@@ -797,7 +767,6 @@ $(document).ready(function() {
                     // embed=1 para ocultar el botón "Volver" dentro del iframe (solo dejamos imprimir)
                     // Relacionado con: routes/facturas.js y views/factura.ejs
                     const iframeUrl = `/api/facturas/${response.id}/imprimir?embed=1`;
-                        console.log('URL del iframe:', iframeUrl);
                         $('#facturaFrame').attr('src', iframeUrl);
                         facturaModal.show();
 
@@ -844,11 +813,8 @@ $(document).ready(function() {
 
     // Ver pedidos guardados
     $('#verPedidos').click(function() {
-        console.log('=== MOSTRANDO PEDIDOS GUARDADOS ===');
         const tbody = $('#pedidosGuardados');
         tbody.empty();
-
-        console.log('Pedidos en memoria:', pedidosGuardados);
 
         if (pedidosGuardados.length === 0) {
             tbody.append(`
@@ -895,16 +861,10 @@ $(document).ready(function() {
 
     // Función para facturar pedido directamente
     window.facturarPedido = function(index) {
-        console.log('=== INICIO FACTURACIÓN DIRECTA DE PEDIDO ===');
-        console.log('Índice del pedido:', index);
         const pedido = pedidosGuardados[index];
-        console.log('Pedido a facturar:', pedido);
-        
         // Primero eliminar el pedido
         pedidosGuardados.splice(index, 1);
         actualizarLocalStorage();
-        console.log('Pedido eliminado de la lista');
-        
         // Cerrar el modal de pedidos
         $('#pedidosModal').modal('hide');
         
@@ -919,17 +879,12 @@ $(document).ready(function() {
 
     // Función para eliminar pedido
     window.eliminarPedido = function(index) {
-        console.log('=== INICIO ELIMINACIÓN DE PEDIDO ===');
-        console.log('Índice del pedido:', index);
-            if (confirm('¿Está seguro de eliminar este pedido?')) {
-            console.log('Pedidos antes de eliminar:', pedidosGuardados);
-                pedidosGuardados.splice(index, 1);
+        if (confirm('¿Está seguro de eliminar este pedido?')) {
+            pedidosGuardados.splice(index, 1);
                 actualizarLocalStorage();
-            console.log('Pedidos después de eliminar:', pedidosGuardados);
-                $('#verPedidos').click();
+            $('#verPedidos').click();
             mostrarAlerta('success', 'Pedido eliminado exitosamente');
-            console.log('=== FIN ELIMINACIÓN DE PEDIDO ===');
-        }
+            }
     };
 
     // Función para mostrar alertas

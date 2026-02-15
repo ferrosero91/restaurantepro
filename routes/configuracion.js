@@ -19,8 +19,7 @@ const upload = multer({
 async function verificarConfiguracion() {
     // En arquitectura multitenant, la configuración se crea por restaurante
     // No se crea configuración global
-    console.log('Sistema multitenant: configuración por restaurante');
-}
+    }
 
 // No verificar configuración al iniciar (se crea por restaurante)
 // verificarConfiguracion();

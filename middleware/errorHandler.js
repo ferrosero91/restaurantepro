@@ -79,8 +79,7 @@ function logError(error, req) {
     if (error.statusCode >= 500) {
         console.error('❌ ERROR DEL SERVIDOR:', errorInfo);
     } else if (error.statusCode >= 400) {
-        console.warn('⚠️  ERROR DEL CLIENTE:', errorInfo);
-    }
+        }
 }
 
 /**

@@ -260,16 +260,13 @@ router.post('/pedidos/:pedidoId/items', async (req, res) => {
 router.delete('/items/:itemId', async (req, res) => {
     try {
         const itemId = req.params.itemId;
-        console.log(`DELETE /api/mesas/items/${itemId} - Eliminando item`);
         const [result] = await db.query(
             `DELETE FROM pedido_items WHERE id = ?`,
             [itemId]
         );
         if (result.affectedRows === 0) {
-            console.log(`Item ${itemId} no encontrado`);
             return res.status(404).json({ error: 'Item no encontrado' });
         }
-        console.log(`Item ${itemId} eliminado exitosamente`);
         res.json({ message: 'Item eliminado' });
     } catch (error) {
         console.error('Error al eliminar item:', error);

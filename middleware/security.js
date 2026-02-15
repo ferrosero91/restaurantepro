@@ -118,9 +118,9 @@ function preventParameterPollution(req, res, next) {
 
 // Logging de actividades sospechosas
 function logSuspiciousActivity(req, message) {
-    console.warn(`[SEGURIDAD] ${message}`, {
+    console.error('⚠️  ACTIVIDAD SOSPECHOSA:', {
+        message,
         ip: req.ip,
-        user: req.user?.id || 'No autenticado',
         url: req.originalUrl,
         method: req.method,
         timestamp: new Date().toISOString()
@@ -202,7 +202,6 @@ function corsMiddleware(allowedOrigins = []) {
         // En producción, no permitir '*' por seguridad
         const isProduction = process.env.NODE_ENV === 'production';
         if (isProduction && allowedOrigins.includes('*')) {
-            console.warn('⚠️  CORS: Configuración insegura detectada. "*" no está permitido en producción.');
             logSuspiciousActivity(req, `Configuración CORS insegura: "*" en producción`);
             
             // En producción, usar orígenes específicos o bloquear
