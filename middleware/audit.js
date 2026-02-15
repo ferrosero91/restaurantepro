@@ -105,7 +105,13 @@ async function capturarDatosAnteriores(req, res, next) {
     }
 
     try {
-        const [rows] = await db.query(`SELECT * FROM ${tabla} WHERE id = ?`, [id]);
+        // Validar que el nombre de la tabla sea seguro (solo letras, números y guiones bajos)
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tabla)) {
+            console.error('Nombre de tabla inválido para auditoría:', tabla);
+            return next();
+        }
+        
+        const [rows] = await db.query(`SELECT * FROM ?? WHERE id = ?`, [tabla, id]);
         if (rows && rows.length > 0) {
             req.datosAnteriores = rows[0];
         }

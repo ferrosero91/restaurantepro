@@ -199,13 +199,32 @@ function corsMiddleware(allowedOrigins = []) {
             return next();
         }
         
+        // En producción, no permitir '*' por seguridad
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && allowedOrigins.includes('*')) {
+            console.warn('⚠️  CORS: Configuración insegura detectada. "*" no está permitido en producción.');
+            logSuspiciousActivity(req, `Configuración CORS insegura: "*" en producción`);
+            
+            // En producción, usar orígenes específicos o bloquear
+            if (allowedOrigins.length === 1 && allowedOrigins[0] === '*') {
+                // Si solo hay '*', bloquear en producción
+                return res.status(403).json({ error: 'Origen no autorizado' });
+            }
+            
+            // Remover '*' de la lista para producción
+            allowedOrigins = allowedOrigins.filter(o => o !== '*');
+        }
+        
         // Verificar si el origen está permitido
-        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        if (allowedOrigins.includes(origin)) {
             res.setHeader('Access-Control-Allow-Origin', origin);
             res.setHeader('Access-Control-Allow-Credentials', 'true');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Token');
             res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
+        } else if (allowedOrigins.length > 0) {
+            // Origen no permitido
+            logSuspiciousActivity(req, `Origen CORS no autorizado: ${origin}`);
         }
         
         // Responder a preflight

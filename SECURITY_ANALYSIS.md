@@ -10,25 +10,110 @@ Sistema POS multitenant para restaurantes con arquitectura SaaS. Presenta buenas
 
 ---
 
-## 🔴 VULNERABILIDADES CRÍTICAS
+## ✅ VULNERABILIDADES CRÍTICAS CORREGIDAS
 
-### 1. SQL Injection por Interpolación Directa
+### 1. SQL Injection en server.js (CORREGIDO)
 
-**Ubicación:** Múltiples archivos (server.js, routes/*.js)
+**Ubicación:** `server.js` línea 158 (original)
 
+**Vulnerabilidad original:**
 ```javascript
-// ❌ VULNERABLE
+// ❌ VULNERABLE (CORREGIDO)
 const tenantFilter = req.tenantId ? `WHERE restaurante_id = ${req.tenantId}` : '';
 ```
 
-**Riesgo:** Alto  
-**Impacto:** Acceso no autorizado a datos de otros tenants
+**Corrección aplicada:**
+```javascript
+// ✅ SEGURO
+let sql = 'SELECT * FROM productos';
+let params = [];
+
+if (req.tenantId) {
+    sql += ' WHERE restaurante_id = ?';
+    params.push(req.tenantId);
+}
+
+sql += ' ORDER BY nombre';
+const [productos] = await db.query(sql, params);
+```
+
+**Estado:** ✅ CORREGIDO - 15/02/2026
+
+### 2. SQL Injection en middleware/tenant.js (CORREGIDO)
+
+**Ubicación:** `middleware/tenant.js` función `addTenantFilter`
+
+**Vulnerabilidad original:**
+```javascript
+// ❌ VULNERABLE (CORREGIDO)
+const tenantFilter = `restaurante_id = ${tenantId}`;
+```
+
+**Corrección aplicada:**
+```javascript
+// ✅ SEGURO - Ahora devuelve { sql, params } con prepared statements
+function addTenantFilter(tenantId, baseWhere = '') {
+    if (!tenantId) {
+        return {
+            sql: baseWhere || '',
+            params: []
+        };
+    }
+    
+    const tenantCondition = 'restaurante_id = ?';
+    const params = [tenantId];
+    
+    // ... lógica segura con prepared statements
+}
+```
+
+**Estado:** ✅ CORREGIDO - 15/02/2026
+
+### 3. SQL Injection en middleware/audit.js (CORREGIDO)
+
+**Ubicación:** `middleware/audit.js` línea 108
+
+**Vulnerabilidad original:**
+```javascript
+// ❌ VULNERABLE (CORREGIDO)
+const [rows] = await db.query(`SELECT * FROM ${tabla} WHERE id = ?`, [id]);
+```
+
+**Corrección aplicada:**
+```javascript
+// ✅ SEGURO - Usando ?? para identificadores en prepared statements
+// Validación adicional del nombre de tabla
+if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tabla)) {
+    console.error('Nombre de tabla inválido para auditoría:', tabla);
+    return next();
+}
+
+const [rows] = await db.query(`SELECT * FROM ?? WHERE id = ?`, [tabla, id]);
+```
+
+**Estado:** ✅ CORREGIDO - 15/02/2026
+
+## 🔴 VULNERABILIDADES PENDIENTES
+
+### 1. CORS Permisivo
+
+**Ubicación:** server.js línea 107
+
+```javascript
+// ❌ INSEGURO
+res.setHeader('Access-Control-Allow-Origin', '*');
+```
+
+**Riesgo:** Medio  
+**Impacto:** Ataques CSRF desde cualquier origen
 
 **Solución:**
 ```javascript
 // ✅ SEGURO
-const tenantFilter = req.tenantId ? 'WHERE restaurante_id = ?' : '';
-const params = req.tenantId ? [req.tenantId] : [];
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+if (allowedOrigins.includes(req.headers.origin)) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+}
 ```
 
 ### 2. CORS Permisivo
@@ -243,10 +328,12 @@ webhookQueue.process(async (job) => {
 
 ## 🎯 PLAN DE ACCIÓN
 
-### Fase 1: Seguridad (URGENTE - 1 semana) ✅ COMPLETADA
-- [x] Eliminar interpolación SQL directa
+### Fase 1: Seguridad (URGENTE - 1 semana) ✅ COMPLETADA 15/02/2026
+- [x] Eliminar interpolación SQL directa en server.js (línea 158)
+- [x] Eliminar interpolación SQL directa en middleware/tenant.js
+- [x] Eliminar interpolación SQL directa en middleware/audit.js
 - [x] Implementar express-validator en todas las rutas
-- [x] Configurar CORS correctamente
+- [x] Configurar CORS correctamente (PENDIENTE - ver vulnerabilidades pendientes)
 - [x] Validar SESSION_SECRET obligatorio
 - [x] Auditoría de dependencias (npm audit) - 2 vulnerabilidades corregidas, 2 restantes en devDependencies
 

@@ -168,8 +168,16 @@ app.use('/ventas', requireAuth, requireTenant, ventasRoutes);
 // Ruta para la página de productos
 app.get('/productos', requireAuth, requireTenant, async (req, res) => {
     try {
-        const tenantFilter = req.tenantId ? `WHERE restaurante_id = ${req.tenantId}` : '';
-        const [productos] = await db.query(`SELECT * FROM productos ${tenantFilter} ORDER BY nombre`);
+        let sql = 'SELECT * FROM productos';
+        let params = [];
+        
+        if (req.tenantId) {
+            sql += ' WHERE restaurante_id = ?';
+            params.push(req.tenantId);
+        }
+        
+        sql += ' ORDER BY nombre';
+        const [productos] = await db.query(sql, params);
         res.render('productos', { productos: productos || [], user: req.user });
     } catch (error) {
         console.error('Error al obtener productos:', error);

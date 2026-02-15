@@ -23,22 +23,40 @@ function requireTenant(req, res, next) {
 }
 
 /**
- * Helper para agregar filtro de tenant a queries
+ * Helper para agregar filtro de tenant a queries de forma segura
+ * @param {number|null} tenantId - ID del restaurante
+ * @param {string} baseWhere - Condición WHERE base (opcional)
+ * @returns {object} { sql: string, params: Array } - Query segura con prepared statements
  */
 function addTenantFilter(tenantId, baseWhere = '') {
-    if (!tenantId) return baseWhere; // Superadmin ve todo
+    if (!tenantId) {
+        return {
+            sql: baseWhere || '',
+            params: []
+        };
+    }
     
-    const tenantFilter = `restaurante_id = ${tenantId}`;
+    const tenantCondition = 'restaurante_id = ?';
+    const params = [tenantId];
     
     if (!baseWhere || baseWhere.trim() === '') {
-        return `WHERE ${tenantFilter}`;
+        return {
+            sql: `WHERE ${tenantCondition}`,
+            params
+        };
     }
     
     if (baseWhere.trim().toUpperCase().startsWith('WHERE')) {
-        return `${baseWhere} AND ${tenantFilter}`;
+        return {
+            sql: `${baseWhere} AND ${tenantCondition}`,
+            params
+        };
     }
     
-    return `WHERE ${tenantFilter} AND ${baseWhere}`;
+    return {
+        sql: `WHERE ${tenantCondition} AND ${baseWhere}`,
+        params
+    };
 }
 
 module.exports = {
