@@ -33,9 +33,10 @@ class ProductoService {
     /**
      * Buscar productos
      */
-    async buscar(termino, tenantId, limit = 10) {
+    async buscar(termino, tenantId, limit = 100) {
+        // Si no hay término de búsqueda, devolver todos los productos
         if (!termino || termino.trim() === '') {
-            return [];
+            return await this.productoRepo.findAllWithCategory(tenantId, { limit });
         }
 
         return await this.productoRepo.search(termino, tenantId, limit);
