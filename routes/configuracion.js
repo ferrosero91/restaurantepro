@@ -197,3 +197,166 @@ router.get('/impresoras', (req, res) => {
 });
 
 module.exports = router; 
+
+
+// ===========================
+// RUTAS DE MEDIOS DE PAGO
+// ===========================
+
+// Obtener medios de pago
+router.get('/medios-pago', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const [medios] = await db.query(
+            'SELECT * FROM medios_pago WHERE restaurante_id = ? ORDER BY orden ASC, nombre ASC',
+            [tenantId]
+        );
+
+        res.json(medios || []);
+    } catch (error) {
+        console.error('Error al obtener medios de pago:', error);
+        res.status(500).json({ error: 'Error al obtener medios de pago' });
+    }
+});
+
+// Obtener medios de pago activos (para usar en facturación)
+router.get('/medios-pago/activos', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const [medios] = await db.query(
+            'SELECT id, nombre, codigo, descripcion FROM medios_pago WHERE restaurante_id = ? AND activo = TRUE ORDER BY orden ASC, nombre ASC',
+            [tenantId]
+        );
+
+        res.json(medios || []);
+    } catch (error) {
+        console.error('Error al obtener medios de pago activos:', error);
+        res.status(500).json({ error: 'Error al obtener medios de pago activos' });
+    }
+});
+
+// Crear medio de pago
+router.post('/medios-pago', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const { nombre, codigo, descripcion, activo, orden } = req.body;
+
+        if (!nombre || !codigo) {
+            return res.status(400).json({ error: 'Nombre y código son requeridos' });
+        }
+
+        // Verificar que el código no exista
+        const [existe] = await db.query(
+            'SELECT id FROM medios_pago WHERE restaurante_id = ? AND codigo = ?',
+            [tenantId, codigo]
+        );
+
+        if (existe && existe.length > 0) {
+            return res.status(400).json({ error: 'Ya existe un medio de pago con ese código' });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO medios_pago (restaurante_id, nombre, codigo, descripcion, activo, orden) 
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [tenantId, nombre, codigo, descripcion || null, activo !== false, orden || 0]
+        );
+
+        res.status(201).json({ id: result.insertId, message: 'Medio de pago creado' });
+    } catch (error) {
+        console.error('Error al crear medio de pago:', error);
+        res.status(500).json({ error: 'Error al crear medio de pago' });
+    }
+});
+
+// Actualizar medio de pago
+router.put('/medios-pago/:id', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const { id } = req.params;
+        const { nombre, codigo, descripcion, activo, orden } = req.body;
+
+        if (!nombre || !codigo) {
+            return res.status(400).json({ error: 'Nombre y código son requeridos' });
+        }
+
+        // Verificar que el código no exista en otro registro
+        const [existe] = await db.query(
+            'SELECT id FROM medios_pago WHERE restaurante_id = ? AND codigo = ? AND id != ?',
+            [tenantId, codigo, id]
+        );
+
+        if (existe && existe.length > 0) {
+            return res.status(400).json({ error: 'Ya existe un medio de pago con ese código' });
+        }
+
+        const [result] = await db.query(
+            `UPDATE medios_pago 
+             SET nombre = ?, codigo = ?, descripcion = ?, activo = ?, orden = ?
+             WHERE id = ? AND restaurante_id = ?`,
+            [nombre, codigo, descripcion || null, activo !== false, orden || 0, id, tenantId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Medio de pago no encontrado' });
+        }
+
+        res.json({ message: 'Medio de pago actualizado' });
+    } catch (error) {
+        console.error('Error al actualizar medio de pago:', error);
+        res.status(500).json({ error: 'Error al actualizar medio de pago' });
+    }
+});
+
+// Eliminar medio de pago
+router.delete('/medios-pago/:id', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const { id } = req.params;
+
+        // Verificar si el medio de pago está en uso
+        const [enUso] = await db.query(
+            'SELECT COUNT(*) as count FROM factura_pagos fp JOIN facturas f ON fp.factura_id = f.id WHERE f.restaurante_id = ? AND fp.metodo = (SELECT codigo FROM medios_pago WHERE id = ? AND restaurante_id = ?)',
+            [tenantId, id, tenantId]
+        );
+
+        if (enUso && enUso[0].count > 0) {
+            return res.status(400).json({ 
+                error: 'No se puede eliminar este medio de pago porque está en uso en facturas existentes. Puedes desactivarlo en su lugar.' 
+            });
+        }
+
+        const [result] = await db.query(
+            'DELETE FROM medios_pago WHERE id = ? AND restaurante_id = ?',
+            [id, tenantId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Medio de pago no encontrado' });
+        }
+
+        res.json({ message: 'Medio de pago eliminado' });
+    } catch (error) {
+        console.error('Error al eliminar medio de pago:', error);
+        res.status(500).json({ error: 'Error al eliminar medio de pago' });
+    }
+});

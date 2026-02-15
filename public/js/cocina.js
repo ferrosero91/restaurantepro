@@ -69,9 +69,9 @@ $(function(){
     const ui = estadoUI(it.estado);
     const ref = parseDate(it.enviado_at) || parseDate(it.created_at);
     const hora = ref ? ref.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const mesa = escapeHtml(it.mesa_numero);
+    const mesa = it.mesa_numero ? escapeHtml(it.mesa_numero) : 'Mostrador';
     const producto = escapeHtml(it.producto_nombre);
-    const nota = (it.nota || '').trim();
+    const nota = (it.notas || it.nota || '').trim();
     const qty = Number(it.cantidad || 0);
 
     const actions = `
@@ -87,7 +87,7 @@ $(function(){
           <div class="d-flex justify-content-between gap-2">
             <div class="flex-grow-1">
               <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                <span class="badge text-bg-dark"><i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}</span>
+                <span class="badge text-bg-dark"><i class="bi ${it.mesa_numero ? 'bi-grid-3x3-gap' : 'bi-shop'} me-1"></i>${mesa}</span>
                 <span class="badge text-bg-${ui.badge}"><i class="bi ${ui.icon} me-1"></i>${ui.label}</span>
                 <span class="meta">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</span>
               </div>
@@ -109,11 +109,13 @@ $(function(){
     const ui = estadoUI(estado);
     const ref = parseDate(items[0]?.enviado_at) || parseDate(items[0]?.created_at);
     const hora = ref ? ref.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const mesaDisplay = mesa ? escapeHtml(mesa) : 'Mostrador';
+    const mesaIcon = mesa ? 'bi-grid-3x3-gap' : 'bi-shop';
     
     // Generar lista de productos
     const productosHTML = items.map(it => {
       const producto = escapeHtml(it.producto_nombre);
-      const nota = (it.nota || '').trim();
+      const nota = (it.notas || it.nota || '').trim();
       const qty = Number(it.cantidad || 0);
       return `
         <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
@@ -141,7 +143,7 @@ $(function(){
       <div class="card cocina-card border-start border-4 border-${ui.border} mb-3">
         <div class="card-body">
           <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-            <span class="badge text-bg-dark"><i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${escapeHtml(mesa)}</span>
+            <span class="badge text-bg-dark"><i class="bi ${mesaIcon} me-1"></i>${mesaDisplay}</span>
             <span class="badge text-bg-${ui.badge}"><i class="bi ${ui.icon} me-1"></i>${ui.label}</span>
             <span class="badge text-bg-secondary">${items.length} producto${items.length !== 1 ? 's' : ''}</span>
             <span class="meta">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</span>
@@ -161,9 +163,9 @@ $(function(){
     const q = getBusqueda();
     if(!q) return items;
     return items.filter(it => {
-      const mesa = String(it.mesa_numero || '').toLowerCase();
+      const mesa = String(it.mesa_numero || 'mostrador').toLowerCase();
       const prod = String(it.producto_nombre || '').toLowerCase();
-      const nota = String(it.nota || '').toLowerCase();
+      const nota = String(it.notas || it.nota || '').toLowerCase();
       return mesa.includes(q) || prod.includes(q) || nota.includes(q);
     });
   }
@@ -198,33 +200,46 @@ $(function(){
     // Agrupar enviados por mesa
     const enviadosPorMesa = new Map();
     enviados.forEach(it => {
-      const k = String(it.mesa_numero ?? '');
+      const k = it.mesa_numero ? String(it.mesa_numero) : null;
       if(!enviadosPorMesa.has(k)) enviadosPorMesa.set(k, []);
       enviadosPorMesa.get(k).push(it);
     });
-    [...enviadosPorMesa.entries()].sort((a,b)=> String(a[0]).localeCompare(String(b[0]))).forEach(([mesa, arr]) => {
+    [...enviadosPorMesa.entries()].sort((a,b)=> {
+      // Null (mostrador) va primero
+      if(a[0] === null) return -1;
+      if(b[0] === null) return 1;
+      return String(a[0]).localeCompare(String(b[0]));
+    }).forEach(([mesa, arr]) => {
       enviadosEl.append(cardItemsAgrupados(mesa, arr, 'enviado'));
     });
 
     // Agrupar preparando por mesa
     const preparandoPorMesa = new Map();
     preparando.forEach(it => {
-      const k = String(it.mesa_numero ?? '');
+      const k = it.mesa_numero ? String(it.mesa_numero) : null;
       if(!preparandoPorMesa.has(k)) preparandoPorMesa.set(k, []);
       preparandoPorMesa.get(k).push(it);
     });
-    [...preparandoPorMesa.entries()].sort((a,b)=> String(a[0]).localeCompare(String(b[0]))).forEach(([mesa, arr]) => {
+    [...preparandoPorMesa.entries()].sort((a,b)=> {
+      if(a[0] === null) return -1;
+      if(b[0] === null) return 1;
+      return String(a[0]).localeCompare(String(b[0]));
+    }).forEach(([mesa, arr]) => {
       preparandoEl.append(cardItemsAgrupados(mesa, arr, 'preparando'));
     });
 
     // Listos: agrupar por mesa (más intuitivo para entrega)
     const porMesa = new Map();
     listos.forEach(it => {
-      const k = String(it.mesa_numero ?? '');
+      const k = it.mesa_numero ? String(it.mesa_numero) : null;
       if(!porMesa.has(k)) porMesa.set(k, []);
       porMesa.get(k).push(it);
     });
-    [...porMesa.entries()].sort((a,b)=> String(a[0]).localeCompare(String(b[0]))).forEach(([mesa, arr]) => {
+    [...porMesa.entries()].sort((a,b)=> {
+      if(a[0] === null) return -1;
+      if(b[0] === null) return 1;
+      return String(a[0]).localeCompare(String(b[0]));
+    }).forEach(([mesa, arr]) => {
       listosEl.append(cardItemsAgrupados(mesa, arr, 'listo'));
     });
 

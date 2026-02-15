@@ -421,11 +421,7 @@
                             <i class="bi bi-credit-card me-1"></i>Forma de Pago
                         </label>
                         <select id="formaPagoFiltro" class="form-select">
-                            <option value="todos" <%= !filtros.forma_pago || filtros.forma_pago === 'todos' ? 'selected' : '' %>>Todos</option>
-                            <option value="efectivo" <%= filtros.forma_pago === 'efectivo' ? 'selected' : '' %>>Efectivo</option>
-                            <option value="transferencia" <%= filtros.forma_pago === 'transferencia' ? 'selected' : '' %>>Transferencia</option>
-                            <option value="tarjeta" <%= filtros.forma_pago === 'tarjeta' ? 'selected' : '' %>>Tarjeta</option>
-                            <option value="mixto" <%= filtros.forma_pago === 'mixto' ? 'selected' : '' %>>Mixto</option>
+                            <option value="todos">Cargando...</option>
                         </select>
                     </div>
                     
@@ -650,6 +646,45 @@
     <script>
         const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
         const detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
+        
+        // Cargar medios de pago para el filtro
+        async function cargarMediosPagoFiltro() {
+            try {
+                const resp = await fetch('/configuracion/medios-pago/activos');
+                const medios = await resp.json();
+                
+                const select = document.getElementById('formaPagoFiltro');
+                if (!select) return;
+                
+                const formaPagoActual = '<%= filtros.forma_pago || "todos" %>';
+                
+                let html = '<option value="todos">Todos</option>';
+                medios.forEach(medio => {
+                    const selected = formaPagoActual === medio.codigo ? 'selected' : '';
+                    html += `<option value="${medio.codigo}" ${selected}>${medio.nombre}</option>`;
+                });
+                html += `<option value="mixto" ${formaPagoActual === 'mixto' ? 'selected' : ''}>Mixto</option>`;
+                
+                select.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error al cargar medios de pago:', error);
+                const select = document.getElementById('formaPagoFiltro');
+                if (select) {
+                    const formaPagoActual = '<%= filtros.forma_pago || "todos" %>';
+                    select.innerHTML = `
+                        <option value="todos">Todos</option>
+                        <option value="efectivo" ${formaPagoActual === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                        <option value="transferencia" ${formaPagoActual === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                        <option value="tarjeta" ${formaPagoActual === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                        <option value="mixto" ${formaPagoActual === 'mixto' ? 'selected' : ''}>Mixto</option>
+                    `;
+                }
+            }
+        }
+        
+        // Ejecutar al cargar la página
+        cargarMediosPagoFiltro();
         
         function mostrarAlerta(mensaje, tipo = 'success') {
             const alertaDiv = document.createElement('div');

@@ -1,3 +1,63 @@
+// Cargar medios de pago (debe estar fuera del scope de jQuery)
+let mediosPagoDisponibles = [];
+
+async function cargarMediosPagoGlobal() {
+    try {
+        const resp = await fetch('/configuracion/medios-pago/activos');
+        const medios = await resp.json();
+        
+        console.log('✅ Medios de pago cargados (factura):', medios);
+        
+        // Guardar en variable global
+        mediosPagoDisponibles = medios;
+        
+        const select = document.getElementById('formaPago');
+        if (select) {
+            select.innerHTML = '';
+            
+            if (medios.length === 0) {
+                select.innerHTML = '<option value="efectivo">Efectivo</option>';
+                mediosPagoDisponibles = [{ codigo: 'efectivo', nombre: 'Efectivo' }];
+                return;
+            }
+            
+            medios.forEach(medio => {
+                const option = document.createElement('option');
+                option.value = medio.codigo;
+                option.textContent = medio.nombre;
+                select.appendChild(option);
+            });
+            
+            // Agregar opción de pago mixto
+            const optionMixto = document.createElement('option');
+            optionMixto.value = 'mixto';
+            optionMixto.textContent = 'Pago mixto (varios medios)';
+            select.appendChild(optionMixto);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al cargar medios de pago:', error);
+        mediosPagoDisponibles = [
+            { codigo: 'efectivo', nombre: 'Efectivo' },
+            { codigo: 'transferencia', nombre: 'Transferencia' },
+            { codigo: 'tarjeta', nombre: 'Tarjeta' }
+        ];
+        
+        const select = document.getElementById('formaPago');
+        if (select) {
+            select.innerHTML = `
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="mixto">Pago mixto (varios medios)</option>
+            `;
+        }
+    }
+}
+
+// Ejecutar inmediatamente
+cargarMediosPagoGlobal();
+
 $(document).ready(function() {
     let timeoutCliente;
     let timeoutProducto;
@@ -212,6 +272,21 @@ $(document).ready(function() {
                     <div class="mt-2" id="pmDiffWrap">
                         <span class="badge text-bg-secondary" id="pmDiff">Falta: ${formatMoney(total)}</span>
                     </div>
+                    
+                    <!-- Campo de dinero recibido y cambio -->
+                    <div class="mt-3 p-3 border rounded bg-light">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small mb-1 fw-bold">Dinero recibido</label>
+                                <input type="text" id="pmDineroRecibido" class="form-control" placeholder="0.00">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1 fw-bold">Cambio</label>
+                                <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #28a745;">$0,00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="alert alert-warning py-2 px-3 mt-2 mb-0 small" id="pmWarn" style="display:none"></div>
                 </div>
             `,
@@ -219,6 +294,7 @@ $(document).ready(function() {
             confirmButtonText: 'Usar estos pagos',
             cancelButtonText: 'Cancelar',
             focusConfirm: false,
+            stopKeydownPropagation: false,
             didOpen: () => {
                 const rows = document.getElementById('pmRows');
                 const btnAdd = document.getElementById('pmAddRow');
@@ -233,15 +309,28 @@ $(document).ready(function() {
                     });
                 };
 
-                const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => `
+                const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => {
+                    let optionsHTML = '';
+                    if (mediosPagoDisponibles.length > 0) {
+                        optionsHTML = mediosPagoDisponibles.map(medio => 
+                            `<option value="${medio.codigo}" ${metodo === medio.codigo ? 'selected' : ''}>${medio.nombre}</option>`
+                        ).join('');
+                    } else {
+                        // Fallback si no hay medios cargados
+                        optionsHTML = `
+                            <option value="efectivo" ${metodo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                            <option value="transferencia" ${metodo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                            <option value="tarjeta" ${metodo === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                        `;
+                    }
+                    
+                    return `
                     <div class="border rounded p-2 pm-row">
                         <div class="row g-2 align-items-end">
                             <div class="col-5">
                                 <label class="form-label small mb-1">Método</label>
                                 <select class="form-select form-select-sm pm-metodo">
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="transferencia">Transferencia</option>
-                                    <option value="tarjeta">Tarjeta</option>
+                                    ${optionsHTML}
                                 </select>
                             </div>
                             <div class="col-4">
@@ -277,6 +366,26 @@ $(document).ready(function() {
                         } else {
                             diffEl.className = 'badge text-bg-danger';
                             diffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff))}`;
+                        }
+                    }
+                    
+                    // Calcular cambio
+                    const dineroRecibidoInput = document.getElementById('pmDineroRecibido');
+                    const cambioEl = document.getElementById('pmCambio');
+                    if (dineroRecibidoInput && cambioEl) {
+                        const dineroRecibido = parseMoneyInput(dineroRecibidoInput.value);
+                        const cambio = dineroRecibido - sum;
+                        if (dineroRecibido > 0) {
+                            if (cambio >= 0) {
+                                cambioEl.textContent = '$' + formatMoney(cambio);
+                                cambioEl.style.color = '#28a745';
+                            } else {
+                                cambioEl.textContent = 'Falta: $' + formatMoney(Math.abs(cambio));
+                                cambioEl.style.color = '#dc3545';
+                            }
+                        } else {
+                            cambioEl.textContent = '$0,00';
+                            cambioEl.style.color = '#28a745';
                         }
                     }
 
@@ -347,6 +456,29 @@ $(document).ready(function() {
 
                 // Fila inicial: por defecto todo en efectivo
                 addRow('efectivo', String(Number(total).toFixed(2)), '');
+                
+                // Event listener para dinero recibido
+                const dineroRecibidoInput = document.getElementById('pmDineroRecibido');
+                if (dineroRecibidoInput) {
+                    // Asegurar que el input sea editable
+                    dineroRecibidoInput.removeAttribute('readonly');
+                    dineroRecibidoInput.removeAttribute('disabled');
+                    dineroRecibidoInput.contentEditable = false;
+                    
+                    allowClipboard(dineroRecibidoInput);
+                    
+                    // Agregar event listeners directamente
+                    dineroRecibidoInput.addEventListener('input', () => recalc());
+                    dineroRecibidoInput.addEventListener('change', () => recalc());
+                    dineroRecibidoInput.addEventListener('keyup', () => recalc());
+                    dineroRecibidoInput.addEventListener('focus', () => {
+                        try { dineroRecibidoInput.select(); } catch (_) {}
+                    });
+                    
+                    // Forzar que el input sea clickeable y editable
+                    dineroRecibidoInput.style.pointerEvents = 'auto';
+                    dineroRecibidoInput.tabIndex = 0;
+                }
 
                 window.__pm_getRows = () => rows;
                 window.__pm_setWarn = (msg) => {
@@ -584,7 +716,7 @@ $(document).ready(function() {
     };
 
     // Generar factura
-    $('#generarFactura').click(function() {
+    $('#generarFactura').click(async function() {
         console.log('=== INICIO GENERACIÓN DE FACTURA ===');
         const cliente_id = $('#cliente_id').val();
         const forma_pago = $('#formaPago').val();
@@ -600,12 +732,26 @@ $(document).ready(function() {
         }
 
         // Si eligieron pago mixto, pedimos el desglose antes de enviar
+        if (forma_pago === 'mixto') {
+            pedirPagosMixtos(totalFactura).then(pagos => {
+                if (!pagos) return; // cancelado
+                pagosFactura = pagos;
+                enviarFactura(pagosFactura);
+            });
+            return;
+        }
+
+        // Para pagos simples, generar factura directamente sin modal adicional
+        // El medio de pago ya fue seleccionado en el select principal
+        const medioPagoSeleccionado = forma_pago;
+
+        // Si eligieron pago mixto, pedimos el desglose antes de enviar
         // (para efectivo/transferencia/tarjeta simple, no mostramos modal y enviamos forma_pago como antes)
         const enviarFactura = (pagosSeleccionados) => {
             const factura = {
             cliente_id: cliente_id,
             total: totalFactura,
-            forma_pago: forma_pago,
+            forma_pago: medioPagoSeleccionado,
             // pagos[] solo se envía si es mixto (o si el usuario lo definió)
             pagos: Array.isArray(pagosSeleccionados) ? pagosSeleccionados : undefined,
             productos: productosFactura.map(p => ({
@@ -690,15 +836,6 @@ $(document).ready(function() {
                 }
             });
         };
-
-        if (forma_pago === 'mixto') {
-            pedirPagosMixtos(totalFactura).then(pagos => {
-                if (!pagos) return; // cancelado
-                pagosFactura = pagos;
-                enviarFactura(pagosFactura);
-            });
-            return;
-        }
 
         // Caso simple (un solo medio): enviamos sin pagos[]
         pagosFactura = null;

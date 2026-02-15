@@ -4,6 +4,38 @@
 // Variables globales para que las funciones onclick puedan acceder
 let pedidoActual = null; // { id, mesa_id }
 let items = []; // items del pedido en UI
+let mediosPagoDisponibles = []; // Medios de pago cargados desde el servidor
+
+// Cargar medios de pago (debe estar fuera del scope de jQuery para ser accesible globalmente)
+async function cargarMediosPago() {
+    try {
+        const resp = await fetch('/configuracion/medios-pago/activos');
+        const medios = await resp.json();
+        
+        console.log('✅ Medios de pago cargados:', medios);
+        
+        // Guardar en variable global para usar en modal de pago mixto
+        mediosPagoDisponibles = medios;
+        
+        if (medios.length === 0) {
+            mediosPagoDisponibles = [
+                { codigo: 'efectivo', nombre: 'Efectivo' }
+            ];
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al cargar medios de pago:', error);
+        // Fallback a medios por defecto
+        mediosPagoDisponibles = [
+            { codigo: 'efectivo', nombre: 'Efectivo' },
+            { codigo: 'transferencia', nombre: 'Transferencia' },
+            { codigo: 'tarjeta', nombre: 'Tarjeta' }
+        ];
+    }
+}
+
+// Ejecutar inmediatamente al cargar el script
+cargarMediosPago();
 
 $(function() {
   const modalPedido = new bootstrap.Modal('#modalPedido');
@@ -41,222 +73,201 @@ $(function() {
   }
 
   async function pedirPagosMixtos(total) {
-    // Modal SweetAlert con UI dinámica (agregar/eliminar filas)
-    // Importante: usamos didOpen para enlazar eventos.
-    const result = await Swal.fire({
-      title: 'Forma de pago',
-      html: `
-        <div class="text-start">
-          <div class="small text-muted mb-2">Total a pagar: <strong id="pmTotal">${formatMoney(total)}</strong></div>
-
-          <div id="pmRows" class="vstack gap-2"></div>
-
-          <div class="d-flex gap-2 mt-2">
-            <button type="button" class="btn btn-outline-primary btn-sm" id="pmAddRow">
-              <i class="bi bi-plus-lg"></i> Agregar medio
-            </button>
-            <div class="ms-auto small text-muted align-self-center">
-              Sumatoria: <strong id="pmSum">${formatMoney(0)}</strong>
+    // Usar modal de Bootstrap nativo en lugar de SweetAlert2
+    return new Promise((resolve) => {
+      const modalEl = document.getElementById('modalPago');
+      const modal = new bootstrap.Modal(modalEl);
+      
+      const pagoTotalEl = document.getElementById('pagoTotal');
+      const pagoRowsEl = document.getElementById('pagoRows');
+      const pagoAddBtn = document.getElementById('pagoAddRow');
+      const pagoSumEl = document.getElementById('pagoSum');
+      const pagoDiffEl = document.getElementById('pagoDiff');
+      const pagoWarnEl = document.getElementById('pagoWarn');
+      const pagoDineroRecibidoEl = document.getElementById('pagoDineroRecibido');
+      const pagoCambioEl = document.getElementById('pagoCambio');
+      const btnConfirmar = document.getElementById('btnConfirmarPago');
+      
+      // Establecer total
+      pagoTotalEl.textContent = formatMoney(total);
+      
+      // Limpiar filas anteriores
+      pagoRowsEl.innerHTML = '';
+      pagoDineroRecibidoEl.value = '';
+      pagoCambioEl.textContent = '$0,00';
+      pagoWarnEl.style.display = 'none';
+      
+      const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => {
+        let optionsHTML = '';
+        if (mediosPagoDisponibles.length > 0) {
+          optionsHTML = mediosPagoDisponibles.map(medio => 
+            `<option value="${medio.codigo}" ${metodo === medio.codigo ? 'selected' : ''}>${medio.nombre}</option>`
+          ).join('');
+        } else {
+          optionsHTML = `
+            <option value="efectivo" ${metodo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+            <option value="transferencia" ${metodo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+            <option value="tarjeta" ${metodo === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+          `;
+        }
+        
+        return `
+        <div class="border rounded p-2 pago-row">
+          <div class="row g-2 align-items-end">
+            <div class="col-5">
+              <label class="form-label small mb-1">Método</label>
+              <select class="form-select form-select-sm pago-metodo">
+                ${optionsHTML}
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label small mb-1">Monto</label>
+              <input type="text" class="form-control form-control-sm pago-monto" placeholder="0.00" value="${String(monto)}">
+            </div>
+            <div class="col-3 text-end">
+              <button type="button" class="btn btn-outline-danger btn-sm pago-del" title="Eliminar">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <div class="col-12">
+              <label class="form-label small mb-1">Referencia (opcional)</label>
+              <input type="text" class="form-control form-control-sm pago-ref" placeholder="Ej: #transacción / últimos 4 dígitos" value="${String(referencia)}">
             </div>
           </div>
-
-          <!-- Indicador de diferencia para guiar al usuario -->
-          <!-- Relacionado con: UX solicitada (mostrar Falta/Sobra) -->
-          <div class="mt-2" id="pmDiffWrap">
-            <span class="badge text-bg-secondary" id="pmDiff">Falta: ${formatMoney(total)}</span>
-          </div>
-
-          <div class="alert alert-warning py-2 px-3 mt-2 mb-0 small" id="pmWarn" style="display:none"></div>
         </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Confirmar pago',
-      cancelButtonText: 'Cancelar',
-      focusConfirm: false,
-      didOpen: () => {
-        const rows = document.getElementById('pmRows');
-        const btnAdd = document.getElementById('pmAddRow');
-        const sumEl = document.getElementById('pmSum');
-        const diffEl = document.getElementById('pmDiff');
-        const warnEl = document.getElementById('pmWarn');
-
-        const allowClipboard = (el) => {
-          if (!el) return;
-          // Solo detenemos propagación de eventos que suelen activar atajos globales / offcanvas,
-          // pero NO bloqueamos escritura normal.
-          ['paste','copy','cut','contextmenu'].forEach(evt => {
-            el.addEventListener(evt, (e) => e.stopPropagation());
+      `;
+      };
+      
+      const recalc = () => {
+        const montoInputs = Array.from(pagoRowsEl.querySelectorAll('.pago-monto'));
+        const montos = montoInputs.map(i => parseMoneyInput(i.value));
+        const sum = montos.reduce((a, b) => a + b, 0);
+        
+        const diff = Number(total) - Number(sum);
+        if (pagoDiffEl) {
+          if (almostEqualMoney(diff, 0)) {
+            pagoDiffEl.className = 'badge text-bg-success';
+            pagoDiffEl.textContent = 'Listo: total completo';
+          } else if (diff > 0) {
+            pagoDiffEl.className = 'badge text-bg-warning';
+            pagoDiffEl.textContent = `Falta: ${formatMoney(diff)}`;
+          } else {
+            pagoDiffEl.className = 'badge text-bg-danger';
+            pagoDiffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff))}`;
+          }
+        }
+        
+        // Calcular cambio
+        const dineroRecibido = parseMoneyInput(pagoDineroRecibidoEl.value);
+        const cambio = dineroRecibido - sum;
+        if (dineroRecibido > 0) {
+          if (cambio >= 0) {
+            pagoCambioEl.textContent = '$' + formatMoney(cambio);
+            pagoCambioEl.style.color = '#28a745';
+          } else {
+            pagoCambioEl.textContent = 'Falta: $' + formatMoney(Math.abs(cambio));
+            pagoCambioEl.style.color = '#dc3545';
+          }
+        } else {
+          pagoCambioEl.textContent = '$0,00';
+          pagoCambioEl.style.color = '#28a745';
+        }
+        
+        pagoSumEl.textContent = formatMoney(sum);
+        pagoWarnEl.style.display = 'none';
+        
+        const remaining = Number(total) - Number(sum);
+        if (remaining > 0.009) {
+          const candidate = montoInputs
+            .filter(inp => inp.dataset.touched !== 'true')
+            .reverse()[0];
+          if (candidate) {
+            candidate.value = Number(remaining.toFixed(2)).toString();
+            recalc();
+          }
+        }
+      };
+      
+      const addRow = (metodo = 'efectivo', monto = '', referencia = '') => {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = rowTemplate(metodo, monto, referencia);
+        const row = wrap.firstElementChild;
+        pagoRowsEl.appendChild(row);
+        
+        const sel = row.querySelector('.pago-metodo');
+        const montoEl = row.querySelector('.pago-monto');
+        const refEl = row.querySelector('.pago-ref');
+        const del = row.querySelector('.pago-del');
+        
+        if (sel) sel.value = metodo;
+        
+        if (montoEl) {
+          montoEl.dataset.touched = 'false';
+          montoEl.addEventListener('input', () => {
+            montoEl.dataset.touched = 'true';
+            recalc();
           });
-        };
-
-        const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => `
-          <div class="border rounded p-2 pm-row">
-            <div class="row g-2 align-items-end">
-              <div class="col-5">
-                <label class="form-label small mb-1">Método</label>
-                <select class="form-select form-select-sm pm-metodo">
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="tarjeta">Tarjeta</option>
-                </select>
-              </div>
-              <div class="col-4">
-                <label class="form-label small mb-1">Monto</label>
-                <input type="text" class="form-control form-control-sm pm-monto" placeholder="0.00" value="${String(monto)}">
-              </div>
-              <div class="col-3 text-end">
-                <button type="button" class="btn btn-outline-danger btn-sm pm-del" title="Eliminar">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              <div class="col-12">
-                <label class="form-label small mb-1">Referencia (opcional)</label>
-                <input type="text" class="form-control form-control-sm pm-ref" placeholder="Ej: #transacción / últimos 4 dígitos" value="${String(referencia)}">
-              </div>
-            </div>
-          </div>
-        `;
-
-        // Autocompletar el restante en una fila "no tocada" por el usuario
-        const recalc = (sourceInput = null) => {
-          const montoInputs = Array.from(rows.querySelectorAll('.pm-monto'));
-          const montos = montoInputs.map(i => parseMoneyInput(i.value));
-          const sum = montos.reduce((a, b) => a + b, 0);
-
-          // Indicador Falta/Sobra
-          const diff = Number(total) - Number(sum);
-          if (diffEl) {
-            if (almostEqualMoney(diff, 0)) {
-              diffEl.className = 'badge text-bg-success';
-                  diffEl.textContent = 'Listo: total completo';
-            } else if (diff > 0) {
-              diffEl.className = 'badge text-bg-warning';
-              diffEl.textContent = `Falta: ${formatMoney(diff)}`;
-            } else {
-              diffEl.className = 'badge text-bg-danger';
-              diffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff))}`;
-            }
-          }
-
-          sumEl.textContent = formatMoney(sum);
-          warnEl.style.display = 'none';
-
-          // Si falta dinero, intentamos autocompletar el restante en la última fila no tocada
-          // (diferente a la que el usuario está editando).
-          const remaining = Number(total) - Number(sum);
-          if (remaining > 0.009) {
-            const candidate = montoInputs
-              .filter(inp => inp !== sourceInput)
-              .reverse()
-              .find(inp => inp && inp.dataset && inp.dataset.touched !== 'true');
-            if (candidate) {
-              candidate.value = Number(remaining.toFixed(2)).toString();
-              // NO marcar touched aquí: sigue siendo autocompletado
-              // Recalcular sin bucle infinito
-              const montos2 = montoInputs.map(i => parseMoneyInput(i.value));
-              const sum2 = montos2.reduce((a, b) => a + b, 0);
-              sumEl.textContent = formatMoney(sum2);
-              const diff2 = Number(total) - Number(sum2);
-              if (diffEl) {
-                if (almostEqualMoney(diff2, 0)) {
-                  diffEl.className = 'badge text-bg-success';
-                  diffEl.textContent = 'Listo: total completo';
-                } else if (diff2 > 0) {
-                  diffEl.className = 'badge text-bg-warning';
-                  diffEl.textContent = `Falta: ${formatMoney(diff2)}`;
-                } else {
-                  diffEl.className = 'badge text-bg-danger';
-                  diffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff2))}`;
-                }
-              }
-            }
-          }
-        };
-
-        const addRow = (metodo = 'efectivo', monto = '', referencia = '') => {
-          const wrap = document.createElement('div');
-          wrap.innerHTML = rowTemplate(metodo, monto, referencia);
-          const row = wrap.firstElementChild;
-          rows.appendChild(row);
-
-          const sel = row.querySelector('.pm-metodo');
-          const montoEl = row.querySelector('.pm-monto');
-          const refEl = row.querySelector('.pm-ref');
-          const del = row.querySelector('.pm-del');
-
-          if (sel) sel.value = metodo;
-
-          allowClipboard(montoEl);
-          allowClipboard(refEl);
-
-          if (montoEl) {
-            montoEl.dataset.touched = 'false';
-            montoEl.addEventListener('input', () => {
-              montoEl.dataset.touched = 'true';
-              recalc(montoEl);
-            });
-            // Enfoque: seleccionar todo para editar rápido
-            montoEl.addEventListener('focus', () => {
-              try { montoEl.select(); } catch (_) {}
-            });
-          }
-          if (sel) sel.addEventListener('change', () => recalc(montoEl));
-          if (del) del.addEventListener('click', () => { row.remove(); recalc(); });
-
-          // UX: enfocar monto al agregar
-          if (montoEl) setTimeout(() => montoEl.focus(), 0);
-
-          recalc();
-        };
-
-        btnAdd.addEventListener('click', () => addRow('efectivo', '', ''));
-
-        // Fila inicial: por defecto todo en efectivo
-        addRow('efectivo', String(Number(total).toFixed(2)), '');
-
-        // Exponer helpers para preConfirm
-        window.__pm_getRows = () => rows;
-        window.__pm_setWarn = (msg) => {
-          warnEl.textContent = msg;
-          warnEl.style.display = 'block';
-        };
-      },
-      preConfirm: () => {
-        const rows = window.__pm_getRows ? window.__pm_getRows() : null;
-        if (!rows) return false;
-        const pagos = Array.from(rows.querySelectorAll('.pm-row')).map(r => {
-          const metodo = (r.querySelector('.pm-metodo')?.value || '').trim();
-          const monto = parseMoneyInput(r.querySelector('.pm-monto')?.value || 0);
-          const referencia = (r.querySelector('.pm-ref')?.value || '').trim();
+          montoEl.addEventListener('focus', () => {
+            try { montoEl.select(); } catch (_) {}
+          });
+        }
+        if (sel) sel.addEventListener('change', () => recalc());
+        if (del) del.addEventListener('click', () => { row.remove(); recalc(); });
+        
+        if (montoEl) setTimeout(() => montoEl.focus(), 0);
+        recalc();
+      };
+      
+      pagoAddBtn.onclick = () => addRow('efectivo', '', '');
+      
+      // Fila inicial
+      addRow('efectivo', String(Number(total).toFixed(2)), '');
+      
+      // Event listener para dinero recibido
+      pagoDineroRecibidoEl.addEventListener('input', () => recalc());
+      pagoDineroRecibidoEl.addEventListener('focus', () => {
+        try { pagoDineroRecibidoEl.select(); } catch (_) {}
+      });
+      
+      // Confirmar pago
+      btnConfirmar.onclick = () => {
+        const pagos = Array.from(pagoRowsEl.querySelectorAll('.pago-row')).map(r => {
+          const metodo = (r.querySelector('.pago-metodo')?.value || '').trim();
+          const monto = parseMoneyInput(r.querySelector('.pago-monto')?.value || 0);
+          const referencia = (r.querySelector('.pago-ref')?.value || '').trim();
           return { metodo, monto, referencia };
         }).filter(p => p.metodo && p.monto > 0);
-
+        
         if (pagos.length === 0) {
-          window.__pm_setWarn && window.__pm_setWarn('Agrega al menos un medio de pago con monto.');
-          return false;
+          pagoWarnEl.textContent = 'Agrega al menos un medio de pago con monto.';
+          pagoWarnEl.style.display = 'block';
+          return;
         }
-
+        
         const sum = pagos.reduce((a, p) => a + Number(p.monto || 0), 0);
         if (!almostEqualMoney(sum, total)) {
-          window.__pm_setWarn && window.__pm_setWarn(`La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(total)}).`);
-          return false;
+          pagoWarnEl.textContent = `La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(total)}).`;
+          pagoWarnEl.style.display = 'block';
+          return;
         }
-
-        // Limpieza final
-        return pagos.map(p => ({
+        
+        const result = pagos.map(p => ({
           metodo: p.metodo,
           monto: Number(p.monto.toFixed(2)),
           referencia: p.referencia || ''
         }));
-      },
-      willClose: () => {
-        // Limpieza de variables globales del modal (evitar fugas)
-        try { delete window.__pm_getRows; delete window.__pm_setWarn; } catch (_) {}
-      }
+        
+        modal.hide();
+        resolve(result);
+      };
+      
+      // Cancelar
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        resolve(null);
+      }, { once: true });
+      
+      modal.show();
     });
-
-    if (!result.isConfirmed) return null;
-    return result.value;
   }
 
   // Tooltips Bootstrap
@@ -567,9 +578,8 @@ $(function() {
       }, 0);
 
       // Modal de pago mixto (permite 1 o varios medios)
-      const pagos = await runWithOffcanvasHidden(async () => {
-        return await pedirPagosMixtos(totalPedido);
-      });
+      // NO usar runWithOffcanvasHidden aquí porque bloquea los inputs del modal
+      const pagos = await pedirPagosMixtos(totalPedido);
       if(!pagos) return;
 
       const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/facturar`, {
@@ -1427,7 +1437,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
 
 }); // Cierre del scope de jQuery
 

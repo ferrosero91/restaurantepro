@@ -347,6 +347,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="medios-pago-tab" data-bs-toggle="tab" data-bs-target="#medios-pago" type="button">
+                    <i class="bi bi-credit-card me-2"></i>Medios de Pago
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button">
                     <i class="bi bi-tags me-2"></i>Categorías
                 </button>
@@ -477,6 +482,45 @@
                         <a href="/" class="btn btn-outline-secondary">Cancelar</a>
                     </div>
                 </form>
+            </div>
+            
+            <!-- TAB: Medios de Pago -->
+            <div class="tab-pane fade" id="medios-pago" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div class="section-title mb-0">
+                        <i class="bi bi-credit-card me-2"></i>Medios de Pago
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnNuevoMedioPago">
+                        <i class="bi bi-plus-circle me-1"></i>Nuevo Medio de Pago
+                    </button>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Configura los medios de pago disponibles en tu restaurante. Estos aparecerán como opciones al generar facturas.
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">Orden</th>
+                                <th>Nombre</th>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                                <th style="width: 100px;">Estado</th>
+                                <th style="width: 120px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaMediosPago">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-hourglass-split me-2"></i>Cargando medios de pago...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <!-- TAB: Categorías -->
@@ -946,6 +990,7 @@
 
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script>
         let rolesData = [];
         let permisosData = [];
@@ -1594,7 +1639,245 @@
             cargarRolesYPermisos().then(() => {
                 cargarUsuarios();
             });
+            cargarMediosPago();
         });
+        
+        // ===========================
+        // MEDIOS DE PAGO
+        // ===========================
+        
+        let mediosPago = [];
+        
+        async function cargarMediosPago() {
+            try {
+                const resp = await fetch('/configuracion/medios-pago');
+                mediosPago = await resp.json();
+                renderizarMediosPago();
+            } catch (error) {
+                console.error('Error al cargar medios de pago:', error);
+                Swal.fire('Error', 'No se pudieron cargar los medios de pago', 'error');
+            }
+        }
+        
+        function renderizarMediosPago() {
+            const tbody = document.getElementById('tablaMediosPago');
+            if (!tbody) return;
+            
+            if (mediosPago.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox me-2"></i>No hay medios de pago configurados
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = mediosPago.map(medio => `
+                <tr>
+                    <td>${medio.orden}</td>
+                    <td><strong>${medio.nombre}</strong></td>
+                    <td><code>${medio.codigo}</code></td>
+                    <td>${medio.descripcion || '-'}</td>
+                    <td>
+                        <span class="badge ${medio.activo ? 'bg-success' : 'bg-secondary'}">
+                            ${medio.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editarMedioPago(${medio.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminarMedioPago(${medio.id})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        document.getElementById('btnNuevoMedioPago')?.addEventListener('click', function() {
+            Swal.fire({
+                title: 'Nuevo Medio de Pago',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" id="swal-nombre" class="form-control" placeholder="Ej: Efectivo, Tarjeta, etc.">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Código <span class="text-danger">*</span></label>
+                            <input type="text" id="swal-codigo" class="form-control" placeholder="Ej: efectivo, tarjeta, etc.">
+                            <small class="text-muted">Solo letras minúsculas, números y guiones</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea id="swal-descripcion" class="form-control" rows="2" placeholder="Descripción opcional"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Orden</label>
+                            <input type="number" id="swal-orden" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="swal-activo" checked>
+                            <label class="form-check-label" for="swal-activo">Activo</label>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Crear',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const nombre = document.getElementById('swal-nombre').value.trim();
+                    const codigo = document.getElementById('swal-codigo').value.trim().toLowerCase();
+                    const descripcion = document.getElementById('swal-descripcion').value.trim();
+                    const orden = parseInt(document.getElementById('swal-orden').value) || 0;
+                    const activo = document.getElementById('swal-activo').checked;
+                    
+                    if (!nombre || !codigo) {
+                        Swal.showValidationMessage('Nombre y código son requeridos');
+                        return false;
+                    }
+                    
+                    if (!/^[a-z0-9-_]+$/.test(codigo)) {
+                        Swal.showValidationMessage('El código solo puede contener letras minúsculas, números, guiones y guiones bajos');
+                        return false;
+                    }
+                    
+                    return { nombre, codigo, descripcion, orden, activo };
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const resp = await fetch('/configuracion/medios-pago', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(result.value)
+                        });
+                        
+                        if (resp.ok) {
+                            Swal.fire('¡Creado!', 'Medio de pago creado exitosamente', 'success');
+                            cargarMediosPago();
+                        } else {
+                            const data = await resp.json();
+                            Swal.fire('Error', data.error || 'No se pudo crear el medio de pago', 'error');
+                        }
+                    } catch (error) {
+                        Swal.fire('Error', 'Error al crear medio de pago', 'error');
+                    }
+                }
+            });
+        });
+        
+        async function editarMedioPago(id) {
+            const medio = mediosPago.find(m => m.id === id);
+            if (!medio) return;
+            
+            Swal.fire({
+                title: 'Editar Medio de Pago',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" id="swal-nombre" class="form-control" value="${medio.nombre}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Código <span class="text-danger">*</span></label>
+                            <input type="text" id="swal-codigo" class="form-control" value="${medio.codigo}">
+                            <small class="text-muted">Solo letras minúsculas, números y guiones</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea id="swal-descripcion" class="form-control" rows="2">${medio.descripcion || ''}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Orden</label>
+                            <input type="number" id="swal-orden" class="form-control" value="${medio.orden}" min="0">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="swal-activo" ${medio.activo ? 'checked' : ''}>
+                            <label class="form-check-label" for="swal-activo">Activo</label>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const nombre = document.getElementById('swal-nombre').value.trim();
+                    const codigo = document.getElementById('swal-codigo').value.trim().toLowerCase();
+                    const descripcion = document.getElementById('swal-descripcion').value.trim();
+                    const orden = parseInt(document.getElementById('swal-orden').value) || 0;
+                    const activo = document.getElementById('swal-activo').checked;
+                    
+                    if (!nombre || !codigo) {
+                        Swal.showValidationMessage('Nombre y código son requeridos');
+                        return false;
+                    }
+                    
+                    if (!/^[a-z0-9-_]+$/.test(codigo)) {
+                        Swal.showValidationMessage('El código solo puede contener letras minúsculas, números, guiones y guiones bajos');
+                        return false;
+                    }
+                    
+                    return { nombre, codigo, descripcion, orden, activo };
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const resp = await fetch(`/configuracion/medios-pago/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(result.value)
+                        });
+                        
+                        if (resp.ok) {
+                            Swal.fire('¡Actualizado!', 'Medio de pago actualizado exitosamente', 'success');
+                            cargarMediosPago();
+                        } else {
+                            const data = await resp.json();
+                            Swal.fire('Error', data.error || 'No se pudo actualizar el medio de pago', 'error');
+                        }
+                    } catch (error) {
+                        Swal.fire('Error', 'Error al actualizar medio de pago', 'error');
+                    }
+                }
+            });
+        }
+        
+        async function eliminarMedioPago(id) {
+            const medio = mediosPago.find(m => m.id === id);
+            if (!medio) return;
+            
+            Swal.fire({
+                title: '¿Eliminar medio de pago?',
+                html: `¿Estás seguro de eliminar <strong>${medio.nombre}</strong>?<br><small class="text-muted">Si está en uso en facturas existentes, no se podrá eliminar.</small>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc3545'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const resp = await fetch(`/configuracion/medios-pago/${id}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (resp.ok) {
+                            Swal.fire('¡Eliminado!', 'Medio de pago eliminado exitosamente', 'success');
+                            cargarMediosPago();
+                        } else {
+                            const data = await resp.json();
+                            Swal.fire('Error', data.error || 'No se pudo eliminar el medio de pago', 'error');
+                        }
+                    } catch (error) {
+                        Swal.fire('Error', 'Error al eliminar medio de pago', 'error');
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html> 

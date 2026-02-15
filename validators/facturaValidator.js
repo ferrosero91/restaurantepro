@@ -21,8 +21,10 @@ const validateCreateFactura = [
         .toFloat(),
     
     body('forma_pago')
-        .isIn(['efectivo', 'transferencia', 'tarjeta', 'mixto'])
-        .withMessage('Forma de pago inválida'),
+        .isString()
+        .trim()
+        .notEmpty().withMessage('Forma de pago es requerida')
+        .isLength({ max: 50 }).withMessage('Forma de pago inválida'),
     
     body('productos')
         .isArray({ min: 1 }).withMessage('Debe incluir al menos un producto'),
@@ -51,8 +53,10 @@ const validateCreateFactura = [
     
     body('pagos.*.metodo')
         .optional()
-        .isIn(['efectivo', 'transferencia', 'tarjeta'])
-        .withMessage('Método de pago inválido'),
+        .isString()
+        .trim()
+        .notEmpty().withMessage('Método de pago es requerido')
+        .isLength({ max: 50 }).withMessage('Método de pago inválido'),
     
     body('pagos.*.monto')
         .optional()

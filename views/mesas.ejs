@@ -226,6 +226,61 @@
         </div>
     </div>
 
+    <!-- Modal Pago -->
+    <div class="modal fade" id="modalPago" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Forma de pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="small text-muted">Total a pagar: <strong id="pagoTotal" class="fs-4 text-primary">$0,00</strong></div>
+                    </div>
+
+                    <div id="pagoRows" class="vstack gap-2 mb-3"></div>
+
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="pagoAddRow">
+                            <i class="bi bi-plus-lg"></i> Agregar medio
+                        </button>
+                        <div class="ms-auto small text-muted align-self-center">
+                            Sumatoria: <strong id="pagoSum">$0,00</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="badge text-bg-secondary" id="pagoDiff">Falta: $0,00</span>
+                    </div>
+                    
+                    <!-- Campo de dinero recibido y cambio -->
+                    <div class="p-3 border rounded bg-light">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Dinero recibido</label>
+                                <input type="text" id="pagoDineroRecibido" class="form-control form-control-lg" placeholder="0.00" autocomplete="off">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Cambio</label>
+                                <div id="pagoCambio" class="form-control form-control-lg bg-white" style="font-weight: bold; color: #28a745;">$0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 mt-3 mb-0 small" id="pagoWarn" style="display:none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success btn-lg" id="btnConfirmarPago">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Confirmar pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </main>
     <%- include('partials/footer') %>
 

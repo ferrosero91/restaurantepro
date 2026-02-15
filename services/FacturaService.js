@@ -53,7 +53,8 @@ class FacturaService {
             cantidad: parseFloat(p.cantidad),
             precio_unitario: parseFloat(p.precio),
             unidad_medida: p.unidad,
-            subtotal: parseFloat(p.subtotal)
+            subtotal: parseFloat(p.subtotal),
+            notas: p.notas || null
         }));
 
         const facturaId = await this.facturaRepo.createWithDetails(
@@ -63,7 +64,56 @@ class FacturaService {
             tenantId
         );
 
+        // 7. Enviar items a cocina si es necesario
+        const itemsParaCocina = data.productos.filter(p => p.enviar_cocina === true);
+        if (itemsParaCocina.length > 0) {
+            await this.enviarItemsACocina(itemsParaCocina, facturaId, tenantId, data.mesa_id);
+        }
+
         return { id: facturaId };
+    }
+
+    /**
+     * Enviar items a cocina
+     */
+    async enviarItemsACocina(items, facturaId, tenantId, mesaId = null) {
+        const db = require('../db');
+        
+        try {
+            // Crear un pedido temporal para los items de cocina
+            const [pedidoResult] = await db.query(
+                `INSERT INTO pedidos (restaurante_id, mesa_id, estado, created_at) 
+                 VALUES (?, ?, 'activo', NOW())`,
+                [tenantId, mesaId]
+            );
+            
+            const pedidoId = pedidoResult.insertId;
+            
+            // Insertar items en pedido_items
+            for (const item of items) {
+                const subtotal = parseFloat(item.cantidad) * parseFloat(item.precio);
+                await db.query(
+                    `INSERT INTO pedido_items (pedido_id, producto_id, cantidad, unidad_medida, precio_unitario, subtotal, nota, estado, enviado_at) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'enviado', NOW())`,
+                    [
+                        pedidoId,
+                        item.producto_id,
+                        item.cantidad,
+                        item.unidad || 'UND',
+                        item.precio,
+                        subtotal,
+                        item.notas || null
+                    ]
+                );
+            }
+            
+            console.log(`✅ ${items.length} items enviados a cocina (Pedido #${pedidoId})`);
+            return pedidoId;
+        } catch (error) {
+            console.error('Error al enviar items a cocina:', error);
+            // No lanzar error para no bloquear la factura
+            return null;
+        }
     }
 
     /**

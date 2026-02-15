@@ -1,16 +1,109 @@
 // JS para Facturación Táctil
 // Similar a mesas.js pero para facturación directa
 
+// Cargar medios de pago (debe estar fuera del scope de jQuery)
+let mediosPagoGlobal = [];
+
+async function cargarMediosPagoGlobal() {
+    try {
+        const resp = await fetch('/configuracion/medios-pago/activos');
+        const medios = await resp.json();
+        
+        console.log('✅ Medios de pago cargados (táctil):', medios);
+        mediosPagoGlobal = medios;
+        
+        if (medios.length === 0) {
+            mediosPagoGlobal = [{ codigo: 'efectivo', nombre: 'Efectivo' }];
+        }
+        
+        // Actualizar el select
+        const select = document.getElementById('formaPago');
+        if (select) {
+            select.innerHTML = '';
+            mediosPagoGlobal.forEach(medio => {
+                const option = document.createElement('option');
+                option.value = medio.codigo;
+                option.textContent = medio.nombre;
+                select.appendChild(option);
+            });
+            
+            // Agregar opción de pago mixto
+            const optionMixto = document.createElement('option');
+            optionMixto.value = 'mixto';
+            optionMixto.textContent = 'Pago mixto';
+            select.appendChild(optionMixto);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al cargar medios de pago:', error);
+        mediosPagoGlobal = [
+            { codigo: 'efectivo', nombre: 'Efectivo' },
+            { codigo: 'transferencia', nombre: 'Transferencia' },
+            { codigo: 'tarjeta', nombre: 'Tarjeta' }
+        ];
+        
+        const select = document.getElementById('formaPago');
+        if (select) {
+            select.innerHTML = `
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="mixto">Pago mixto</option>
+            `;
+        }
+    }
+}
+
+// Ejecutar inmediatamente
+cargarMediosPagoGlobal();
+
 $(function() {
   let todosLosProductos = [];
   let categorias = [];
   let categoriaSeleccionada = '';
   let items = [];
   let clienteSeleccionado = null;
+  let pedidoCargadoIdx = null; // Índice del pedido guardado que se cargó
 
   // Formatear moneda
   function formatear(valor) {
     return `$${Number(valor || 0).toLocaleString('es-CO')}`;
+  }
+  // Guardar estado en localStorage
+  function guardarEstado() {
+    const estado = {
+      items: items,
+      clienteSeleccionado: clienteSeleccionado
+    };
+    localStorage.setItem('carritoFacturacion', JSON.stringify(estado));
+  }
+
+  // Cargar estado desde localStorage
+  function cargarEstado() {
+    try {
+      const estadoGuardado = localStorage.getItem('carritoFacturacion');
+      if (estadoGuardado) {
+        const estado = JSON.parse(estadoGuardado);
+        items = estado.items || [];
+        clienteSeleccionado = estado.clienteSeleccionado || null;
+
+        // Restaurar cliente seleccionado
+        if (clienteSeleccionado) {
+          $('#cliente_id').val(clienteSeleccionado.id);
+          $('#buscarCliente').val(clienteSeleccionado.nombre);
+          $('#nombreClienteSeleccionado').text(clienteSeleccionado.nombre);
+          $('#telefonoClienteSeleccionado').text(clienteSeleccionado.telefono || 'Sin teléfono');
+          $('#infoCliente').show();
+        }
+
+        // Renderizar items
+        renderizarItems();
+
+        console.log('✅ Estado del carrito restaurado:', items.length, 'items');
+      }
+    } catch (error) {
+      console.error('Error al cargar estado:', error);
+    }
   }
 
   // Cargar categorías y productos
@@ -166,36 +259,73 @@ $(function() {
 
   // Agregar producto al carrito
   function agregarProducto(id, nombre, precio) {
-    // Buscar si ya existe
-    const itemExistente = items.find(i => i.producto_id == id);
+    // Preguntar por notas/toppings
+    Swal.fire({
+      title: nombre,
+      html: `
+        <div class="text-start">
+          <label class="form-label">Notas especiales (opcional)</label>
+          <textarea id="swal-notas" class="form-control" rows="3" placeholder="Ej: Sin cebolla, más azúcar, término medio..."></textarea>
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="swal-enviar-cocina">
+            <label class="form-check-label" for="swal-enviar-cocina">
+              <i class="bi bi-egg-fried me-1"></i>Enviar a cocina
+            </label>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        return {
+          notas: document.getElementById('swal-notas').value,
+          enviarCocina: document.getElementById('swal-enviar-cocina').checked
+        };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { notas, enviarCocina } = result.value;
+        
+        // Buscar si ya existe el mismo producto con las mismas notas
+        const itemExistente = items.find(i => 
+          i.producto_id == id && i.notas === notas
+        );
 
-    if (itemExistente) {
-      itemExistente.cantidad++;
-      itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
-    } else {
-      items.push({
-        producto_id: id,
-        nombre: nombre,
-        cantidad: 1,
-        unidad: 'UND',
-        precio: Number(precio),
-        subtotal: Number(precio)
-      });
-    }
+        if (itemExistente) {
+          itemExistente.cantidad++;
+          itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
+        } else {
+          items.push({
+            producto_id: id,
+            nombre: nombre,
+            cantidad: 1,
+            unidad: 'UND',
+            precio: Number(precio),
+            subtotal: Number(precio),
+            notas: notas || '',
+            enviar_cocina: enviarCocina
+          });
+        }
 
-    renderizarItems();
+        renderizarItems();
 
-    // Toast de éxito
-    const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 1000,
-      timerProgressBar: true
-    });
-    Toast.fire({
-      icon: 'success',
-      title: `${nombre} agregado`
+        // Toast de éxito
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1000,
+          timerProgressBar: true
+        });
+        Toast.fire({
+          icon: 'success',
+          title: `${nombre} agregado`
+        });
+
+        // Guardar estado
+        guardarEstado();
+      }
     });
   }
 
@@ -218,8 +348,12 @@ $(function() {
           <div class="item-pedido">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <div class="flex-grow-1">
-                <div class="fw-bold">${item.nombre}</div>
+                <div class="fw-bold">
+                  ${item.nombre}
+                  ${item.enviar_cocina ? '<i class="bi bi-egg-fried text-warning ms-1" title="Se enviará a cocina"></i>' : ''}
+                </div>
                 <small class="text-muted">${formatear(item.precio)} / ${item.unidad}</small>
+                ${item.notas ? `<div class="small text-info mt-1"><i class="bi bi-chat-left-text me-1"></i>${item.notas}</div>` : ''}
               </div>
               <button class="btn btn-sm btn-outline-danger btn-eliminar-item" data-idx="${idx}">
                 <i class="bi bi-trash"></i>
@@ -248,6 +382,7 @@ $(function() {
           const idx = parseInt(this.dataset.idx);
           items.splice(idx, 1);
           renderizarItems();
+          guardarEstado();
         });
       });
 
@@ -258,6 +393,7 @@ $(function() {
             items[idx].cantidad--;
             items[idx].subtotal = items[idx].cantidad * items[idx].precio;
             renderizarItems();
+            guardarEstado();
           }
         });
       });
@@ -268,6 +404,7 @@ $(function() {
           items[idx].cantidad++;
           items[idx].subtotal = items[idx].cantidad * items[idx].precio;
           renderizarItems();
+          guardarEstado();
         });
       });
     }
@@ -353,6 +490,7 @@ $(function() {
     $('#nombreClienteSeleccionado').text(cliente.nombre);
     $('#telefonoClienteSeleccionado').text(cliente.telefono || 'Sin teléfono');
     $('#infoCliente').show();
+    guardarEstado();
   }
 
   // Crear cliente
@@ -404,6 +542,135 @@ $(function() {
 
     const formaPago = $('#formaPago').val();
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    
+    // Si es pago mixto, usar el flujo existente
+    if (formaPago === 'mixto') {
+      // El flujo de pago mixto ya tiene su propio modal
+      return generarFacturaDirecta();
+    }
+    
+    // Para pagos simples, mostrar modal con dinero recibido y cambio
+    const result = await Swal.fire({
+      title: 'Confirmar pago',
+      html: `
+        <div class="text-start">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Total a pagar</label>
+            <div class="form-control bg-light" style="font-size: 1.5rem; font-weight: bold; color: #0d6efd;">
+              $${Number(total).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Medio de pago</label>
+            <select id="swal-medio-pago" class="form-select">
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Dinero recibido</label>
+            <input type="text" id="swal-dinero-recibido" class="form-control" placeholder="0.00" value="${Number(total).toFixed(2)}">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Cambio</label>
+            <div id="swal-cambio" class="form-control bg-white" style="font-weight: bold; font-size: 1.2rem; color: #28a745;">
+              $0,00
+            </div>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Generar Factura',
+      cancelButtonText: 'Cancelar',
+      stopKeydownPropagation: false,
+      didOpen: () => {
+        const dineroInput = document.getElementById('swal-dinero-recibido');
+        const cambioEl = document.getElementById('swal-cambio');
+        const medioPagoSelect = document.getElementById('swal-medio-pago');
+        
+        // Permitir entrada de datos en el input
+        const allowClipboard = (el) => {
+          if (!el) return;
+          ['paste','copy','cut','contextmenu','keydown','keyup','keypress','input'].forEach(evt => {
+            el.addEventListener(evt, (e) => e.stopPropagation());
+          });
+        };
+        
+        allowClipboard(dineroInput);
+        
+        // Cargar medios de pago en el select
+        if (typeof mediosPagoGlobal !== 'undefined' && mediosPagoGlobal.length > 0) {
+          mediosPagoGlobal
+            .filter(m => m.codigo !== 'mixto')
+            .forEach(medio => {
+              const option = document.createElement('option');
+              option.value = medio.codigo;
+              option.textContent = medio.nombre;
+              if (medio.codigo === formaPago) {
+                option.selected = true;
+              }
+              medioPagoSelect.appendChild(option);
+            });
+        } else {
+          // Fallback si no hay medios cargados
+          const mediosFallback = [
+            { codigo: 'efectivo', nombre: 'Efectivo' },
+            { codigo: 'transferencia', nombre: 'Transferencia' },
+            { codigo: 'tarjeta', nombre: 'Tarjeta' }
+          ];
+          mediosFallback.forEach(medio => {
+            const option = document.createElement('option');
+            option.value = medio.codigo;
+            option.textContent = medio.nombre;
+            if (medio.codigo === formaPago) {
+              option.selected = true;
+            }
+            medioPagoSelect.appendChild(option);
+          });
+        }
+        
+        const calcularCambio = () => {
+          const dineroRecibido = parseFloat(dineroInput.value.replace(/,/g, '')) || 0;
+          const cambio = dineroRecibido - total;
+          
+          if (dineroRecibido > 0) {
+            if (cambio >= 0) {
+              cambioEl.textContent = '$' + Number(cambio).toLocaleString('es-CO', { minimumFractionDigits: 2 });
+              cambioEl.style.color = '#28a745';
+            } else {
+              cambioEl.textContent = 'Falta: $' + Number(Math.abs(cambio)).toLocaleString('es-CO', { minimumFractionDigits: 2 });
+              cambioEl.style.color = '#dc3545';
+            }
+          } else {
+            cambioEl.textContent = '$0,00';
+            cambioEl.style.color = '#28a745';
+          }
+        };
+        
+        dineroInput.addEventListener('input', calcularCambio);
+        dineroInput.addEventListener('focus', () => {
+          try { dineroInput.select(); } catch (_) {}
+        });
+        
+        // Calcular cambio inicial
+        calcularCambio();
+      }
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    // Obtener el medio de pago seleccionado en el modal
+    const medioPagoSeleccionado = document.getElementById('swal-medio-pago')?.value || formaPago;
+    
+    // Generar factura con el medio de pago seleccionado
+    await generarFacturaDirecta(medioPagoSeleccionado);
+  });
+  
+  // Función auxiliar para generar la factura
+  async function generarFacturaDirecta(medioPagoSeleccionado = null) {
+    const formaPago = medioPagoSeleccionado || $('#formaPago').val();
+    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
 
     try {
       const body = {
@@ -413,7 +680,9 @@ $(function() {
           cantidad: i.cantidad,
           precio: i.precio,
           unidad: i.unidad,
-          subtotal: i.subtotal
+          subtotal: i.subtotal,
+          notas: i.notas || '',
+          enviar_cocina: i.enviar_cocina || false
         })),
         total: total,
         forma_pago: formaPago
@@ -427,6 +696,23 @@ $(function() {
 
       const data = await resp.json();
       if (resp.ok) {
+        // Si se cargó un pedido guardado, eliminarlo de la lista
+        if (pedidoCargadoIdx !== null) {
+          let pedidosGuardados = JSON.parse(localStorage.getItem('pedidosGuardados') || '[]');
+          pedidosGuardados.splice(pedidoCargadoIdx, 1);
+          localStorage.setItem('pedidosGuardados', JSON.stringify(pedidosGuardados));
+          pedidoCargadoIdx = null;
+        }
+        
+        // Limpiar carrito y estado guardado
+        items = [];
+        clienteSeleccionado = null;
+        $('#cliente_id').val('');
+        $('#buscarCliente').val('');
+        $('#infoCliente').hide();
+        renderizarItems();
+        localStorage.removeItem('carritoFacturacion');
+        
         // Redirigir a la vista de impresión
         window.location.href = `/api/facturas/${data.id}/imprimir`;
       } else {
@@ -435,7 +721,7 @@ $(function() {
     } catch (error) {
       Swal.fire('Error', 'Error al generar factura', 'error');
     }
-  });
+  }
 
   // Limpiar carrito
   $('#btnLimpiar').on('click', function() {
@@ -448,10 +734,170 @@ $(function() {
     }).then((result) => {
       if (result.isConfirmed) {
         items = [];
+        clienteSeleccionado = null;
+        pedidoCargadoIdx = null; // Resetear índice de pedido cargado
+        $('#cliente_id').val('');
+        $('#buscarCliente').val('');
+        $('#infoCliente').hide();
         renderizarItems();
+        guardarEstado();
       }
     });
   });
+
+  // Guardar pedido
+  $('#btnGuardarPedido').on('click', async function() {
+    if (items.length === 0) {
+      return Swal.fire('Error', 'Agrega productos al pedido', 'error');
+    }
+
+    if (!clienteSeleccionado) {
+      return Swal.fire('Error', 'Selecciona un cliente', 'error');
+    }
+
+    const { value: nombrePedido } = await Swal.fire({
+      title: 'Guardar pedido',
+      input: 'text',
+      inputLabel: 'Nombre del pedido (opcional)',
+      inputPlaceholder: 'Ej: Pedido mesa 5, Pedido Juan...',
+      showCancelButton: true,
+      confirmButtonText: 'Guardar'
+    });
+
+    if (nombrePedido !== undefined) {
+      try {
+        const pedido = {
+          nombre: nombrePedido || `Pedido ${new Date().toLocaleTimeString()}`,
+          cliente_id: clienteSeleccionado.id,
+          cliente_nombre: clienteSeleccionado.nombre,
+          items: items,
+          total: items.reduce((sum, item) => sum + item.subtotal, 0),
+          fecha: new Date().toISOString()
+        };
+
+        // Guardar en localStorage
+        let pedidosGuardados = JSON.parse(localStorage.getItem('pedidosGuardados') || '[]');
+        pedidosGuardados.push(pedido);
+        localStorage.setItem('pedidosGuardados', JSON.stringify(pedidosGuardados));
+
+        Swal.fire('¡Guardado!', 'Pedido guardado exitosamente', 'success');
+        
+        // Limpiar carrito y estado
+        items = [];
+        clienteSeleccionado = null;
+        $('#cliente_id').val('');
+        $('#buscarCliente').val('');
+        $('#infoCliente').hide();
+        renderizarItems();
+        localStorage.removeItem('carritoFacturacion');
+      } catch (error) {
+        Swal.fire('Error', 'No se pudo guardar el pedido', 'error');
+      }
+    }
+  });
+
+  // Ver pedidos guardados
+  $('#btnVerPedidos').on('click', function() {
+    const pedidosGuardados = JSON.parse(localStorage.getItem('pedidosGuardados') || '[]');
+
+    if (pedidosGuardados.length === 0) {
+      return Swal.fire('Info', 'No hay pedidos guardados', 'info');
+    }
+
+    // Crear HTML de la lista de pedidos
+    let html = '<div class="list-group">';
+    pedidosGuardados.forEach((pedido, idx) => {
+      const fecha = new Date(pedido.fecha);
+      html += `
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="mb-1">${pedido.nombre}</h6>
+              <p class="mb-1 small text-muted">${pedido.cliente_nombre}</p>
+              <p class="mb-1 small">${pedido.items.length} productos - Total: $${formatear(pedido.total)}</p>
+              <small class="text-muted">${fecha.toLocaleString()}</small>
+            </div>
+            <div class="btn-group-vertical">
+              <button class="btn btn-sm btn-primary btn-cargar-pedido" data-idx="${idx}">
+                <i class="bi bi-arrow-clockwise"></i> Cargar
+              </button>
+              <button class="btn btn-sm btn-danger btn-eliminar-pedido" data-idx="${idx}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+
+    Swal.fire({
+      title: 'Pedidos Guardados',
+      html: html,
+      width: '600px',
+      showConfirmButton: false,
+      showCloseButton: true,
+      didOpen: () => {
+        // Event listeners para botones
+        document.querySelectorAll('.btn-cargar-pedido').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.idx);
+            cargarPedido(idx);
+            Swal.close();
+          });
+        });
+
+        document.querySelectorAll('.btn-eliminar-pedido').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.idx);
+            eliminarPedido(idx);
+          });
+        });
+      }
+    });
+  });
+
+  // Cargar pedido guardado
+  function cargarPedido(idx) {
+    const pedidosGuardados = JSON.parse(localStorage.getItem('pedidosGuardados') || '[]');
+    const pedido = pedidosGuardados[idx];
+
+    if (pedido) {
+      items = pedido.items;
+      clienteSeleccionado = {
+        id: pedido.cliente_id,
+        nombre: pedido.cliente_nombre
+      };
+      pedidoCargadoIdx = idx; // Guardar el índice del pedido cargado
+      seleccionarCliente(clienteSeleccionado);
+      renderizarItems();
+      guardarEstado();
+      
+      Swal.fire('¡Cargado!', 'Pedido cargado exitosamente', 'success');
+    }
+  }
+
+  // Eliminar pedido guardado
+  function eliminarPedido(idx) {
+    Swal.fire({
+      title: '¿Eliminar pedido?',
+      text: 'Esta acción no se puede deshacer',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        let pedidosGuardados = JSON.parse(localStorage.getItem('pedidosGuardados') || '[]');
+        pedidosGuardados.splice(idx, 1);
+        localStorage.setItem('pedidosGuardados', JSON.stringify(pedidosGuardados));
+        
+        Swal.fire('¡Eliminado!', 'Pedido eliminado', 'success');
+        
+        // Reabrir la lista
+        $('#btnVerPedidos').click();
+      }
+    });
+  }
 
   // Toggle carrito en móvil
   $('#btnToggleCarritoFactura').on('click', function() {
@@ -463,6 +909,7 @@ $(function() {
   });
 
   // Cargar al inicio
+  cargarEstado(); // Restaurar estado guardado
   cargarProductosYCategorias();
 
   // Seleccionar "Consumidor final" por defecto

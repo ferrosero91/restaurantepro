@@ -217,6 +217,23 @@ CREATE TABLE IF NOT EXISTS configuracion_impresion (
     INDEX idx_restaurante (restaurante_id)
 );
 
+-- Medios de pago por restaurante
+CREATE TABLE IF NOT EXISTS medios_pago (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    restaurante_id INT NOT NULL,
+    nombre VARCHAR(50) NOT NULL,
+    codigo VARCHAR(50) NOT NULL,
+    descripcion TEXT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    orden INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_codigo_restaurante (restaurante_id, codigo),
+    INDEX idx_restaurante (restaurante_id),
+    INDEX idx_activo (activo)
+);
+
 -- Mesas por restaurante
 CREATE TABLE IF NOT EXISTS mesas (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -235,10 +252,10 @@ CREATE TABLE IF NOT EXISTS mesas (
 CREATE TABLE IF NOT EXISTS pedidos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     restaurante_id INT NOT NULL,
-    mesa_id INT NOT NULL,
+    mesa_id INT NULL,
     cliente_id INT,
     usuario_id INT,
-    estado ENUM('abierto', 'en_cocina', 'preparando', 'listo', 'servido', 'cerrado', 'cancelado') DEFAULT 'abierto',
+    estado ENUM('abierto', 'activo', 'en_cocina', 'preparando', 'listo', 'servido', 'cerrado', 'cancelado') DEFAULT 'abierto',
     total DECIMAL(10,2) NOT NULL DEFAULT 0,
     notas TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -491,3 +508,18 @@ ON DUPLICATE KEY UPDATE email=email;
 
 -- Nota: El hash de password debe generarse con bcrypt
 -- Este es un placeholder, se debe generar correctamente en la aplicación
+
+-- ===========================
+-- DATOS INICIALES: MEDIOS DE PAGO
+-- ===========================
+-- Nota: Estos medios de pago se crearán automáticamente para cada restaurante
+-- al momento de su registro. Los restaurantes pueden agregar, editar o desactivar
+-- medios de pago desde el módulo de Configuración.
+
+-- Los medios de pago por defecto son:
+-- 1. Efectivo (codigo: efectivo)
+-- 2. Transferencia (codigo: transferencia)
+-- 3. Tarjeta (codigo: tarjeta)
+-- 4. Pago mixto (codigo: mixto) - se genera automáticamente cuando hay múltiples pagos
+
+-- Estos se insertarán mediante trigger o en el proceso de registro del restaurante

@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
             SELECT i.*, p.mesa_id, m.numero AS mesa_numero, pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
             JOIN productos pr ON pr.id = i.producto_id
             WHERE i.estado IN ('enviado','preparando','listo')`;
         
@@ -45,7 +45,7 @@ router.get('/cola', async (req, res) => {
             SELECT i.*, p.mesa_id, m.numero AS mesa_numero, pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
             JOIN productos pr ON pr.id = i.producto_id
             WHERE i.estado IN ('enviado','preparando','listo')`;
         
