@@ -16,7 +16,7 @@ class ProductoRepository extends BaseRepository {
         const { orderBy = 'p.nombre', order = 'ASC', limit, offset } = options;
 
         let sql = `
-            SELECT p.*, c.nombre as categoria_nombre
+            SELECT p.*, c.nombre as categoria_nombre, c.color as categoria_color
             FROM productos p
             LEFT JOIN categorias c ON c.id = p.categoria_id
         `;

@@ -117,6 +117,8 @@ CREATE TABLE IF NOT EXISTS categorias (
     restaurante_id INT NOT NULL,
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT,
+    color VARCHAR(20) DEFAULT '#3498db',
+    icono VARCHAR(50) DEFAULT 'bi-tag',
     orden INT DEFAULT 0,
     activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
