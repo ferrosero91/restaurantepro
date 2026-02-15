@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const ClienteService = require('../services/ClienteService');
 const {
     validateCreateCliente,
     validateUpdateCliente,
@@ -9,14 +9,13 @@ const {
     validateDeleteCliente
 } = require('../validators/clienteValidator');
 
+// Instanciar servicio
+const clienteService = new ClienteService();
+
 // GET /clientes - Mostrar página de clientes
 router.get('/', async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        const tenantFilter = tenantId ? 'WHERE restaurante_id = ?' : '';
-        const params = tenantId ? [tenantId] : [];
-        
-        const [clientes] = await db.query(`SELECT * FROM clientes ${tenantFilter} ORDER BY nombre`, params);
+        const clientes = await clienteService.listar(req.tenantId);
         res.render('clientes', { clientes: clientes || [], user: req.user });
     } catch (error) {
         console.error('Error al obtener clientes:', error);
@@ -32,24 +31,7 @@ router.get('/', async (req, res) => {
 // GET /clientes/buscar - Buscar clientes
 router.get('/buscar', validateSearchCliente, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        const query = req.query.q || '';
-        const searchTerm = `%${query}%`;
-        
-        let sql = `
-            SELECT * FROM clientes 
-            WHERE (nombre LIKE ? OR telefono LIKE ?)
-        `;
-        let params = [searchTerm, searchTerm];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        sql += ' ORDER BY nombre LIMIT 10';
-        
-        const [clientes] = await db.query(sql, params);
+        const clientes = await clienteService.buscar(req.query.q, req.tenantId);
         res.json(clientes);
     } catch (error) {
         console.error('Error al buscar clientes:', error);
@@ -60,23 +42,13 @@ router.get('/buscar', validateSearchCliente, async (req, res) => {
 // GET /clientes/:id - Obtener un cliente específico
 router.get('/:id', validateGetCliente, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        let sql = 'SELECT * FROM clientes WHERE id = ?';
-        let params = [req.params.id];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        const [clientes] = await db.query(sql, params);
-        const cliente = clientes[0];
-        if (!cliente) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
-        }
+        const cliente = await clienteService.obtenerPorId(req.params.id, req.tenantId);
         res.json(cliente);
     } catch (error) {
         console.error('Error al obtener cliente:', error);
+        if (error.message === 'Cliente no encontrado') {
+            return res.status(404).json({ error: error.message });
+        }
         res.status(500).json({ error: 'Error al obtener cliente' });
     }
 });
@@ -84,78 +56,50 @@ router.get('/:id', validateGetCliente, async (req, res) => {
 // POST /clientes - Crear nuevo cliente
 router.post('/', validateCreateCliente, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        if (!tenantId) {
+        if (!req.tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
         
         const { nombre, direccion, telefono } = req.body;
-
-        const [result] = await db.query(
-            'INSERT INTO clientes (restaurante_id, nombre, direccion, telefono) VALUES (?, ?, ?, ?)',
-            [tenantId, nombre, direccion || null, telefono || null]
-        );
+        const cliente = await clienteService.crear({ nombre, direccion, telefono }, req.tenantId);
 
         res.status(201).json({ 
-            id: result.insertId,
+            id: cliente.id,
             message: 'Cliente creado exitosamente' 
         });
     } catch (error) {
         console.error('Error al crear cliente:', error);
-        res.status(500).json({ error: 'Error al crear cliente' });
+        res.status(500).json({ error: error.message || 'Error al crear cliente' });
     }
 });
 
 // PUT /clientes/:id - Actualizar cliente
 router.put('/:id', validateUpdateCliente, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
         const { nombre, direccion, telefono } = req.body;
-
-        let sql = 'UPDATE clientes SET nombre = ?, direccion = ?, telefono = ? WHERE id = ?';
-        let params = [nombre, direccion || null, telefono || null, req.params.id];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-
-        const [result] = await db.query(sql, params);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
-        }
-
+        await clienteService.actualizar(req.params.id, { nombre, direccion, telefono }, req.tenantId);
         res.json({ message: 'Cliente actualizado exitosamente' });
     } catch (error) {
         console.error('Error al actualizar cliente:', error);
-        res.status(500).json({ error: 'Error al actualizar cliente' });
+        if (error.message === 'Cliente no encontrado') {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(500).json({ error: error.message || 'Error al actualizar cliente' });
     }
 });
 
 // DELETE /clientes/:id - Eliminar cliente
 router.delete('/:id', validateDeleteCliente, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        let sql = 'DELETE FROM clientes WHERE id = ?';
-        let params = [req.params.id];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        const [result] = await db.query(sql, params);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
-        }
-
+        await clienteService.eliminar(req.params.id, req.tenantId);
         res.json({ message: 'Cliente eliminado exitosamente' });
     } catch (error) {
         console.error('Error al eliminar cliente:', error);
-        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ error: 'No se puede eliminar el cliente porque tiene facturas asociadas' });
+        if (error.message === 'Cliente no encontrado') {
+            return res.status(404).json({ error: error.message });
+        }
+        if (error.message.includes('facturas asociadas')) {
+            return res.status(400).json({ error: error.message });
         }
         res.status(500).json({ error: 'Error al eliminar cliente' });
     }

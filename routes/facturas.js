@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const FacturaService = require('../services/FacturaService');
 const { validateCreateFactura, validateGetFactura, validateListFacturas } = require('../validators/facturaValidator');
+
+// Instanciar servicio
+const facturaService = new FacturaService();
 
 // Validar rutas de retorno (evitar open-redirect / URLs externas)
 // Se usa para que el botón "Volver" de la impresión regrese a Mesas cuando aplique.
@@ -42,103 +46,16 @@ function almostEqualMoney(a, b) {
 
 // Crear nueva factura
 router.post('/', validateCreateFactura, async (req, res) => {
-    const { cliente_id, total, forma_pago, productos, pagos } = req.body;
-    const tenantId = req.tenantId;
-    
-    if (!tenantId) {
+    if (!req.tenantId) {
         return res.status(403).json({ error: 'Acceso denegado' });
     }
 
-    // Validaciones ANTES de abrir transacción (evita dejar conexiones abiertas si hay error)
-    const totalNum = Number(total || 0);
-    if (!Number.isFinite(totalNum) || totalNum <= 0) {
-        return res.status(400).json({ error: 'Total inválido' });
-    }
-
-    // Si vienen pagos (pago mixto), validamos y definimos forma_pago compatible
-    const pagosNorm = normalizarPagos(pagos);
-    let formaPagoDB = (forma_pago || 'efectivo');
-    if (pagosNorm.length > 0) {
-        const suma = sumatoriaPagos(pagosNorm);
-        if (!almostEqualMoney(suma, totalNum)) {
-            return res.status(400).json({ error: 'La suma de pagos no coincide con el total' });
-        }
-        formaPagoDB = pagosNorm.length === 1 ? pagosNorm[0].metodo : 'mixto';
-    } else {
-        // Compatibilidad con flujo anterior (un solo medio)
-        const fp = String(forma_pago || 'efectivo').toLowerCase();
-        formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'mixto'].includes(fp) ? fp : 'efectivo';
-    }
-
     try {
-        // Obtener conexión del pool
-        const connection = await db.getConnection();
-        
-        try {
-            // Iniciar transacción
-            await connection.beginTransaction();
-
-            // Insertar factura CON restaurante_id
-            const [result] = await connection.query(
-                'INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago) VALUES (?, ?, ?, ?, ?)',
-                [tenantId, cliente_id, req.user?.id || null, totalNum, formaPagoDB]
-            );
-
-            const factura_id = result.insertId;
-
-            // Insertar detalles de factura
-            const detallesValues = productos.map(p => [
-                factura_id,
-                p.producto_id,
-                p.cantidad,
-                p.precio,
-                p.unidad,
-                p.subtotal
-            ]);
-
-            await connection.query(
-                'INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES ?',
-                [detallesValues]
-            );
-
-            // Guardar pagos (pago mixto) si existe la tabla factura_pagos
-            try {
-                if (pagosNorm.length > 0) {
-                    const pagosValues = pagosNorm.map(p => ([factura_id, p.metodo, p.monto, p.referencia]));
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES ?',
-                        [pagosValues]
-                    );
-                } else {
-                    // Compatibilidad: crear 1 pago con el método seleccionado y el total
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES (?, ?, ?, ?)',
-                        [factura_id, (formaPagoDB === 'mixto' ? 'efectivo' : formaPagoDB), totalNum, null]
-                    );
-                }
-            } catch (_) {
-                // Si la tabla no existe (instalación vieja), no rompemos la creación de factura
-            }
-
-            // Confirmar transacción
-            await connection.commit();
-            
-            // Devolver la conexión al pool
-            connection.release();
-            
-            res.status(201).json({ id: factura_id });
-
-        } catch (error) {
-            // Si hay error, hacer rollback
-            await connection.rollback();
-            // Devolver la conexión al pool
-            connection.release();
-            throw error; // Re-lanzar el error para que lo maneje el catch exterior
-        }
-
+        const resultado = await facturaService.crear(req.body, req.tenantId, req.user?.id || null);
+        res.status(201).json(resultado);
     } catch (error) {
         console.error('Error al crear factura:', error);
-        res.status(500).json({ error: 'Error al crear factura' });
+        res.status(500).json({ error: error.message || 'Error al crear factura' });
     }
 });
 
@@ -231,42 +148,9 @@ router.get('/:id/imprimir', validateGetFactura, async (req, res) => {
 // Ruta para obtener detalles de una factura
 router.get('/:id/detalles', validateGetFactura, async (req, res) => {
     try {
-        // Obtener información de la factura
-        const [facturas] = await db.query(
-            'SELECT f.*, c.nombre as cliente_nombre, c.direccion, c.telefono FROM facturas f ' +
-            'JOIN clientes c ON f.cliente_id = c.id ' +
-            'WHERE f.id = ?',
-            [req.params.id]
-        );
-
-        if (facturas.length === 0) {
-            return res.status(404).json({ error: 'Factura no encontrada' });
-        }
-
-        const factura = facturas[0];
-
-        // Obtener productos de la factura
-        const [productos] = await db.query(
-            'SELECT d.cantidad, d.precio_unitario, d.unidad_medida, d.subtotal, p.nombre ' +
-            'FROM detalle_factura d ' +
-            'JOIN productos p ON d.producto_id = p.id ' +
-            'WHERE d.factura_id = ?',
-            [req.params.id]
-        );
-
-        // Obtener pagos (si existe tabla)
-        let pagos = [];
-        try {
-            const [pagosRows] = await db.query(
-                'SELECT metodo, monto, referencia FROM factura_pagos WHERE factura_id = ? ORDER BY id ASC',
-                [req.params.id]
-            );
-            pagos = pagosRows || [];
-        } catch (_) {
-            pagos = [];
-        }
-
-        // Estructurar la respuesta asegurando que los valores numéricos sean válidos
+        const factura = await facturaService.obtenerPorId(req.params.id, req.tenantId);
+        
+        // Estructurar la respuesta
         res.json({
             factura: {
                 id: factura.id,
@@ -279,13 +163,13 @@ router.get('/:id/detalles', validateGetFactura, async (req, res) => {
                 direccion: factura.direccion || '',
                 telefono: factura.telefono || ''
             },
-            pagos: pagos.map(p => ({
+            pagos: (factura.pagos || []).map(p => ({
                 metodo: p.metodo,
                 monto: parseFloat(p.monto || 0),
                 referencia: p.referencia || ''
             })),
-            productos: productos.map(p => ({
-                nombre: p.nombre || '',
+            productos: (factura.detalles || []).map(p => ({
+                nombre: p.producto_nombre || '',
                 cantidad: parseFloat(p.cantidad || 0),
                 unidad: p.unidad_medida || '',
                 precio: parseFloat(p.precio_unitario || 0),
@@ -294,6 +178,9 @@ router.get('/:id/detalles', validateGetFactura, async (req, res) => {
         });
     } catch (error) {
         console.error('Error al obtener detalles de la factura:', error);
+        if (error.message === 'Factura no encontrada') {
+            return res.status(404).json({ error: error.message });
+        }
         res.status(500).json({ error: 'Error al obtener detalles de la factura' });
     }
 });
