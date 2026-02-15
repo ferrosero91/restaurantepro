@@ -38,6 +38,14 @@ echo "6. Importando esquema..."
 if [ -f "database_multitenant.sql" ]; then
     mysql restaurante_saas < database_multitenant.sql
     echo "✓ Esquema importado"
+    
+    # Actualizar usuarios existentes sin rol_id
+    mysql restaurante_saas -e "UPDATE usuarios SET rol_id = 1 WHERE rol = 'admin' AND rol_id IS NULL;"
+    mysql restaurante_saas -e "UPDATE usuarios SET rol_id = 1 WHERE rol = 'superadmin' AND rol_id IS NULL;"
+    mysql restaurante_saas -e "UPDATE usuarios SET rol_id = 2 WHERE rol = 'cajero' AND rol_id IS NULL;"
+    mysql restaurante_saas -e "UPDATE usuarios SET rol_id = 3 WHERE rol = 'mesero' AND rol_id IS NULL;"
+    mysql restaurante_saas -e "UPDATE usuarios SET rol_id = 4 WHERE rol = 'cocinero' AND rol_id IS NULL;"
+    echo "✓ Usuarios actualizados con rol_id"
 else
     echo "⚠ database_multitenant.sql no encontrado"
 fi

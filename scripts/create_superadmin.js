@@ -21,11 +21,11 @@ async function createSuperAdmin() {
         const password = 'admin123';
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insertar o actualizar superadmin
+        // Insertar o actualizar superadmin con rol_id = 1 (Administrador)
         const [result] = await connection.query(`
-            INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, estado) 
-            VALUES (NULL, 'Super Administrador', 'admin@sistema.com', ?, 'superadmin', 'activo')
-            ON DUPLICATE KEY UPDATE password = ?, rol = 'superadmin', estado = 'activo'
+            INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) 
+            VALUES (NULL, 'Super Administrador', 'admin@sistema.com', ?, 'superadmin', 1, 'activo')
+            ON DUPLICATE KEY UPDATE password = ?, rol = 'superadmin', rol_id = 1, estado = 'activo'
         `, [hashedPassword, hashedPassword]);
 
         console.log('✓ SuperAdmin creado/actualizado exitosamente');

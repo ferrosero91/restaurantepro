@@ -123,9 +123,9 @@ router.post('/registro', strictLimiter, validateRegistro, async (req, res) => {
 
             const restauranteId = restauranteResult.insertId;
 
-            // Crear usuario administrador
+            // Crear usuario administrador con rol_id = 1 (Administrador)
             await connection.query(
-                'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, estado) VALUES (?, ?, ?, ?, "admin", "activo")',
+                'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) VALUES (?, ?, ?, ?, "admin", 1, "activo")',
                 [restauranteId, nombre, email, hashedPassword]
             );
 

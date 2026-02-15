@@ -99,9 +99,9 @@ router.post('/restaurantes', async (req, res) => {
             // Hash de contraseña
             const hashedPassword = await bcrypt.hash(admin_password, 10);
 
-            // Crear usuario administrador
+            // Crear usuario administrador con rol_id = 1 (Administrador)
             await connection.query(
-                'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, estado) VALUES (?, ?, ?, ?, "admin", "activo")',
+                'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) VALUES (?, ?, ?, ?, "admin", 1, "activo")',
                 [restauranteId, admin_nombre, admin_email, hashedPassword]
             );
 
@@ -213,10 +213,17 @@ router.post('/usuarios', async (req, res) => {
         // Hash de contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Determinar rol_id basado en el rol
+        let rol_id = null;
+        if (rol === 'admin') rol_id = 1;
+        else if (rol === 'cajero') rol_id = 2;
+        else if (rol === 'mesero') rol_id = 3;
+        else if (rol === 'cocinero') rol_id = 4;
+
         // Crear usuario
         const [result] = await db.query(
-            'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, estado) VALUES (?, ?, ?, ?, ?, "activo")',
-            [restaurante_id || null, nombre, email, hashedPassword, rol]
+            'INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+            [restaurante_id || null, nombre, email, hashedPassword, rol, rol_id]
         );
 
         res.status(201).json({ 

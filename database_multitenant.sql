@@ -111,6 +111,21 @@ CREATE TABLE IF NOT EXISTS sesiones (
 -- TABLAS CON TENANT (restaurante_id)
 -- ===========================
 
+-- Categorías de productos por restaurante
+CREATE TABLE IF NOT EXISTS categorias (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    restaurante_id INT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    orden INT DEFAULT 0,
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+    INDEX idx_restaurante (restaurante_id),
+    INDEX idx_activo (activo)
+);
+
 -- Productos por restaurante
 CREATE TABLE IF NOT EXISTS productos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -502,8 +517,8 @@ ON DUPLICATE KEY UPDATE plan=plan;
 
 -- Crear superadmin por defecto
 -- Password: admin123 (debe cambiarse en producción)
-INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, estado) 
-VALUES (NULL, 'Super Administrador', 'admin@sistema.com', '$2b$10$rBV2KXZpN8qYqH0YvZ5Ziu.Xo8xGxGxGxGxGxGxGxGxGxGxGxGxGxO', 'superadmin', 'activo')
+INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) 
+VALUES (NULL, 'Super Administrador', 'admin@sistema.com', '$2b$10$rBV2KXZpN8qYqH0YvZ5Ziu.Xo8xGxGxGxGxGxGxGxGxGxGxGxGxGxO', 'superadmin', 1, 'activo')
 ON DUPLICATE KEY UPDATE email=email;
 
 -- Nota: El hash de password debe generarse con bcrypt
