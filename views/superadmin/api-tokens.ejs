@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tokens API - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+</head>
+<body style="background-color: #f8f9fa;">
+    <%- include('../partials/navbar_superadmin') %>
+
+    <div class="container mt-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="bi bi-key me-2"></i>Tokens API</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Restaurante</th>
+                            <th>Nombre</th>
+                            <th>Token</th>
+                            <th>Estado</th>
+                            <th>Último Uso</th>
+                            <th>Expira</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% tokens.forEach(t => { %>
+                        <tr>
+                            <td><strong>#<%= t.id %></strong></td>
+                            <td><%= t.restaurante_nombre %></td>
+                            <td><%= t.nombre %></td>
+                            <td><code><%= t.token.substring(0, 20) %>...</code></td>
+                            <td>
+                                <span class="badge bg-<%= t.estado === 'activo' ? 'success' : 'danger' %>">
+                                    <%= t.estado %>
+                                </span>
+                            </td>
+                            <td><%= t.ultimo_uso ? new Date(t.ultimo_uso).toLocaleString() : 'Nunca' %></td>
+                            <td><%= t.expira_en ? new Date(t.expira_en).toLocaleDateString() : 'Nunca' %></td>
+                            <td>
+                                <% if (t.estado === 'activo') { %>
+                                <button class="btn btn-sm btn-outline-danger" onclick="revocarToken(<%= t.id %>)">
+                                    <i class="bi bi-x-circle"></i> Revocar
+                                </button>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function revocarToken(id) {
+            if (!confirm('¿Estás seguro de revocar este token?')) return;
+
+            try {
+                const response = await fetch('/superadmin/api-tokens/' + id + '/revocar', {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    alert('Token revocado');
+                    location.reload();
+                } else {
+                    alert('Error al revocar token');
+                }
+            } catch (error) {
+                alert('Error al revocar token');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Impresión</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <style>
+        html, body { height: 100%; }
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        body{background-color:#f8f9fa}
+    </style>
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="flex-grow-1">
+    <div class="container mt-4">
+        <h2 class="mb-4">Configuración de Factura</h2>
+        
+        <form action="/configuracion" method="POST" enctype="multipart/form-data">
+            <div class="card mb-4">
+                <div class="card-header">
+                    Datos del Negocio
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del Negocio</label>
+                            <input type="text" class="form-control" name="nombre_negocio" value="<%= config.nombre_negocio || '' %>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">NIT/RUT</label>
+                            <input type="text" class="form-control" name="nit" value="<%= config.nit || '' %>">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" class="form-control" name="direccion" value="<%= config.direccion || '' %>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" name="telefono" value="<%= config.telefono || '' %>">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Logo del Negocio</label>
+                            <!-- Input de logo: guarda en configuracion_impresion.logo_data/logo_tipo (routes/configuracion.js) -->
+                            <input id="inputLogo" type="file" class="form-control" name="logo" accept="image/*">
+
+                            <!-- Estado + previsualización (si ya existe en BD o si el usuario selecciona uno nuevo) -->
+                            <div class="mt-2">
+                                <% if (config.logo_src) { %>
+                                    <div class="small text-success mb-1">
+                                        <i class="bi bi-check-circle me-1"></i>Logo guardado actualmente
+                                    </div>
+                                <% } else { %>
+                                    <div class="small text-muted mb-1">
+                                        <i class="bi bi-info-circle me-1"></i>No hay logo guardado
+                                    </div>
+                                <% } %>
+
+                                <img
+                                    id="previewLogo"
+                                    src="<%= config.logo_src || '' %>"
+                                    alt="Previsualización de Logo"
+                                    class="border rounded p-1 bg-white"
+                                    style="max-width: 200px; display: <%= config.logo_src ? 'block' : 'none' %>;"
+                                >
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">QR para Transferencias</label>
+                            <!-- Input de QR: guarda en configuracion_impresion.qr_data/qr_tipo (routes/configuracion.js) -->
+                            <input id="inputQr" type="file" class="form-control" name="qr" accept="image/*">
+
+                            <!-- Estado + previsualización -->
+                            <div class="mt-2">
+                                <% if (config.qr_src) { %>
+                                    <div class="small text-success mb-1">
+                                        <i class="bi bi-check-circle me-1"></i>QR guardado actualmente
+                                    </div>
+                                <% } else { %>
+                                    <div class="small text-muted mb-1">
+                                        <i class="bi bi-info-circle me-1"></i>No hay QR guardado
+                                    </div>
+                                <% } %>
+
+                                <img
+                                    id="previewQr"
+                                    src="<%= config.qr_src || '' %>"
+                                    alt="Previsualización de QR"
+                                    class="border rounded p-1 bg-white"
+                                    style="max-width: 150px; display: <%= config.qr_src ? 'block' : 'none' %>;"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Pie de Página</label>
+                            <textarea class="form-control" name="pie_pagina" rows="3"><%= config.pie_pagina || '' %></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    Formato de Impresión
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Ancho del Papel (mm)</label>
+                            <input type="number" class="form-control" name="ancho_papel" value="<%= config.ancho_papel || 80 %>" min="58" max="80">
+                            <small class="text-muted">Recomendado: 80mm para facturas estándar</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tamaño de Fuente</label>
+                            <select class="form-control" name="font_size">
+                                <option value="1" <%= (config.font_size || 1) == 1 ? 'selected' : '' %>>Normal</option>
+                                <option value="2" <%= (config.font_size || 1) == 2 ? 'selected' : '' %>>Grande</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-tags me-2"></i>Categorías de Productos</span>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria">
+                        <i class="bi bi-plus-circle me-1"></i>Nueva Categoría
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="listaCategorias" class="row g-3">
+                        <!-- Se carga dinámicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                <a href="/" class="btn btn-secondary">Volver</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal Nueva Categoría -->
+    <div class="modal fade" id="modalNuevaCategoria" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva Categoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevaCategoria">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="descripcion" rows="2"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Color</label>
+                                <input type="color" class="form-control form-control-color" name="color" value="#3498db">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Orden</label>
+                                <input type="number" class="form-control" name="orden" value="0" min="0">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarCategoria()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Categoría -->
+    <div class="modal fade" id="modalEditarCategoria" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Categoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarCategoria">
+                        <input type="hidden" name="id" id="edit_cat_id">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" name="nombre" id="edit_cat_nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="descripcion" id="edit_cat_descripcion" rows="2"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Color</label>
+                                <input type="color" class="form-control form-control-color" name="color" id="edit_cat_color">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Orden</label>
+                                <input type="number" class="form-control" name="orden" id="edit_cat_orden" min="0">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="actualizarCategoria()">Actualizar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Cargar categorías
+        async function cargarCategorias() {
+            try {
+                const response = await fetch('/categorias');
+                const categorias = await response.json();
+                
+                const lista = document.getElementById('listaCategorias');
+                if (categorias.length === 0) {
+                    lista.innerHTML = '<div class="col-12"><p class="text-muted">No hay categorías creadas</p></div>';
+                    return;
+                }
+                
+                lista.innerHTML = categorias.map(cat => `
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0">
+                                        <span class="badge" style="background-color: ${cat.color}">${cat.nombre}</span>
+                                    </h6>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editarCategoria(${cat.id}, '${cat.nombre}', '${cat.descripcion || ''}', '${cat.color}', ${cat.orden})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="eliminarCategoria(${cat.id}, '${cat.nombre}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="small text-muted mb-0">${cat.descripcion || 'Sin descripción'}</p>
+                                <small class="text-muted">Orden: ${cat.orden}</small>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error al cargar categorías:', error);
+            }
+        }
+
+        async function guardarCategoria() {
+            const form = document.getElementById('formNuevaCategoria');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/categorias', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Categoría creada exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalNuevaCategoria')).hide();
+                    form.reset();
+                    cargarCategorias();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al crear categoría');
+            }
+        }
+
+        function editarCategoria(id, nombre, descripcion, color, orden) {
+            document.getElementById('edit_cat_id').value = id;
+            document.getElementById('edit_cat_nombre').value = nombre;
+            document.getElementById('edit_cat_descripcion').value = descripcion;
+            document.getElementById('edit_cat_color').value = color;
+            document.getElementById('edit_cat_orden').value = orden;
+            new bootstrap.Modal(document.getElementById('modalEditarCategoria')).show();
+        }
+
+        async function actualizarCategoria() {
+            const form = document.getElementById('formEditarCategoria');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            delete data.id;
+
+            try {
+                const response = await fetch('/categorias/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Categoría actualizada exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarCategoria')).hide();
+                    cargarCategorias();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al actualizar categoría');
+            }
+        }
+
+        async function eliminarCategoria(id, nombre) {
+            if (!confirm(`¿Eliminar la categoría "${nombre}"?`)) return;
+
+            try {
+                const response = await fetch('/categorias/' + id, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Categoría eliminada');
+                    cargarCategorias();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al eliminar categoría');
+            }
+        }
+
+        // Cargar categorías al iniciar
+        cargarCategorias();
+
+        // Previsualización inmediata de imágenes antes de guardar
+        // Relacionado con: inputs #inputLogo y #inputQr en esta vista
+        (function initPrevisualizadores() {
+            function previewFile(inputEl, imgEl) {
+                if (!inputEl || !imgEl) return;
+                inputEl.addEventListener('change', function() {
+                    const file = inputEl.files && inputEl.files[0];
+                    if (!file) return;
+                    if (!file.type || !file.type.startsWith('image/')) return;
+
+                    const url = URL.createObjectURL(file);
+                    imgEl.src = url;
+                    imgEl.style.display = 'block';
+
+                    // Liberar el blob url cuando cargue (evita fugas de memoria)
+                    imgEl.onload = function() {
+                        try { URL.revokeObjectURL(url); } catch (_) {}
+                    };
+                });
+            }
+
+            previewFile(document.getElementById('inputLogo'), document.getElementById('previewLogo'));
+            previewFile(document.getElementById('inputQr'), document.getElementById('previewQr'));
+        })();
+    </script>
+</body>
+</html> 

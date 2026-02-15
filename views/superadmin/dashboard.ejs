@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+</head>
+<body style="background-color: #f8f9fa;">
+    <%- include('../partials/navbar_superadmin') %>
+
+    <div class="container mt-4">
+        <!-- Estadísticas Principales -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Restaurantes Activos</h6>
+                                <h2 class="mb-0 text-success"><%= stats.restaurantes_activos || 0 %></h2>
+                            </div>
+                            <i class="bi bi-building text-success" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Suspendidos</h6>
+                                <h2 class="mb-0 text-warning"><%= stats.restaurantes_suspendidos || 0 %></h2>
+                            </div>
+                            <i class="bi bi-pause-circle text-warning" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Total Usuarios</h6>
+                                <h2 class="mb-0 text-info"><%= stats.total_usuarios || 0 %></h2>
+                            </div>
+                            <i class="bi bi-people text-info" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Ventas Hoy</h6>
+                                <h2 class="mb-0 text-primary"><%= stats.ventas_hoy || 0 %></h2>
+                            </div>
+                            <i class="bi bi-receipt text-primary" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restaurantes Recientes -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="bi bi-building me-2"></i>Restaurantes Recientes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Plan</th>
+                                <th>Estado</th>
+                                <th>Usuarios</th>
+                                <th>Ventas Hoy</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% restaurantes.forEach(r => { %>
+                            <tr>
+                                <td><strong>#<%= r.id %></strong></td>
+                                <td><%= r.nombre %></td>
+                                <td><span class="badge bg-info"><%= r.plan %></span></td>
+                                <td>
+                                    <span class="badge bg-<%= r.estado === 'activo' ? 'success' : r.estado === 'suspendido' ? 'warning' : 'danger' %>">
+                                        <%= r.estado %>
+                                    </span>
+                                </td>
+                                <td><%= r.total_usuarios %></td>
+                                <td><%= r.ventas_hoy %></td>
+                                <td><%= new Date(r.created_at).toLocaleDateString() %></td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

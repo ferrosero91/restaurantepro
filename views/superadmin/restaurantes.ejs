@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Restaurantes - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+</head>
+<body style="background-color: #f8f9fa;">
+    <%- include('../partials/navbar_superadmin') %>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-building me-2"></i>Gestión de Restaurantes</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoRestauranteModal">
+                <i class="bi bi-plus-lg me-1"></i>
+                Nuevo Restaurante
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Slug</th>
+                                <th>Estado</th>
+                                <th>Plan</th>
+                                <th>Usuarios</th>
+                                <th>Facturas</th>
+                                <th>Ventas Mes</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% restaurantes.forEach(r => { %>
+                                <tr>
+                                    <td><%= r.id %></td>
+                                    <td><strong><%= r.nombre %></strong></td>
+                                    <td><code><%= r.slug %></code></td>
+                                    <td>
+                                        <span class="badge bg-<%= r.estado === 'activo' ? 'success' : (r.estado === 'suspendido' ? 'warning' : 'secondary') %>">
+                                            <%= r.estado %>
+                                        </span>
+                                    </td>
+                                    <td><%= r.plan %></td>
+                                    <td><%= r.total_usuarios || 0 %></td>
+                                    <td><%= r.total_facturas || 0 %></td>
+                                    <td>$<%= (r.ventas_mes || 0).toLocaleString() %></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary btn-editar-restaurante" 
+                                                data-id="<%= r.id %>"
+                                                data-nombre="<%= r.nombre %>"
+                                                data-slug="<%= r.slug %>"
+                                                data-direccion="<%= r.direccion || '' %>"
+                                                data-telefono="<%= r.telefono || '' %>"
+                                                data-nit="<%= r.nit || '' %>"
+                                                data-email="<%= r.email || '' %>"
+                                                data-estado="<%= r.estado %>"
+                                                data-plan="<%= r.plan %>">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                data-id="<%= r.id %>" 
+                                                data-nombre="<%= r.nombre %>" 
+                                                onclick="eliminarRestaurante(this.dataset.id, this.dataset.nombre)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Restaurante -->
+    <div class="modal fade" id="nuevoRestauranteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Restaurante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevoRestaurante">
+                        <h6 class="border-bottom pb-2 mb-3">Datos del Restaurante</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre *</label>
+                                <input type="text" name="nombre" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Slug *</label>
+                                <input type="text" name="slug" class="form-control" pattern="[a-z0-9-]+" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Plan</label>
+                                <select name="plan" class="form-control">
+                                    <option value="basico">Básico</option>
+                                    <option value="profesional">Profesional</option>
+                                    <option value="empresarial">Empresarial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Teléfono</label>
+                                <input type="text" name="telefono" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">NIT</label>
+                                <input type="text" name="nit" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" name="direccion" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control">
+                        </div>
+
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">Administrador</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre *</label>
+                                <input type="text" name="admin_nombre" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <input type="email" name="admin_email" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña *</label>
+                            <input type="password" name="admin_password" class="form-control" minlength="6" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarRestaurante()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Restaurante -->
+    <div class="modal fade" id="editarRestauranteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Restaurante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarRestaurante">
+                        <input type="hidden" name="id" id="edit_id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre *</label>
+                                <input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Slug *</label>
+                                <input type="text" name="slug" id="edit_slug" class="form-control" pattern="[a-z0-9-]+" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Estado</label>
+                                <select name="estado" id="edit_estado" class="form-control">
+                                    <option value="activo">Activo</option>
+                                    <option value="suspendido">Suspendido</option>
+                                    <option value="inactivo">Inactivo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Plan</label>
+                                <select name="plan" id="edit_plan" class="form-control">
+                                    <option value="basico">Básico</option>
+                                    <option value="profesional">Profesional</option>
+                                    <option value="empresarial">Empresarial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Teléfono</label>
+                                <input type="text" name="telefono" id="edit_telefono" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">NIT</label>
+                                <input type="text" name="nit" id="edit_nit" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" name="email" id="edit_email" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" name="direccion" id="edit_direccion" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="actualizarRestaurante()">Actualizar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Editar restaurante
+        document.querySelectorAll('.btn-editar-restaurante').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('edit_id').value = this.dataset.id;
+                document.getElementById('edit_nombre').value = this.dataset.nombre;
+                document.getElementById('edit_slug').value = this.dataset.slug;
+                document.getElementById('edit_direccion').value = this.dataset.direccion;
+                document.getElementById('edit_telefono').value = this.dataset.telefono;
+                document.getElementById('edit_nit').value = this.dataset.nit;
+                document.getElementById('edit_email').value = this.dataset.email;
+                document.getElementById('edit_estado').value = this.dataset.estado;
+                document.getElementById('edit_plan').value = this.dataset.plan;
+                
+                new bootstrap.Modal(document.getElementById('editarRestauranteModal')).show();
+            });
+        });
+
+        async function actualizarRestaurante() {
+            const form = document.getElementById('formEditarRestaurante');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/superadmin/restaurantes/' + data.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Restaurante actualizado exitosamente');
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al actualizar restaurante');
+            }
+        }
+
+        async function guardarRestaurante() {
+            const form = document.getElementById('formNuevoRestaurante');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/superadmin/restaurantes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Restaurante creado exitosamente');
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al crear restaurante');
+            }
+        }
+
+        async function eliminarRestaurante(id, nombre) {
+            if (!confirm('¿Estás seguro de eliminar el restaurante "' + nombre + '"? Esta acción no se puede deshacer.')) return;
+
+            try {
+                const response = await fetch('/superadmin/restaurantes/' + id, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Restaurante eliminado');
+                    location.reload();
+                } else {
+                    alert('Error al eliminar restaurante');
+                }
+            } catch (error) {
+                alert('Error al eliminar restaurante');
+            }
+        }
+    </script>
+</body>
+</html>

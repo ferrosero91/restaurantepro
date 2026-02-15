@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesas</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/mesas-tactil.css">
+    <style>
+        html, body { height: 100%; }
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        body{background-color:#f8f9fa}
+        .navbar{background-color:#2c3e50;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+        .navbar-brand{color:#fff!important;font-weight:bold}
+        .mesa-card{border:none;box-shadow:0 .5rem 1rem rgba(0,0,0,.05);transition:transform .1s}
+        .mesa-card:hover{transform:translateY(-2px)}
+        .estado-badge{position:absolute;top:.75rem;right:.75rem}
+    </style>
+ </head>
+<body>
+    <%- include('partials/navbar') %>
+
+    <main class="flex-grow-1">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-grid me-2"></i>Mesas</h4>
+            <button id="btnNuevaMesa" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva mesa</button>
+        </div>
+
+        <div class="row" id="gridMesas">
+            <% mesas.forEach(m => { %>
+                <div class="col-6 col-md-4 col-lg-3 mb-3">
+                    <div
+                        class="card mesa-card position-relative"
+                        data-mesa-id="<%= m.id %>"
+                        data-mesa-numero="<%= m.numero %>"
+                        data-mesa-descripcion="<%= m.descripcion || '' %>"
+                        data-mesa-estado="<%= m.estado %>"
+                        data-mesa-pedidos-abiertos="<%= m.pedidos_abiertos || 0 %>"
+                    >
+                        <div class="card-body">
+                            <span class="badge rounded-pill bg-<%= m.estado === 'libre' ? 'success' : (m.estado === 'ocupada' ? 'warning' : 'secondary') %> estado-badge">
+                                <%= m.estado %>
+                            </span>
+                            <h5 class="card-title mb-1">Mesa <%= m.numero %></h5>
+                            <p class="text-muted small mb-3"><%= m.descripcion || '' %></p>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-secondary btn-sm btnLiberarMesa">
+                                    <i class="bi bi-unlock me-1"></i> Liberar mesa
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm btnAbrirPedido">
+                                    <i class="bi bi-door-open me-1"></i> Abrir / Continuar pedido
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btnVerPedido">
+                                    <i class="bi bi-list-ul me-1"></i> Ver pedido
+                                </button>
+                                <div class="btn-group" role="group" aria-label="Acciones mesa">
+                                    <button class="btn btn-outline-dark btn-sm btnEditarMesa">
+                                        <i class="bi bi-pencil-square me-1"></i> Editar
+                                    </button>
+                                    <button
+                                        class="btn btn-outline-danger btn-sm btnEliminarMesa"
+                                        <%= (m.pedidos_abiertos || 0) > 0 ? 'disabled' : '' %>
+                                        data-bs-toggle="tooltip"
+                                        title="<%= (m.pedidos_abiertos || 0) > 0 ? 'No se puede eliminar: tiene pedido activo' : 'Eliminar mesa' %>"
+                                    >
+                                        <i class="bi bi-trash me-1"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Modal Pedido (Centrado y Táctil) -->
+    <div class="modal fade" id="modalPedido" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cart3 me-2"></i>
+                        Pedido Mesa <span id="pedidoMesa"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row g-0" style="height: calc(100vh - 120px);">
+                        <!-- Panel Izquierdo: Productos -->
+                        <div class="col-12 col-md-8 border-end" style="overflow-y: auto;">
+                            <div class="p-2 p-md-3">
+                                <!-- Buscador -->
+                                <div class="mb-2 mb-md-3">
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-white">
+                                            <i class="bi bi-search"></i>
+                                        </span>
+                                        <input id="buscarProductoMesa" class="form-control" placeholder="Buscar producto..." autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <!-- Categorías (Pills) -->
+                                <div class="mb-2 mb-md-3">
+                                    <div class="d-flex gap-2 flex-wrap" id="categoriasFilter">
+                                        <button class="btn btn-outline-primary active" data-categoria="">
+                                            <i class="bi bi-grid-3x3-gap me-1"></i>
+                                            Todos
+                                        </button>
+                                        <!-- Se cargan dinámicamente -->
+                                    </div>
+                                </div>
+
+                                <!-- Grid de Productos -->
+                                <div id="gridProductos">
+                                    <!-- Se cargan dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel Derecho: Carrito -->
+                        <div class="col-12 col-md-4 d-flex flex-column bg-light" id="panelCarrito">
+                            <div class="p-2 p-md-3 border-bottom bg-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-receipt me-2"></i>
+                                        Resumen del Pedido
+                                    </h6>
+                                    <button class="btn btn-sm btn-close d-md-none" id="btnCerrarCarrito"></button>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-grow-1 overflow-auto p-2 p-md-3">
+                                <div id="listaItemsPedido">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="bi bi-cart-x" style="font-size: 3rem;"></i>
+                                        <p class="mt-2">No hay productos agregados</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-2 p-md-3 border-top bg-white">
+                                <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
+                                    <h5 class="mb-0">Total:</h5>
+                                    <h4 class="mb-0 text-primary" id="totalPedido">$0</h4>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button id="btnEnviarCocina" class="btn btn-warning btn-lg">
+                                        <i class="bi bi-send me-2"></i>
+                                        Enviar a Cocina
+                                    </button>
+                                    <button id="btnFacturarPedido" class="btn btn-success btn-lg">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        Facturar
+                                    </button>
+                                    <div class="btn-group">
+                                        <button id="btnMoverMesa" class="btn btn-outline-secondary">
+                                            <i class="bi bi-arrow-left-right me-1"></i>
+                                            <span class="d-none d-sm-inline">Mover Mesa</span>
+                                            <span class="d-inline d-sm-none">Mover</span>
+                                        </button>
+                                        <button id="btnLiberarMesaHeader" class="btn btn-outline-danger">
+                                            <i class="bi bi-unlock me-1"></i>
+                                            Liberar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botón flotante para mostrar carrito en móvil -->
+                <button class="btn-toggle-carrito" id="btnToggleCarrito">
+                    <i class="bi bi-cart3"></i>
+                    <span class="badge" id="badgeCarrito">0</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cantidad (para productos) -->
+    <div class="modal fade" id="modalCantidad" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-123 me-2"></i>
+                        <span id="nombreProductoCantidad"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="productoIdCantidad">
+                    <input type="hidden" id="productoPrecioCantidad">
+                    <input type="hidden" id="productoUnidadCantidad">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cantidad</label>
+                        <div class="input-group input-group-lg">
+                            <button class="btn btn-outline-secondary" type="button" onclick="ajustarCantidad(-1)">
+                                <i class="bi bi-dash-lg"></i>
+                            </button>
+                            <input type="number" class="form-control text-center" id="inputCantidad" value="1" min="0.01" step="0.01">
+                            <button class="btn btn-outline-secondary" type="button" onclick="ajustarCantidad(1)">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nota (opcional)</label>
+                        <textarea class="form-control" id="inputNota" rows="2" placeholder="Ej: Sin cebolla, término medio..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="agregarProductoAlPedido()">
+                        <i class="bi bi-cart-plus me-1"></i>
+                        Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </main>
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/mesas.js"></script>
+</body>
+</html>
+
+

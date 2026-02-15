@@ -1,0 +1,422 @@
+/* Estilos para interfaz táctil de pedidos en mesas y facturación */
+
+/* Contenedor principal del grid */
+#gridProductos,
+#gridProductosFactura {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+    padding: 0;
+    width: 100%;
+}
+
+/* Tarjetas de productos */
+.producto-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    min-height: 280px;
+}
+
+.producto-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    border-color: #0d6efd;
+}
+
+.producto-card:active {
+    transform: scale(0.98);
+}
+
+.producto-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.producto-img-placeholder {
+    width: 100%;
+    height: 150px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.producto-info {
+    padding: 10px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.producto-nombre {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.2em;
+    line-height: 1.1em;
+}
+
+.producto-descripcion {
+    font-size: 0.75rem;
+    color: #6c757d;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 6px;
+    flex-grow: 1;
+}
+
+.producto-precio {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #198754;
+    margin-top: auto;
+}
+
+.categoria-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+/* Botones de categoría */
+#categoriasFilter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+#categoriasFilter .btn {
+    border-radius: 25px;
+    padding: 8px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 2px solid #dee2e6;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+#categoriasFilter .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#categoriasFilter .btn.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+    box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+}
+
+/* Items del pedido */
+.item-pedido {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s;
+}
+
+.item-pedido:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.btn-cantidad {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    border-radius: 8px;
+}
+
+.cantidad-display {
+    min-width: 50px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+/* Responsive para tablets */
+@media (max-width: 992px) {
+    #gridProductos,
+    #gridProductosFactura {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+    
+    .producto-img,
+    .producto-img-placeholder {
+        height: 130px;
+    }
+    
+    .producto-card {
+        min-height: 250px;
+    }
+    
+    .producto-nombre {
+        font-size: 0.85rem;
+    }
+    
+    #categoriasFilter .btn {
+        padding: 6px 16px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    #gridProductos,
+    #gridProductosFactura {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    
+    .producto-img,
+    .producto-img-placeholder {
+        height: 120px;
+    }
+    
+    .producto-card {
+        min-height: 230px;
+    }
+    
+    .producto-nombre {
+        font-size: 0.8rem;
+        min-height: 2em;
+    }
+    
+    .producto-descripcion {
+        font-size: 0.7rem;
+    }
+    
+    .producto-precio {
+        font-size: 0.9rem;
+    }
+    
+    .producto-info {
+        padding: 8px;
+    }
+    
+    #categoriasFilter {
+        gap: 6px;
+    }
+    
+    #categoriasFilter .btn {
+        padding: 6px 14px;
+        font-size: 0.8rem;
+    }
+    
+    .item-pedido {
+        padding: 10px;
+    }
+    
+    .btn-cantidad {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+}
+
+/* Responsive para pantallas muy pequeñas */
+@media (max-width: 576px) {
+    #gridProductos,
+    #gridProductosFactura {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
+    }
+    
+    .producto-img,
+    .producto-img-placeholder {
+        height: 100px;
+    }
+    
+    .producto-card {
+        min-height: 200px;
+    }
+    
+    .producto-info {
+        padding: 6px;
+    }
+    
+    .producto-nombre {
+        font-size: 0.75rem;
+    }
+    
+    .producto-descripcion {
+        font-size: 0.65rem;
+        -webkit-line-clamp: 1;
+    }
+    
+    .producto-precio {
+        font-size: 0.85rem;
+    }
+    
+    .categoria-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+    
+    #categoriasFilter .btn {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Ajustes para el modal en móviles */
+@media (max-width: 768px) {
+    .modal-fullscreen .modal-body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    /* Panel de productos ocupa el espacio disponible */
+    .modal-fullscreen .modal-body .col-md-8 {
+        width: 100%;
+        max-width: 100%;
+        flex: 1;
+        overflow-y: auto;
+        border-right: none;
+    }
+    
+    /* Panel de carrito fijo en la parte inferior */
+    .modal-fullscreen .modal-body .col-md-4 {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        max-height: 40vh;
+        border-top: 3px solid #0d6efd;
+        border-left: none;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Hacer el área de items scrolleable */
+    .modal-fullscreen .modal-body .col-md-4 .flex-grow-1 {
+        max-height: 25vh;
+        overflow-y: auto;
+    }
+}
+
+/* Para pantallas muy pequeñas, hacer el carrito colapsable */
+@media (max-width: 576px) {
+    .modal-fullscreen .modal-body .col-md-4 {
+        max-height: 35vh;
+    }
+    
+    .modal-fullscreen .modal-body .col-md-4 .flex-grow-1 {
+        max-height: 20vh;
+    }
+}
+
+/* Botón flotante para mostrar carrito en móvil */
+.btn-toggle-carrito {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 1050;
+    transition: all 0.3s;
+}
+
+.btn-toggle-carrito:active {
+    transform: scale(0.95);
+}
+
+.btn-toggle-carrito .badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .btn-toggle-carrito {
+        display: flex;
+    }
+    
+    /* Ocultar carrito por defecto en móvil */
+    .modal-fullscreen .modal-body .col-md-4 {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        z-index: 1040;
+        background: white;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+    }
+    
+    .modal-fullscreen .modal-body .col-md-4.show {
+        transform: translateY(0);
+    }
+    
+    /* Ajustar panel de productos para que no quede detrás del botón */
+    .modal-fullscreen .modal-body .col-md-8 {
+        padding-bottom: 80px;
+    }
+}
+
+/* Pantallas grandes */
+@media (min-width: 1400px) {
+    #gridProductos,
+    #gridProductosFactura {
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    }
+    
+    .producto-card {
+        min-height: 300px;
+    }
+    
+    .producto-img,
+    .producto-img-placeholder {
+        height: 160px;
+    }
+}

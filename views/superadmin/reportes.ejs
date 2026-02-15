@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Globales - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+</head>
+<body style="background-color: #f8f9fa;">
+    <%- include('../partials/navbar_superadmin') %>
+
+    <div class="container mt-4">
+        <!-- Estadísticas Generales -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Restaurantes Activos</h6>
+                        <h2 class="mb-0 text-success"><%= stats.restaurantes_activos || 0 %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Suspendidos</h6>
+                        <h2 class="mb-0 text-warning"><%= stats.restaurantes_suspendidos || 0 %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Total Usuarios</h6>
+                        <h2 class="mb-0 text-info"><%= stats.total_usuarios || 0 %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Facturas Este Mes</h6>
+                        <h2 class="mb-0 text-primary"><%= stats.facturas_mes || 0 %></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Distribución por Plan -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Distribución por Plan</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Plan</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% porPlan.forEach(p => { %>
+                        <tr>
+                            <td><span class="badge bg-primary"><%= p.plan %></span></td>
+                            <td><%= p.cantidad %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Restaurantes -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Top 10 Restaurantes por Ventas</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Restaurante</th>
+                            <th>Plan</th>
+                            <th>Facturas</th>
+                            <th>Total Ventas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% topRestaurantes.forEach((r, i) => { %>
+                        <tr>
+                            <td><strong><%= i + 1 %></strong></td>
+                            <td><%= r.nombre %></td>
+                            <td><span class="badge bg-info"><%= r.plan %></span></td>
+                            <td><%= r.total_facturas %></td>
+                            <td>$<%= Number(r.total_ventas).toLocaleString() %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

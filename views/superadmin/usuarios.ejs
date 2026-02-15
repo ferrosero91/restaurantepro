@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+</head>
+<body style="background-color: #f8f9fa;">
+    <%- include('../partials/navbar_superadmin') %>
+
+    <div class="container mt-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Gestión de Usuarios</h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+                    <i class="bi bi-plus-circle me-1"></i> Nuevo Usuario
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Restaurante</th>
+                                <th>Estado</th>
+                                <th>Último Acceso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% usuarios.forEach(usuario => { %>
+                            <tr>
+                                <td><strong>#<%= usuario.id %></strong></td>
+                                <td><%= usuario.nombre %></td>
+                                <td><%= usuario.email %></td>
+                                <td>
+                                    <span class="badge bg-<%= usuario.rol === 'superadmin' ? 'danger' : usuario.rol === 'admin' ? 'primary' : 'secondary' %>">
+                                        <%= usuario.rol %>
+                                    </span>
+                                </td>
+                                <td><%= usuario.restaurante_nombre || 'N/A' %></td>
+                                <td>
+                                    <span class="badge bg-<%= usuario.estado === 'activo' ? 'success' : 'danger' %>">
+                                        <%= usuario.estado %>
+                                    </span>
+                                </td>
+                                <td><%= usuario.ultimo_acceso ? new Date(usuario.ultimo_acceso).toLocaleString() : 'Nunca' %></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-warning btn-editar" data-id="<%= usuario.id %>">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info btn-cambiar-password" 
+                                            data-id="<%= usuario.id %>"
+                                            data-nombre="<%= usuario.nombre %>">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+                                    <% if (usuario.id !== user.id) { %>
+                                    <button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="<%= usuario.id %>">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Usuario -->
+    <div class="modal fade" id="modalNuevoUsuario" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevoUsuario">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <select class="form-select" name="rol" required>
+                                <option value="admin">Admin</option>
+                                <option value="cajero">Cajero</option>
+                                <option value="mesero">Mesero</option>
+                                <option value="cocinero">Cocinero</option>
+                                <option value="superadmin">SuperAdmin</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Restaurante</label>
+                            <select class="form-select" name="restaurante_id">
+                                <option value="">Ninguno (solo para SuperAdmin)</option>
+                                <% restaurantes.forEach(r => { %>
+                                <option value="<%= r.id %>"><%= r.nombre %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cambiar Contraseña -->
+    <div class="modal fade" id="modalCambiarPassword" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cambiar Contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Usuario: <strong id="password_usuario_nombre"></strong></p>
+                    <form id="formCambiarPassword">
+                        <input type="hidden" name="usuario_id" id="password_usuario_id">
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Contraseña *</label>
+                            <input type="password" class="form-control" name="nueva_password" minlength="6" required>
+                            <small class="text-muted">Mínimo 6 caracteres</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar Contraseña *</label>
+                            <input type="password" class="form-control" name="confirmar_password" minlength="6" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="cambiarPassword()">Cambiar Contraseña</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.btn-editar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    alert('Editar usuario ' + this.dataset.id);
+                });
+            });
+
+            document.querySelectorAll('.btn-eliminar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    eliminarUsuario(this.dataset.id);
+                });
+            });
+
+            // Botón cambiar contraseña
+            document.querySelectorAll('.btn-cambiar-password').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('password_usuario_id').value = this.dataset.id;
+                    document.getElementById('password_usuario_nombre').textContent = this.dataset.nombre;
+                    new bootstrap.Modal(document.getElementById('modalCambiarPassword')).show();
+                });
+            });
+        });
+
+        async function cambiarPassword() {
+            const form = document.getElementById('formCambiarPassword');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            // Validar que las contraseñas coincidan
+            if (data.nueva_password !== data.confirmar_password) {
+                alert('Las contraseñas no coinciden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/superadmin/usuarios/' + data.usuario_id + '/cambiar-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: data.nueva_password })
+                });
+
+                if (response.ok) {
+                    alert('Contraseña cambiada exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalCambiarPassword')).hide();
+                    form.reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al cambiar contraseña');
+            }
+        }
+
+        async function guardarUsuario() {
+            const form = document.getElementById('formNuevoUsuario');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/superadmin/usuarios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Usuario creado exitosamente');
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al crear usuario');
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+
+            try {
+                const response = await fetch('/superadmin/usuarios/' + id, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Usuario eliminado');
+                    location.reload();
+                } else {
+                    alert('Error al eliminar usuario');
+                }
+            } catch (error) {
+                alert('Error al eliminar usuario');
+            }
+        }
+    </script>
+</body>
+</html>
