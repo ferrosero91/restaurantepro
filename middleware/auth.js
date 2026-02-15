@@ -29,13 +29,23 @@ async function requireAuth(req, res, next) {
 
         req.user = usuarios[0];
         
-        // Cargar permisos individuales del usuario
+        // Cargar permisos del usuario (combinando permisos del rol y permisos individuales)
         const [permisos] = await db.query(`
-            SELECT p.nombre, p.ruta, p.icono, p.descripcion
-            FROM usuario_permisos up
-            JOIN permisos p ON up.permiso_id = p.id
-            WHERE up.usuario_id = ?
-        `, [req.user.id]);
+            SELECT DISTINCT p.nombre, p.ruta, p.icono, p.descripcion
+            FROM permisos p
+            WHERE p.id IN (
+                -- Permisos del rol
+                SELECT rp.permiso_id 
+                FROM rol_permisos rp 
+                WHERE rp.rol_id = ?
+                UNION
+                -- Permisos individuales del usuario
+                SELECT up.permiso_id 
+                FROM usuario_permisos up 
+                WHERE up.usuario_id = ?
+            )
+            ORDER BY p.nombre
+        `, [req.user.rol_id, req.user.id]);
         
         req.user.permisos = permisos || [];
         req.user.permisosRutas = permisos.map(p => p.ruta);
