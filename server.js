@@ -1,13 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 const app = express();
 const db = require('./db');
-const { requireAuth, optionalAuth } = require('./middleware/auth');
+const config = require('./config/env');
+const { requireAuth } = require('./middleware/auth');
 const { requireTenant } = require('./middleware/tenant');
 const {
     helmetConfig,
@@ -15,6 +15,7 @@ const {
     preventParameterPollution,
     detectSQLInjection,
     validateOrigin,
+    corsMiddleware,
     requestTimeout,
     apiLimiter
 } = require('./middleware/security');
@@ -71,20 +72,9 @@ app.use(validateOrigin);
 // Rate limiting general para API
 app.use('/api/', apiLimiter);
 
-// Middleware de sesiones
+// Middleware de sesiones con configuración segura
 app.use(cookieParser());
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production', // HTTPS en producción
-        httpOnly: true, // No accesible desde JavaScript
-        maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        sameSite: 'strict' // Protección CSRF
-    },
-    name: 'sessionId' // Cambiar nombre por defecto
-}));
+app.use(session(config.session));
 
 // Aumentar el límite de tamaño del cuerpo de la petición
 app.use(express.json({limit: '10mb'})); // Reducido de 50mb a 10mb
@@ -104,18 +94,14 @@ app.use('/vendor/select2-bootstrap-5-theme', express.static(path.join(__dirname,
 // bootstrap-icons usa fuentes (woff/woff2) -> servir carpeta font completa
 app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_modules', 'bootstrap-icons', 'font')));
 
-// Headers de seguridad y CORS
+// CORS seguro con orígenes permitidos
+app.use(corsMiddleware(config.cors.allowedOrigins));
+
+// Headers de seguridad adicionales
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    // Responder preflight sin caer en 404
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(204);
-    }
     next();
 });
 
@@ -224,23 +210,30 @@ app.use((err, req, res, next) => {
     }
 });
 
-const PORT = process.env.PORT || 3002;
+const PORT = config.port;
 
 // Verificar la conexión a la base de datos antes de iniciar el servidor
 async function startServer() {
     try {
-        console.log('Intentando conectar a la base de datos...');
+        console.log('🔍 Verificando configuración...');
+        console.log(`📝 Entorno: ${config.env}`);
+        console.log(`🔒 Modo seguro: ${config.isProduction ? 'SÍ' : 'NO'}`);
+        
+        console.log('🔌 Intentando conectar a la base de datos...');
         const connection = await db.getConnection();
         connection.release();
-        console.log('Conexión exitosa a la base de datos');
+        console.log('✅ Conexión exitosa a la base de datos');
         
         // Iniciar el servidor solo si la conexión a la base de datos es exitosa
-        const server = app.listen(PORT, '0.0.0.0', () => {
-            console.log(`Servidor corriendo en http://localhost:${PORT} (LAN habilitada)`);
-            console.log('Rutas disponibles:');
-            console.log('- GET  /', '(Página principal)');
-            console.log('- POST /api/facturas', '(Generar factura)');
-            console.log('- GET  /api/facturas/:id/imprimir', '(Imprimir factura)');
+        const server = app.listen(PORT, config.host, () => {
+            console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+            console.log(`🌐 Accesible en LAN: http://${config.host}:${PORT}`);
+            console.log('📋 Rutas disponibles:');
+            console.log('   - GET  / (Página principal)');
+            console.log('   - POST /api/facturas (Generar factura)');
+            console.log('   - GET  /api/facturas/:id/imprimir (Imprimir factura)');
+            console.log('');
+            console.log('✨ Sistema listo para recibir peticiones');
         });
 
         // Manejar errores del servidor

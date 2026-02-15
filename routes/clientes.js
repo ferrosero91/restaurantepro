@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const {
+    validateCreateCliente,
+    validateUpdateCliente,
+    validateSearchCliente,
+    validateGetCliente,
+    validateDeleteCliente
+} = require('../validators/clienteValidator');
 
 // GET /clientes - Mostrar página de clientes
 router.get('/', async (req, res) => {
@@ -23,7 +30,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /clientes/buscar - Buscar clientes
-router.get('/buscar', async (req, res) => {
+router.get('/buscar', validateSearchCliente, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const query = req.query.q || '';
@@ -51,7 +58,7 @@ router.get('/buscar', async (req, res) => {
 });
 
 // GET /clientes/:id - Obtener un cliente específico
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateGetCliente, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         let sql = 'SELECT * FROM clientes WHERE id = ?';
@@ -75,26 +82,19 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /clientes - Crear nuevo cliente
-router.post('/', async (req, res) => {
+router.post('/', validateCreateCliente, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         if (!tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
         
-        console.log('Datos recibidos:', req.body);
         const { nombre, direccion, telefono } = req.body;
-        
-        if (!nombre) {
-            return res.status(400).json({ error: 'El nombre es requerido' });
-        }
 
         const [result] = await db.query(
             'INSERT INTO clientes (restaurante_id, nombre, direccion, telefono) VALUES (?, ?, ?, ?)',
             [tenantId, nombre, direccion || null, telefono || null]
         );
-
-        console.log('Cliente creado:', result);
 
         res.status(201).json({ 
             id: result.insertId,
@@ -107,14 +107,10 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /clientes/:id - Actualizar cliente
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateUpdateCliente, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const { nombre, direccion, telefono } = req.body;
-        
-        if (!nombre) {
-            return res.status(400).json({ error: 'El nombre es requerido' });
-        }
 
         let sql = 'UPDATE clientes SET nombre = ?, direccion = ?, telefono = ? WHERE id = ?';
         let params = [nombre, direccion || null, telefono || null, req.params.id];
@@ -138,7 +134,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /clientes/:id - Eliminar cliente
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validateDeleteCliente, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         let sql = 'DELETE FROM clientes WHERE id = ?';

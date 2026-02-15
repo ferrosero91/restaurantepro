@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { loginLimiter, strictLimiter } = require('../middleware/security');
+const { validateLogin, validateRegistro } = require('../validators/authValidator');
 
 // GET /login - Mostrar formulario de login
 router.get('/login', (req, res) => {
@@ -12,14 +13,10 @@ router.get('/login', (req, res) => {
     res.render('auth/login', { error: null });
 });
 
-// POST /login - Procesar login (con rate limiting)
-router.post('/login', loginLimiter, async (req, res) => {
+// POST /login - Procesar login (con rate limiting y validación)
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.render('auth/login', { error: 'Email y contraseña son requeridos' });
-        }
 
         // Buscar usuario
         const [usuarios] = await db.query(
@@ -87,40 +84,10 @@ router.get('/registro', (req, res) => {
     res.render('auth/registro', { error: null, success: null });
 });
 
-// POST /registro - Procesar registro (con rate limiting estricto)
-router.post('/registro', strictLimiter, async (req, res) => {
+// POST /registro - Procesar registro (con rate limiting estricto y validación)
+router.post('/registro', strictLimiter, validateRegistro, async (req, res) => {
     try {
-        const { nombre, email, password, password_confirm, restaurante_nombre, restaurante_slug } = req.body;
-
-        // Validaciones
-        if (!nombre || !email || !password || !password_confirm || !restaurante_nombre || !restaurante_slug) {
-            return res.render('auth/registro', { 
-                error: 'Todos los campos son requeridos',
-                success: null 
-            });
-        }
-
-        if (password !== password_confirm) {
-            return res.render('auth/registro', { 
-                error: 'Las contraseñas no coinciden',
-                success: null 
-            });
-        }
-
-        if (password.length < 6) {
-            return res.render('auth/registro', { 
-                error: 'La contraseña debe tener al menos 6 caracteres',
-                success: null 
-            });
-        }
-
-        // Validar formato de slug (solo letras, números y guiones)
-        if (!/^[a-z0-9-]+$/.test(restaurante_slug)) {
-            return res.render('auth/registro', { 
-                error: 'El slug solo puede contener letras minúsculas, números y guiones',
-                success: null 
-            });
-        }
+        const { nombre, email, password, restaurante_nombre, restaurante_slug } = req.body;
 
         // Verificar si el email ya existe
         const [existingUser] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);

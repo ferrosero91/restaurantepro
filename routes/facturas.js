@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { validateCreateFactura, validateGetFactura, validateListFacturas } = require('../validators/facturaValidator');
 
 // Validar rutas de retorno (evitar open-redirect / URLs externas)
 // Se usa para que el botón "Volver" de la impresión regrese a Mesas cuando aplique.
@@ -40,18 +41,12 @@ function almostEqualMoney(a, b) {
 }
 
 // Crear nueva factura
-router.post('/', async (req, res) => {
+router.post('/', validateCreateFactura, async (req, res) => {
     const { cliente_id, total, forma_pago, productos, pagos } = req.body;
     const tenantId = req.tenantId;
     
-    console.log('Datos recibidos:', req.body);
-    
     if (!tenantId) {
         return res.status(403).json({ error: 'Acceso denegado' });
-    }
-    
-    if (!cliente_id || !productos || productos.length === 0) {
-        return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     // Validaciones ANTES de abrir transacción (evita dejar conexiones abiertas si hay error)
@@ -148,7 +143,7 @@ router.post('/', async (req, res) => {
 });
 
 // Vista previa e impresión de factura
-router.get('/:id/imprimir', async (req, res) => {
+router.get('/:id/imprimir', validateGetFactura, async (req, res) => {
     const factura_id = req.params.id;
     const return_to = safeReturnTo(req.query.return_to);
     // Si se muestra dentro de un iframe/modal (index/ventas), ocultamos el botón "Volver"
@@ -234,7 +229,7 @@ router.get('/:id/imprimir', async (req, res) => {
 });
 
 // Ruta para obtener detalles de una factura
-router.get('/:id/detalles', async (req, res) => {
+router.get('/:id/detalles', validateGetFactura, async (req, res) => {
     try {
         // Obtener información de la factura
         const [facturas] = await db.query(

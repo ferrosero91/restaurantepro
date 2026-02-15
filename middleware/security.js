@@ -189,6 +189,34 @@ function validateOrigin(req, res, next) {
     next();
 }
 
+// Middleware de CORS seguro
+function corsMiddleware(allowedOrigins = []) {
+    return (req, res, next) => {
+        const origin = req.get('origin');
+        
+        // Si no hay origen (same-origin request), permitir
+        if (!origin) {
+            return next();
+        }
+        
+        // Verificar si el origen está permitido
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Token');
+            res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
+        }
+        
+        // Responder a preflight
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(204);
+        }
+        
+        next();
+    };
+}
+
 // Timeout para requests largos
 function requestTimeout(timeout = 30000) {
     return (req, res, next) => {
@@ -209,6 +237,7 @@ module.exports = {
     preventParameterPollution,
     detectSQLInjection,
     validateOrigin,
+    corsMiddleware,
     requestTimeout,
     logSuspiciousActivity
 };

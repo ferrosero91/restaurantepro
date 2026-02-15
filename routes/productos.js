@@ -4,6 +4,14 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { buildTenantFilter, buildSearchQuery, buildPagination } = require('../utils/queryBuilder');
+const {
+    validateCreateProducto,
+    validateUpdateProducto,
+    validateSearchProducto,
+    validateGetProducto,
+    validateDeleteProducto
+} = require('../validators/productoValidator');
 let ExcelJS; // import perezoso para template/import
 
 // Configuración de multer para subir imágenes
@@ -40,16 +48,22 @@ const upload = multer({
 router.get('/', async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const tenantFilter = tenantId ? 'WHERE p.restaurante_id = ?' : '';
-        const params = tenantId ? [tenantId] : [];
         
-        const [productos] = await db.query(`
+        let sql = `
             SELECT p.*, c.nombre as categoria_nombre, c.color as categoria_color
             FROM productos p
             LEFT JOIN categorias c ON c.id = p.categoria_id
-            ${tenantFilter}
-            ORDER BY p.nombre
-        `, params);
+        `;
+        let params = [];
+        
+        if (tenantId) {
+            sql += ' WHERE p.restaurante_id = ?';
+            params.push(tenantId);
+        }
+        
+        sql += ' ORDER BY p.nombre';
+        
+        const [productos] = await db.query(sql, params);
         
         res.render('productos', { productos: productos || [], user: req.user });
     } catch (error) {
@@ -64,21 +78,22 @@ router.get('/', async (req, res) => {
 });
 
 // GET /productos/buscar - Buscar productos
-router.get('/buscar', async (req, res) => {
+router.get('/buscar', validateSearchProducto, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const query = req.query.q || '';
-        const searchTerm = `%${query}%`;
         
-        let sql = `
-            SELECT * FROM productos 
-            WHERE (nombre LIKE ? OR codigo LIKE ?)
-        `;
-        let params = [searchTerm, searchTerm];
+        let sql = 'SELECT * FROM productos WHERE 1=1';
+        let params = [];
         
         if (tenantId) {
             sql += ' AND restaurante_id = ?';
             params.push(tenantId);
+        }
+        
+        if (query) {
+            sql += ' AND (nombre LIKE ? OR codigo LIKE ?)';
+            params.push(`%${query}%`, `%${query}%`);
         }
         
         sql += ' ORDER BY nombre LIMIT 10';
@@ -92,9 +107,10 @@ router.get('/buscar', async (req, res) => {
 });
 
 // GET /productos/:id - Obtener un producto específico
-router.get('/:id(\\d+)', async (req, res) => {
+router.get('/:id(\\d+)', validateGetProducto, async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        
         let sql = 'SELECT * FROM productos WHERE id = ?';
         let params = [req.params.id];
         
@@ -105,9 +121,11 @@ router.get('/:id(\\d+)', async (req, res) => {
         
         const [productos] = await db.query(sql, params);
         const producto = productos[0];
+        
         if (!producto) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
+        
         res.json(producto);
     } catch (error) {
         console.error('Error al obtener producto:', error);
@@ -116,7 +134,7 @@ router.get('/:id(\\d+)', async (req, res) => {
 });
 
 // POST /productos - Crear nuevo producto
-router.post('/', upload.single('imagen'), async (req, res) => {
+router.post('/', upload.single('imagen'), validateCreateProducto, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         if (!tenantId) {
@@ -125,11 +143,6 @@ router.post('/', upload.single('imagen'), async (req, res) => {
         
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
         const imagen = req.file ? req.file.filename : null;
-        
-        // Validar datos
-        if (!codigo || !nombre) {
-            return res.status(400).json({ error: 'El código y nombre son requeridos' });
-        }
 
         const [result] = await db.query(
             'INSERT INTO productos (restaurante_id, categoria_id, codigo, nombre, imagen, descripcion, precio_kg, precio_unidad, precio_libra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -156,16 +169,11 @@ router.post('/', upload.single('imagen'), async (req, res) => {
 });
 
 // PUT /productos/:id - Actualizar producto
-router.put('/:id', upload.single('imagen'), async (req, res) => {
+router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
         const nuevaImagen = req.file ? req.file.filename : null;
-        
-        // Validar datos
-        if (!codigo || !nombre) {
-            return res.status(400).json({ error: 'El código y nombre son requeridos' });
-        }
 
         // Si hay nueva imagen, obtener la anterior para eliminarla
         if (nuevaImagen) {
@@ -191,13 +199,8 @@ router.put('/:id', upload.single('imagen'), async (req, res) => {
             params.push(nuevaImagen);
         }
         
-        sql += ' WHERE id = ?';
-        params.push(req.params.id);
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
+        sql += ' WHERE id = ? AND restaurante_id = ?';
+        params.push(req.params.id, tenantId);
 
         await db.query(sql, params);
         res.json({ message: 'Producto actualizado exitosamente' });
@@ -217,16 +220,12 @@ router.put('/:id', upload.single('imagen'), async (req, res) => {
 });
 
 // DELETE /productos/:id - Eliminar producto
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validateDeleteProducto, async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        let sql = 'DELETE FROM productos WHERE id = ?';
-        let params = [req.params.id];
         
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
+        const sql = 'DELETE FROM productos WHERE id = ? AND restaurante_id = ?';
+        const params = [req.params.id, tenantId];
         
         const [result] = await db.query(sql, params);
         

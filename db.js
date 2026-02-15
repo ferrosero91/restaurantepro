@@ -1,15 +1,8 @@
 require('dotenv').config();
 const mysql = require('mysql2');
+const config = require('./config/env');
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'reconocimiento',
-    connectionLimit: 10,
-    waitForConnections: true,
-    queueLimit: 0
-}).promise();
+const pool = mysql.createPool(config.database).promise();
 
 /**
  * Asegura el esquema mínimo requerido para nuevas funcionalidades (sin romper instalaciones existentes).
