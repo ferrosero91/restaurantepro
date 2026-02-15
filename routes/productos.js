@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { buildTenantFilter, buildSearchQuery, buildPagination } = require('../utils/queryBuilder');
+const ProductoService = require('../services/ProductoService');
 const {
     validateCreateProducto,
     validateUpdateProducto,
@@ -13,6 +12,9 @@ const {
     validateDeleteProducto
 } = require('../validators/productoValidator');
 let ExcelJS; // import perezoso para template/import
+
+// Instanciar servicio
+const productoService = new ProductoService();
 
 // Configuración de multer para subir imágenes
 const storage = multer.diskStorage({
@@ -47,24 +49,7 @@ const upload = multer({
 // GET /productos - Mostrar página de productos
 router.get('/', async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        
-        let sql = `
-            SELECT p.*, c.nombre as categoria_nombre, c.color as categoria_color
-            FROM productos p
-            LEFT JOIN categorias c ON c.id = p.categoria_id
-        `;
-        let params = [];
-        
-        if (tenantId) {
-            sql += ' WHERE p.restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        sql += ' ORDER BY p.nombre';
-        
-        const [productos] = await db.query(sql, params);
-        
+        const productos = await productoService.listar(req.tenantId);
         res.render('productos', { productos: productos || [], user: req.user });
     } catch (error) {
         console.error('Error al obtener productos:', error);
@@ -80,25 +65,7 @@ router.get('/', async (req, res) => {
 // GET /productos/buscar - Buscar productos
 router.get('/buscar', validateSearchProducto, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        const query = req.query.q || '';
-        
-        let sql = 'SELECT * FROM productos WHERE 1=1';
-        let params = [];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        if (query) {
-            sql += ' AND (nombre LIKE ? OR codigo LIKE ?)';
-            params.push(`%${query}%`, `%${query}%`);
-        }
-        
-        sql += ' ORDER BY nombre LIMIT 10';
-        
-        const [productos] = await db.query(sql, params);
+        const productos = await productoService.buscar(req.query.q, req.tenantId);
         res.json(productos);
     } catch (error) {
         console.error('Error al buscar productos:', error);
@@ -109,26 +76,13 @@ router.get('/buscar', validateSearchProducto, async (req, res) => {
 // GET /productos/:id - Obtener un producto específico
 router.get('/:id(\\d+)', validateGetProducto, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        
-        let sql = 'SELECT * FROM productos WHERE id = ?';
-        let params = [req.params.id];
-        
-        if (tenantId) {
-            sql += ' AND restaurante_id = ?';
-            params.push(tenantId);
-        }
-        
-        const [productos] = await db.query(sql, params);
-        const producto = productos[0];
-        
-        if (!producto) {
-            return res.status(404).json({ error: 'Producto no encontrado' });
-        }
-        
+        const producto = await productoService.obtenerPorId(req.params.id, req.tenantId);
         res.json(producto);
     } catch (error) {
         console.error('Error al obtener producto:', error);
+        if (error.message === 'Producto no encontrado') {
+            return res.status(404).json({ error: error.message });
+        }
         res.status(500).json({ error: 'Error al obtener producto' });
     }
 });
@@ -136,21 +90,26 @@ router.get('/:id(\\d+)', validateGetProducto, async (req, res) => {
 // POST /productos - Crear nuevo producto
 router.post('/', upload.single('imagen'), validateCreateProducto, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        if (!tenantId) {
+        if (!req.tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
         
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
         const imagen = req.file ? req.file.filename : null;
 
-        const [result] = await db.query(
-            'INSERT INTO productos (restaurante_id, categoria_id, codigo, nombre, imagen, descripcion, precio_kg, precio_unidad, precio_libra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [tenantId, categoria_id || null, codigo, nombre, imagen, descripcion || null, precio_kg || 0, precio_unidad || 0, precio_libra || 0]
-        );
+        const producto = await productoService.crear({
+            codigo,
+            nombre,
+            descripcion,
+            categoria_id,
+            precio_kg,
+            precio_unidad,
+            precio_libra,
+            imagen
+        }, req.tenantId);
 
         res.status(201).json({ 
-            id: result.insertId,
+            id: producto.id,
             message: 'Producto creado exitosamente' 
         });
     } catch (error) {
@@ -161,9 +120,11 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
                 if (err) console.error('Error al eliminar imagen:', err);
             });
         }
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ error: 'Ya existe un producto con ese código en tu restaurante' });
+        
+        if (error.message === 'Ya existe un producto con ese código') {
+            return res.status(400).json({ error: error.message });
         }
+        
         res.status(500).json({ error: 'Error al crear producto' });
     }
 });
@@ -171,38 +132,39 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
 // PUT /productos/:id - Actualizar producto
 router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
         const nuevaImagen = req.file ? req.file.filename : null;
 
         // Si hay nueva imagen, obtener la anterior para eliminarla
         if (nuevaImagen) {
-            const [productoAnterior] = await db.query(
-                'SELECT imagen FROM productos WHERE id = ? AND restaurante_id = ?',
-                [req.params.id, tenantId]
-            );
-            
-            if (productoAnterior[0] && productoAnterior[0].imagen) {
-                const imagenAnterior = path.join(__dirname, '../public/uploads', productoAnterior[0].imagen);
-                fs.unlink(imagenAnterior, (err) => {
-                    if (err) console.error('Error al eliminar imagen anterior:', err);
-                });
+            try {
+                const productoAnterior = await productoService.obtenerPorId(req.params.id, req.tenantId);
+                if (productoAnterior && productoAnterior.imagen) {
+                    const imagenAnterior = path.join(__dirname, '../public/uploads', productoAnterior.imagen);
+                    fs.unlink(imagenAnterior, (err) => {
+                        if (err) console.error('Error al eliminar imagen anterior:', err);
+                    });
+                }
+            } catch (err) {
+                console.error('Error al obtener producto anterior:', err);
             }
         }
 
-        // Construir query dinámicamente
-        let sql = 'UPDATE productos SET codigo = ?, nombre = ?, descripcion = ?, categoria_id = ?, precio_kg = ?, precio_unidad = ?, precio_libra = ?';
-        let params = [codigo, nombre, descripcion || null, categoria_id || null, precio_kg || 0, precio_unidad || 0, precio_libra || 0];
-        
-        if (nuevaImagen) {
-            sql += ', imagen = ?';
-            params.push(nuevaImagen);
-        }
-        
-        sql += ' WHERE id = ? AND restaurante_id = ?';
-        params.push(req.params.id, tenantId);
+        const dataActualizar = {
+            codigo,
+            nombre,
+            descripcion,
+            categoria_id,
+            precio_kg,
+            precio_unidad,
+            precio_libra
+        };
 
-        await db.query(sql, params);
+        if (nuevaImagen) {
+            dataActualizar.imagen = nuevaImagen;
+        }
+
+        await productoService.actualizar(req.params.id, dataActualizar, req.tenantId);
         res.json({ message: 'Producto actualizado exitosamente' });
     } catch (error) {
         console.error('Error al actualizar producto:', error);
@@ -212,9 +174,11 @@ router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, 
                 if (err) console.error('Error al eliminar imagen:', err);
             });
         }
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ error: 'Ya existe un producto con ese código en tu restaurante' });
+        
+        if (error.message === 'Producto no encontrado' || error.message === 'Ya existe otro producto con ese código') {
+            return res.status(400).json({ error: error.message });
         }
+        
         res.status(500).json({ error: 'Error al actualizar producto' });
     }
 });
@@ -222,20 +186,13 @@ router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, 
 // DELETE /productos/:id - Eliminar producto
 router.delete('/:id', validateDeleteProducto, async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        
-        const sql = 'DELETE FROM productos WHERE id = ? AND restaurante_id = ?';
-        const params = [req.params.id, tenantId];
-        
-        const [result] = await db.query(sql, params);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Producto no encontrado' });
-        }
-
+        await productoService.eliminar(req.params.id, req.tenantId);
         res.json({ message: 'Producto eliminado exitosamente' });
     } catch (error) {
         console.error('Error al eliminar producto:', error);
+        if (error.message === 'Producto no encontrado') {
+            return res.status(404).json({ error: error.message });
+        }
         res.status(500).json({ error: 'Error al eliminar producto' });
     }
 });
@@ -361,8 +318,7 @@ const uploadExcel = multer({ storage: multer.memoryStorage(), limits: { fileSize
 
 router.post('/importar', uploadExcel.single('archivo'), async (req, res) => {
     try {
-        const tenantId = req.tenantId;
-        if (!tenantId) {
+        if (!req.tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
         
@@ -393,30 +349,10 @@ router.post('/importar', uploadExcel.single('archivo'), async (req, res) => {
 
         if (rows.length === 0) return res.status(400).json({ error: 'No hay registros válidos' });
 
-        const connection = await db.getConnection();
-        try {
-            await connection.beginTransaction();
-            for (const p of rows) {
-                await connection.query(
-                    `INSERT INTO productos (restaurante_id, codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra) 
-                     VALUES (?,?,?,?,?,?,?,?) 
-                     ON DUPLICATE KEY UPDATE 
-                        nombre=VALUES(nombre), 
-                        descripcion=VALUES(descripcion), 
-                        categoria_id=VALUES(categoria_id), 
-                        precio_kg=VALUES(precio_kg), 
-                        precio_unidad=VALUES(precio_unidad), 
-                        precio_libra=VALUES(precio_libra)`,
-                    [tenantId, p.codigo, p.nombre, p.descripcion, p.categoria_id, p.precio_kg, p.precio_unidad, p.precio_libra]
-                );
-            }
-            await connection.commit();
-        } catch (e) { await connection.rollback(); throw e; }
-        finally { connection.release(); }
-
-        res.json({ inserted: rows.length });
+        const resultado = await productoService.importarMasivo(rows, req.tenantId);
+        res.json(resultado);
     } catch (e) {
         console.error('Error al importar:', e);
-        res.status(500).json({ error: 'Error al importar productos' });
+        res.status(500).json({ error: e.message || 'Error al importar productos' });
     }
 });
