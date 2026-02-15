@@ -1,4 +1,5 @@
 const ProductoRepository = require('../repositories/ProductoRepository');
+const { NotFoundError, ConflictError, ValidationError } = require('../utils/errors');
 
 /**
  * Servicio de Productos
@@ -23,7 +24,7 @@ class ProductoService {
         const producto = await this.productoRepo.findById(id, tenantId);
         
         if (!producto) {
-            throw new Error('Producto no encontrado');
+            throw new NotFoundError('Producto');
         }
 
         return producto;
@@ -47,7 +48,7 @@ class ProductoService {
         // Validar que el código no exista
         const existe = await this.productoRepo.codeExists(data.codigo, tenantId);
         if (existe) {
-            throw new Error('Ya existe un producto con ese código');
+            throw new ConflictError('Ya existe un producto con ese código');
         }
 
         // Validar precios
@@ -64,14 +65,14 @@ class ProductoService {
         // Verificar que existe
         const existe = await this.productoRepo.exists(id, tenantId);
         if (!existe) {
-            throw new Error('Producto no encontrado');
+            throw new NotFoundError('Producto');
         }
 
         // Validar que el código no esté duplicado
         if (data.codigo) {
             const codigoExiste = await this.productoRepo.codeExists(data.codigo, tenantId, id);
             if (codigoExiste) {
-                throw new Error('Ya existe otro producto con ese código');
+                throw new ConflictError('Ya existe otro producto con ese código');
             }
         }
 
@@ -96,7 +97,7 @@ class ProductoService {
     async eliminar(id, tenantId) {
         const existe = await this.productoRepo.exists(id, tenantId);
         if (!existe) {
-            throw new Error('Producto no encontrado');
+            throw new NotFoundError('Producto');
         }
 
         const eliminado = await this.productoRepo.delete(id, tenantId);
@@ -115,7 +116,7 @@ class ProductoService {
         // Validar que todos los productos tengan código y nombre
         for (const producto of productos) {
             if (!producto.codigo || !producto.nombre) {
-                throw new Error('Todos los productos deben tener código y nombre');
+                throw new ValidationError('Todos los productos deben tener código y nombre');
             }
 
             this.validarPrecios(producto);
@@ -151,13 +152,13 @@ class ProductoService {
         Object.keys(precios).forEach(key => {
             const precio = parseFloat(precios[key]);
             if (isNaN(precio) || precio < 0) {
-                throw new Error(`${key} debe ser un número mayor o igual a 0`);
+                throw new ValidationError(`${key} debe ser un número mayor o igual a 0`);
             }
         });
 
         // Al menos un precio debe ser mayor a 0
         if (precios.precio_kg === 0 && precios.precio_unidad === 0 && precios.precio_libra === 0) {
-            throw new Error('Al menos un precio debe ser mayor a 0');
+            throw new ValidationError('Al menos un precio debe ser mayor a 0');
         }
 
         return true;

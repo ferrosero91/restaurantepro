@@ -47,48 +47,37 @@ const upload = multer({
 });
 
 // GET /productos - Mostrar página de productos
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const productos = await productoService.listar(req.tenantId);
         res.render('productos', { productos: productos || [], user: req.user });
     } catch (error) {
-        console.error('Error al obtener productos:', error);
-        res.status(500).render('error', { 
-            error: {
-                message: 'Error al obtener productos',
-                stack: error.stack
-            }
-        });
+        next(error);
     }
 });
 
 // GET /productos/buscar - Buscar productos
-router.get('/buscar', validateSearchProducto, async (req, res) => {
+router.get('/buscar', validateSearchProducto, async (req, res, next) => {
     try {
         const productos = await productoService.buscar(req.query.q, req.tenantId);
         res.json(productos);
     } catch (error) {
-        console.error('Error al buscar productos:', error);
-        res.status(500).json({ error: 'Error al buscar productos' });
+        next(error);
     }
 });
 
 // GET /productos/:id - Obtener un producto específico
-router.get('/:id(\\d+)', validateGetProducto, async (req, res) => {
+router.get('/:id(\\d+)', validateGetProducto, async (req, res, next) => {
     try {
         const producto = await productoService.obtenerPorId(req.params.id, req.tenantId);
         res.json(producto);
     } catch (error) {
-        console.error('Error al obtener producto:', error);
-        if (error.message === 'Producto no encontrado') {
-            return res.status(404).json({ error: error.message });
-        }
-        res.status(500).json({ error: 'Error al obtener producto' });
+        next(error);
     }
 });
 
 // POST /productos - Crear nuevo producto
-router.post('/', upload.single('imagen'), validateCreateProducto, async (req, res) => {
+router.post('/', upload.single('imagen'), validateCreateProducto, async (req, res, next) => {
     try {
         if (!req.tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
@@ -113,24 +102,18 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
             message: 'Producto creado exitosamente' 
         });
     } catch (error) {
-        console.error('Error al crear producto:', error);
         // Si hay error, eliminar la imagen subida
         if (req.file) {
             fs.unlink(req.file.path, (err) => {
                 if (err) console.error('Error al eliminar imagen:', err);
             });
         }
-        
-        if (error.message === 'Ya existe un producto con ese código') {
-            return res.status(400).json({ error: error.message });
-        }
-        
-        res.status(500).json({ error: 'Error al crear producto' });
+        next(error);
     }
 });
 
 // PUT /productos/:id - Actualizar producto
-router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, res) => {
+router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, res, next) => {
     try {
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
         const nuevaImagen = req.file ? req.file.filename : null;
@@ -167,33 +150,23 @@ router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, 
         await productoService.actualizar(req.params.id, dataActualizar, req.tenantId);
         res.json({ message: 'Producto actualizado exitosamente' });
     } catch (error) {
-        console.error('Error al actualizar producto:', error);
         // Si hay error, eliminar la nueva imagen subida
         if (req.file) {
             fs.unlink(req.file.path, (err) => {
                 if (err) console.error('Error al eliminar imagen:', err);
             });
         }
-        
-        if (error.message === 'Producto no encontrado' || error.message === 'Ya existe otro producto con ese código') {
-            return res.status(400).json({ error: error.message });
-        }
-        
-        res.status(500).json({ error: 'Error al actualizar producto' });
+        next(error);
     }
 });
 
 // DELETE /productos/:id - Eliminar producto
-router.delete('/:id', validateDeleteProducto, async (req, res) => {
+router.delete('/:id', validateDeleteProducto, async (req, res, next) => {
     try {
         await productoService.eliminar(req.params.id, req.tenantId);
         res.json({ message: 'Producto eliminado exitosamente' });
     } catch (error) {
-        console.error('Error al eliminar producto:', error);
-        if (error.message === 'Producto no encontrado') {
-            return res.status(404).json({ error: error.message });
-        }
-        res.status(500).json({ error: 'Error al eliminar producto' });
+        next(error);
     }
 });
 

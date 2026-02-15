@@ -9,6 +9,7 @@ const db = require('./db');
 const config = require('./config/env');
 const { requireAuth } = require('./middleware/auth');
 const { requireTenant } = require('./middleware/tenant');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const {
     helmetConfig,
     sanitizeInput,
@@ -181,34 +182,11 @@ app.get('/productos', requireAuth, requireTenant, async (req, res) => {
     }
 });
 
-// Manejo de errores 404
-app.use((req, res, next) => {
-    console.log('404 - Ruta no encontrada:', req.url);
-    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
-        res.status(404).json({ error: 'Ruta no encontrada' });
-    } else {
-        res.status(404).render('404');
-    }
-});
+// Manejo de errores 404 - debe ir ANTES del error handler general
+app.use(notFoundHandler);
 
-// Manejo de errores generales
-app.use((err, req, res, next) => {
-    console.error('Error en la aplicación:', err);
-    
-    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
-        res.status(500).json({ 
-            error: 'Error interno del servidor',
-            message: process.env.NODE_ENV === 'development' ? err.message : 'Error interno'
-        });
-    } else {
-        res.status(500).render('error', {
-            error: {
-                message: 'Error interno del servidor',
-                stack: process.env.NODE_ENV === 'development' ? err.stack : ''
-            }
-        });
-    }
-});
+// Manejo de errores general - debe ser el ÚLTIMO middleware
+app.use(errorHandler);
 
 const PORT = config.port;
 

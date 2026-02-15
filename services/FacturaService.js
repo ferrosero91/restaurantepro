@@ -1,6 +1,7 @@
 const FacturaRepository = require('../repositories/FacturaRepository');
 const ProductoRepository = require('../repositories/ProductoRepository');
 const ClienteRepository = require('../repositories/ClienteRepository');
+const { NotFoundError, ValidationError, BusinessError } = require('../utils/errors');
 
 /**
  * Servicio de Facturas
@@ -20,7 +21,7 @@ class FacturaService {
         // 1. Validar cliente
         const cliente = await this.clienteRepo.findById(data.cliente_id, tenantId);
         if (!cliente) {
-            throw new Error('Cliente no encontrado');
+            throw new NotFoundError('Cliente');
         }
 
         // 2. Validar productos
@@ -29,7 +30,7 @@ class FacturaService {
         // 3. Calcular y validar total
         const totalCalculado = this.calcularTotal(data.productos);
         if (Math.abs(totalCalculado - parseFloat(data.total)) > 0.01) {
-            throw new Error('El total no coincide con la suma de los productos');
+            throw new ValidationError('El total no coincide con la suma de los productos');
         }
 
         // 4. Validar y normalizar pagos
@@ -72,7 +73,7 @@ class FacturaService {
         const factura = await this.facturaRepo.findByIdWithDetails(id, tenantId);
         
         if (!factura) {
-            throw new Error('Factura no encontrada');
+            throw new NotFoundError('Factura');
         }
 
         return factura;
@@ -110,35 +111,35 @@ class FacturaService {
      */
     async validarProductos(productos, tenantId) {
         if (!productos || productos.length === 0) {
-            throw new Error('Debe incluir al menos un producto');
+            throw new ValidationError('Debe incluir al menos un producto');
         }
 
         for (const item of productos) {
             const producto = await this.productoRepo.findById(item.producto_id, tenantId);
             
             if (!producto) {
-                throw new Error(`Producto con ID ${item.producto_id} no encontrado`);
+                throw new NotFoundError(`Producto con ID ${item.producto_id}`);
             }
 
             // Validar cantidad
             if (!item.cantidad || parseFloat(item.cantidad) <= 0) {
-                throw new Error(`Cantidad inválida para producto ${producto.nombre}`);
+                throw new ValidationError(`Cantidad inválida para producto ${producto.nombre}`);
             }
 
             // Validar precio
             if (!item.precio || parseFloat(item.precio) < 0) {
-                throw new Error(`Precio inválido para producto ${producto.nombre}`);
+                throw new ValidationError(`Precio inválido para producto ${producto.nombre}`);
             }
 
             // Validar unidad de medida
             if (!['KG', 'UND', 'LB'].includes(item.unidad)) {
-                throw new Error(`Unidad de medida inválida para producto ${producto.nombre}`);
+                throw new ValidationError(`Unidad de medida inválida para producto ${producto.nombre}`);
             }
 
             // Validar subtotal
             const subtotalCalculado = parseFloat(item.cantidad) * parseFloat(item.precio);
             if (Math.abs(subtotalCalculado - parseFloat(item.subtotal)) > 0.01) {
-                throw new Error(`Subtotal incorrecto para producto ${producto.nombre}`);
+                throw new ValidationError(`Subtotal incorrecto para producto ${producto.nombre}`);
             }
         }
 
@@ -175,13 +176,13 @@ class FacturaService {
         });
 
         if (pagosValidos.length === 0) {
-            throw new Error('No hay pagos válidos');
+            throw new ValidationError('No hay pagos válidos');
         }
 
         // Validar que la suma de pagos coincida con el total
         const sumaPagos = pagosValidos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         if (Math.abs(sumaPagos - total) > 0.01) {
-            throw new Error('La suma de los pagos no coincide con el total de la factura');
+            throw new ValidationError('La suma de los pagos no coincide con el total de la factura');
         }
 
         return pagosValidos.map(p => ({

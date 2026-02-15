@@ -1,4 +1,5 @@
 const ClienteRepository = require('../repositories/ClienteRepository');
+const { NotFoundError, ValidationError, BusinessError } = require('../utils/errors');
 
 /**
  * Servicio de Clientes
@@ -34,7 +35,7 @@ class ClienteService {
         const cliente = await this.clienteRepo.findById(id, tenantId);
         
         if (!cliente) {
-            throw new Error('Cliente no encontrado');
+            throw new NotFoundError('Cliente');
         }
 
         return cliente;
@@ -78,7 +79,7 @@ class ClienteService {
         // Verificar que existe
         const existe = await this.clienteRepo.exists(id, tenantId);
         if (!existe) {
-            throw new Error('Cliente no encontrado');
+            throw new NotFoundError('Cliente');
         }
 
         // Validar datos
@@ -100,13 +101,13 @@ class ClienteService {
     async eliminar(id, tenantId) {
         const existe = await this.clienteRepo.exists(id, tenantId);
         if (!existe) {
-            throw new Error('Cliente no encontrado');
+            throw new NotFoundError('Cliente');
         }
 
         // Verificar si tiene facturas
         const tieneFacturas = await this.clienteRepo.hasFacturas(id);
         if (tieneFacturas) {
-            throw new Error('No se puede eliminar el cliente porque tiene facturas asociadas');
+            throw new BusinessError('No se puede eliminar el cliente porque tiene facturas asociadas');
         }
 
         const eliminado = await this.clienteRepo.delete(id, tenantId);
@@ -130,19 +131,19 @@ class ClienteService {
      */
     validarDatos(data) {
         if (!data.nombre || data.nombre.trim() === '') {
-            throw new Error('El nombre es requerido');
+            throw new ValidationError('El nombre es requerido');
         }
 
         if (data.nombre.length > 100) {
-            throw new Error('El nombre no puede exceder 100 caracteres');
+            throw new ValidationError('El nombre no puede exceder 100 caracteres');
         }
 
         if (data.telefono && data.telefono.length > 20) {
-            throw new Error('El teléfono no puede exceder 20 caracteres');
+            throw new ValidationError('El teléfono no puede exceder 20 caracteres');
         }
 
         if (data.direccion && data.direccion.length > 500) {
-            throw new Error('La dirección no puede exceder 500 caracteres');
+            throw new ValidationError('La dirección no puede exceder 500 caracteres');
         }
 
         return true;
