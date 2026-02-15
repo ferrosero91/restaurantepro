@@ -26,7 +26,12 @@
     "dev": "nodemon server.js",
     "build": "pkg . --public --target node18-win-x64",
     "install:db": "node scripts/install.js",
-    "create-superadmin": "node scripts/create_superadmin.js"
+    "create-superadmin": "node scripts/create_superadmin.js",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart"
   },
   "dependencies": {
     "axios": "^1.13.4",

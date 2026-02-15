@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+logs/*.log
+*.log
+public/uploads/*
+!public/uploads/.gitkeep
+dist
+*.md
+.vscode
+.idea
+*.swp
+backups
+CREDENCIALES_*.txt

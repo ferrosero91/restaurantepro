@@ -3,14 +3,17 @@ node_modules/
 dist/
 dist.zip
 
-# Archivos subidos por usuarios (imágenes, etc)
+# Archivos subidos por usuarios
 public/uploads/*
 !public/uploads/.gitkeep
 
-# Archivos de entorno (CRÍTICO - no subir credenciales)
+# Archivos de entorno (CRÍTICO)
 .env
 .env.local
 .env.*.local
+
+# NO ignorar .env.docker (es template)
+!.env.docker
 
 # Configuración de editor/IDE
 .cursorrules
@@ -29,6 +32,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 *.log
+logs/*.log
 
 # Archivos temporales
 *.tmp
@@ -44,3 +48,16 @@ lerna-debug.log*
 Thumbs.db
 desktop.ini
 
+# Credenciales generadas
+CREDENCIALES_*.txt
+/root/restaurante-credentials.txt
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+
+# SSL Certificates (se generan en servidor)
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.key
+!docker/nginx/ssl/.gitkeep
