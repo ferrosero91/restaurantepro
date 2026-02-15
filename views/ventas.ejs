@@ -3,199 +3,594 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historial de Ventas</title>
+    <title>Reportes de Ventas - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
     <style>
-        html, body { height: 100%; }
-        body { min-height: 100vh; display: flex; flex-direction: column; }
-        body {
+        html, body { 
+            height: 100%; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body { 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
             background-color: #f8f9fa;
         }
-        .navbar {
-            background-color: #2c3e50;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        
+        /* Cards de estadísticas */
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            height: 100%;
         }
-        .navbar-brand {
-            color: white !important;
-            font-weight: bold;
+        
+        .stat-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
         }
-        .card {
-            border: none;
+        
+        .stat-card.primary { border-left-color: #3498db; }
+        .stat-card.success { border-left-color: #2ecc71; }
+        .stat-card.info { border-left-color: #16a085; }
+        .stat-card.warning { border-left-color: #f39c12; }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+        
+        .stat-icon.primary { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+        .stat-icon.success { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+        .stat-icon.info { background: rgba(22, 160, 133, 0.1); color: #16a085; }
+        .stat-icon.warning { background: rgba(243, 156, 18, 0.1); color: #f39c12; }
+        
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0.5rem 0 0.25rem 0;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        
+        /* Filtros */
+        .filters-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
             margin-bottom: 1.5rem;
         }
-        .card-header {
-            background-color: #fff;
-            border-bottom: 2px solid #f8f9fa;
+        
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            padding: 0.625rem 0.875rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+        }
+        
+        .btn {
+            border-radius: 4px;
+            padding: 0.625rem 1.25rem;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            border-color: #3498db;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .btn-success {
+            background: #2ecc71;
+            border-color: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+            border-color: #27ae60;
+        }
+        
+        /* Tabla */
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1rem 0.75rem;
+            white-space: nowrap;
+        }
+        
+        .table tbody tr {
+            transition: background-color 0.2s;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .table tbody td {
+            padding: 1rem 0.75rem;
+            vertical-align: middle;
+        }
+        
+        .table tfoot {
+            background: #f8f9fa;
             font-weight: 600;
         }
-        .search-box {
-            max-width: 300px;
+        
+        .badge {
+            padding: 0.5rem 0.875rem;
+            font-weight: 500;
+            border-radius: 4px;
         }
-        .table th {
-            border-top: none;
+        
+        .btn-action {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
         }
-        .action-buttons .btn {
-            padding: 0.25rem 0.5rem;
+        
+        /* Paginación */
+        .pagination {
+            margin: 0;
         }
-        .date-filter {
-            max-width: 200px;
+        
+        .page-link {
+            border-radius: 4px;
+            margin: 0 0.25rem;
+            border: 1px solid #dee2e6;
+            color: #2c3e50;
+            padding: 0.5rem 0.875rem;
         }
-        .table-container {
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
+        
+        .page-item.active .page-link {
+            background: #3498db;
+            border-color: #3498db;
         }
-        /* Estilo para las alertas personalizadas */
+        
+        .page-link:hover {
+            background: #f8f9fa;
+            border-color: #3498db;
+            color: #3498db;
+        }
+        
+        /* Alertas */
         .custom-alert {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 9999;
-            min-width: 300px;
-            padding: 15px 20px;
+            min-width: 320px;
+            max-width: 400px;
+            padding: 1rem 1.25rem;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 0.75rem;
             animation: slideIn 0.3s ease-out;
         }
+        
         .custom-alert.success {
-            background-color: #d4edda;
-            border-left: 4px solid #28a745;
+            background: #d4edda;
+            border-left: 4px solid #2ecc71;
             color: #155724;
         }
+        
         .custom-alert.error {
-            background-color: #f8d7da;
-            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+            border-left: 4px solid #e74c3c;
             color: #721c24;
         }
+        
         .custom-alert.warning {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
             color: #856404;
         }
+        
         @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+            from { 
+                transform: translateX(120%);
+                opacity: 0;
+            }
+            to { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stat-card {
+                margin-bottom: 1rem;
+            }
+            
+            .filters-card {
+                padding: 1rem;
+            }
+            
+            .table-card {
+                padding: 0.5rem;
+                overflow-x: auto;
+            }
+            
+            .table {
+                font-size: 0.875rem;
+            }
+            
+            .table thead th,
+            .table tbody td {
+                padding: 0.75rem 0.5rem;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .stat-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+            
+            .custom-alert {
+                min-width: 280px;
+                max-width: calc(100vw - 40px);
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .table-responsive {
+                border-radius: 8px;
+            }
+            
+            .filter-label {
+                font-size: 0.8rem;
+            }
+            
+            .form-control, .form-select {
+                font-size: 0.875rem;
+                padding: 0.5rem 0.75rem;
+            }
         }
     </style>
 </head>
 <body>
     <%- include('partials/navbar') %>
 
-    <main class="flex-grow-1">
-    <div class="container">
-        <div class="card">
-            <div class="card-header">
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-3">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
-                            <input type="date" id="fechaDesde" class="form-control" placeholder="Desde">
+
+    <main class="flex-grow-1 py-4">
+        <div class="container-fluid px-3 px-md-4">
+            
+            <!-- Título -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1" style="color: var(--primary-color); font-weight: 700;">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Reportes de Ventas
+                    </h2>
+                    <p class="text-muted mb-0">Análisis detallado de tus ventas y estadísticas</p>
+                </div>
+            </div>
+
+            <!-- Tarjetas de Estadísticas -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card primary">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Total Facturas</div>
+                                <div class="stat-value"><%= estadisticas.total_facturas %></div>
+                                <small class="text-muted">Facturas registradas</small>
+                            </div>
+                            <div class="stat-icon primary">
+                                <i class="bi bi-receipt"></i>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
-                            <input type="date" id="fechaHasta" class="form-control" placeholder="Hasta">
+                </div>
+                
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card success">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Total Ventas</div>
+                                <div class="stat-value">$<%= Number(estadisticas.total_ventas).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) %></div>
+                                <small class="text-muted">Ingresos totales</small>
+                            </div>
+                            <div class="stat-icon success">
+                                <i class="bi bi-cash-stack"></i>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="buscarVentas" class="form-control" placeholder="Buscar por cliente o # factura">
+                </div>
+                
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card info">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Ticket Promedio</div>
+                                <div class="stat-value">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) %></div>
+                                <small class="text-muted">Por factura</small>
+                            </div>
+                            <div class="stat-icon info">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3 d-flex justify-content-end gap-2">
-                        <button class="btn btn-primary" id="filtrarVentas"><i class="bi bi-funnel"></i> Filtrar</button>
-                        <button class="btn btn-success" id="exportarVentas"><i class="bi bi-file-earmark-excel"></i> Exportar</button>
+                </div>
+                
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card warning">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Venta Máxima</div>
+                                <div class="stat-value">$<%= Number(estadisticas.venta_maxima).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) %></div>
+                                <small class="text-muted">Mayor venta</small>
+                            </div>
+                            <div class="stat-icon warning">
+                                <i class="bi bi-trophy"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table class="table table-hover">
-                        <thead class="table-light sticky-top">
+
+
+            <!-- Filtros -->
+            <div class="filters-card">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-funnel-fill me-2" style="color: var(--secondary-color); font-size: 1.25rem;"></i>
+                    <h5 class="mb-0" style="color: var(--primary-color); font-weight: 600;">Filtros de Búsqueda</h5>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label class="filter-label">
+                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                        </label>
+                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde || '' %>">
+                    </div>
+                    
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label class="filter-label">
+                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                        </label>
+                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta || '' %>">
+                    </div>
+                    
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <label class="filter-label">
+                            <i class="bi bi-credit-card me-1"></i>Forma de Pago
+                        </label>
+                        <select id="formaPagoFiltro" class="form-select">
+                            <option value="todos" <%= !filtros.forma_pago || filtros.forma_pago === 'todos' ? 'selected' : '' %>>Todos</option>
+                            <option value="efectivo" <%= filtros.forma_pago === 'efectivo' ? 'selected' : '' %>>Efectivo</option>
+                            <option value="transferencia" <%= filtros.forma_pago === 'transferencia' ? 'selected' : '' %>>Transferencia</option>
+                            <option value="tarjeta" <%= filtros.forma_pago === 'tarjeta' ? 'selected' : '' %>>Tarjeta</option>
+                            <option value="mixto" <%= filtros.forma_pago === 'mixto' ? 'selected' : '' %>>Mixto</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="filter-label">
+                            <i class="bi bi-search me-1"></i>Buscar
+                        </label>
+                        <input type="text" id="buscarVentas" class="form-control" placeholder="Cliente o # factura" value="<%= filtros.q || '' %>">
+                    </div>
+                </div>
+                
+                <div class="row g-2 mt-3">
+                    <div class="col-12 col-md-auto">
+                        <button class="btn btn-primary w-100" id="filtrarVentas">
+                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <button class="btn btn-outline-secondary w-100" id="limpiarFiltros">
+                            <i class="bi bi-x-circle me-2"></i>Limpiar
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <button class="btn btn-success w-100" id="exportarVentas">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Exportar Excel
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-info dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-clock-history me-2"></i>Presets
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" data-preset="hoy"><i class="bi bi-calendar-day me-2"></i>Hoy</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="ayer"><i class="bi bi-calendar-minus me-2"></i>Ayer</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="semana"><i class="bi bi-calendar-week me-2"></i>Esta Semana</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="mes"><i class="bi bi-calendar-month me-2"></i>Este Mes</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="mes-anterior"><i class="bi bi-calendar3 me-2"></i>Mes Anterior</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Tabla de Ventas -->
+            <div class="table-card">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <%= textoPaginacion %>
+                    </div>
+                    <div>
+                        <select id="registrosPorPagina" class="form-select form-select-sm">
+                            <option value="25" <%= paginacion.registrosPorPagina === 25 ? 'selected' : '' %>>25 por página</option>
+                            <option value="50" <%= paginacion.registrosPorPagina === 50 ? 'selected' : '' %>>50 por página</option>
+                            <option value="100" <%= paginacion.registrosPorPagina === 100 ? 'selected' : '' %>>100 por página</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
                             <tr>
-                                <th>Factura #</th>
-                                <th>Fecha</th>
-                                <th>Cliente</th>
-                                <th>Forma de Pago</th>
-                                <th class="text-end">Total</th>
-                                <th class="text-center">Acciones</th>
+                                <th><i class="bi bi-hash me-1"></i>Factura</th>
+                                <th><i class="bi bi-calendar3 me-1"></i>Fecha</th>
+                                <th><i class="bi bi-person me-1"></i>Cliente</th>
+                                <th><i class="bi bi-credit-card me-1"></i>Pago</th>
+                                <th class="text-end"><i class="bi bi-currency-dollar me-1"></i>Total</th>
+                                <th class="text-center"><i class="bi bi-gear me-1"></i>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="ventasTabla">
-                            <% ventas.forEach(function(venta) { %>
+                        <tbody>
+                            <% if (ventas.length === 0) { %>
                                 <tr>
-                                    <td><%= venta.id %></td>
-                                    <td><%= new Date(venta.fecha).toLocaleString() %></td>
-                                    <td><%= venta.cliente_nombre %></td>
-                                    <td><%= venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1) %></td>
-                                    <td class="text-end" data-total="<%= venta.total %>">$<%= Number(venta.total).toFixed(2) %></td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-info me-1 btn-detalles" 
-                                                data-factura-id="<%= venta.id %>"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-title="Ver detalles">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary btn-reimprimir" 
-                                                data-factura-id="<%= venta.id %>"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-title="Reimprimir factura">
-                                            <i class="bi bi-printer"></i>
-                                        </button>
+                                    <td colspan="6" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                            <p class="mt-3 mb-0">No se encontraron ventas con los filtros seleccionados</p>
+                                        </div>
                                     </td>
                                 </tr>
-                            <% }); %>
+                            <% } else { %>
+                                <% ventas.forEach(function(venta) { %>
+                                    <tr>
+                                        <td><strong class="text-primary">#<%= venta.id %></strong></td>
+                                        <td><%= new Date(venta.fecha).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) %></td>
+                                        <td><%= venta.cliente_nombre %></td>
+                                        <td>
+                                            <% const formaPago = venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1); %>
+                                            <% const badgeClass = venta.forma_pago === 'efectivo' ? 'bg-success' : venta.forma_pago === 'transferencia' ? 'bg-info' : venta.forma_pago === 'tarjeta' ? 'bg-primary' : 'bg-warning'; %>
+                                            <span class="badge <%= badgeClass %>"><%= formaPago %></span>
+                                        </td>
+                                        <td class="text-end"><strong>$<%= Number(venta.total).toLocaleString('es-CO', { minimumFractionDigits: 2 }) %></strong></td>
+                                        <td class="text-center">
+                                            <button class="btn btn-outline-info btn-action btn-detalles me-1" 
+                                                    data-factura-id="<%= venta.id %>"
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Ver detalles">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-primary btn-action btn-reimprimir" 
+                                                    data-factura-id="<%= venta.id %>"
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Reimprimir">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
                         </tbody>
-                        <tfoot class="table-light fw-bold">
-                            <tr>
-                                <td colspan="3" class="text-end">Total Efectivo:</td>
-                                <td colspan="2" class="text-end" id="totalEfectivo">$0.00</td>
-                                <td></td>
+                        <% if (ventas.length > 0) { %>
+                        <tfoot>
+                            <tr class="table-success">
+                                <td colspan="4" class="text-end"><strong>Total Efectivo:</strong></td>
+                                <td colspan="2" class="text-end"><strong>$<%= Number(totales.efectivo).toLocaleString('es-CO', { minimumFractionDigits: 2 }) %></strong></td>
                             </tr>
-                            <tr>
-                                <td colspan="3" class="text-end">Total Transferencia:</td>
-                                <td colspan="2" class="text-end" id="totalTransferencia">$0.00</td>
-                                <td></td>
+                            <tr class="table-info">
+                                <td colspan="4" class="text-end"><strong>Total Transferencia:</strong></td>
+                                <td colspan="2" class="text-end"><strong>$<%= Number(totales.transferencia).toLocaleString('es-CO', { minimumFractionDigits: 2 }) %></strong></td>
                             </tr>
-                            <tr>
-                                <td colspan="3" class="text-end">Total Tarjeta:</td>
-                                <td colspan="2" class="text-end" id="totalTarjeta">$0.00</td>
-                                <td></td>
+                            <tr class="table-primary">
+                                <td colspan="4" class="text-end"><strong>Total Tarjeta:</strong></td>
+                                <td colspan="2" class="text-end"><strong>$<%= Number(totales.tarjeta).toLocaleString('es-CO', { minimumFractionDigits: 2 }) %></strong></td>
                             </tr>
-                            <tr>
-                                <td colspan="3" class="text-end">Total General:</td>
-                                <td colspan="2" class="text-end" id="totalGeneral">$0.00</td>
-                                <td></td>
+                            <tr class="table-warning">
+                                <td colspan="4" class="text-end"><h5 class="mb-0">Total General:</h5></td>
+                                <td colspan="2" class="text-end"><h5 class="mb-0">$<%= Number(totales.general).toLocaleString('es-CO', { minimumFractionDigits: 2 }) %></h5></td>
                             </tr>
                         </tfoot>
+                        <% } %>
                     </table>
                 </div>
+
+                <!-- Paginación -->
+                <% if (paginacion.totalPaginas > 1) { %>
+                    <div class="mt-4 d-flex justify-content-center">
+                        <%- paginacionHTML %>
+                    </div>
+                <% } %>
             </div>
+
         </div>
-    </div>
     </main>
+
 
     <!-- Modal para mostrar facturas -->
     <div class="modal fade" id="facturaModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Factura</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; border: none;">
+                <div class="modal-header" style="background: var(--secondary-color); color: white; border-radius: 12px 12px 0 0;">
+                    <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Factura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-0">
                     <iframe id="facturaFrame" style="width: 100%; height: 600px; border: none;"></iframe>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cerrar
+                    </button>
                     <button type="button" class="btn btn-primary" onclick="imprimirFactura()">
-                        <i class="bi bi-printer"></i> Imprimir
+                        <i class="bi bi-printer me-2"></i>Imprimir
                     </button>
                 </div>
             </div>
@@ -204,26 +599,26 @@
 
     <!-- Modal para detalles de factura -->
     <div class="modal fade" id="detallesModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalles de Factura</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; border: none;">
+                <div class="modal-header" style="background: var(--info-color); color: white; border-radius: 12px 12px 0 0;">
+                    <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Detalles de Factura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row mb-3">
+                    <div class="row mb-4">
                         <div class="col-md-6">
-                            <h6>Información del Cliente</h6>
+                            <h6 class="text-primary mb-3"><i class="bi bi-person-circle me-2"></i>Información del Cliente</h6>
                             <div id="detallesCliente"></div>
                         </div>
                         <div class="col-md-6">
-                            <h6>Información de la Factura</h6>
+                            <h6 class="text-primary mb-3"><i class="bi bi-receipt-cutoff me-2"></i>Información de la Factura</h6>
                             <div id="detallesFactura"></div>
                         </div>
                     </div>
-                    <h6>Productos</h6>
+                    <h6 class="text-primary mb-3"><i class="bi bi-cart-check me-2"></i>Productos</h6>
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-sm table-hover">
                             <thead class="table-light">
                                 <tr>
                                     <th>Producto</th>
@@ -234,10 +629,10 @@
                                 </tr>
                             </thead>
                             <tbody id="detallesProductos"></tbody>
-                            <tfoot class="table-light fw-bold">
+                            <tfoot class="table-light">
                                 <tr>
-                                    <td colspan="4" class="text-end">Total:</td>
-                                    <td class="text-end" id="detallesTotal"></td>
+                                    <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                                    <td class="text-end"><strong id="detallesTotal"></strong></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -249,34 +644,30 @@
 
     <%- include('partials/footer') %>
 
+
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
         const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
         const detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
         
-        // Función para mostrar alertas personalizadas
         function mostrarAlerta(mensaje, tipo = 'success') {
             const alertaDiv = document.createElement('div');
             alertaDiv.className = `custom-alert ${tipo}`;
             alertaDiv.innerHTML = `
-                <div class="alert-content">
-                    <i class="bi ${tipo === 'success' ? 'bi-check-circle' : 
-                                  tipo === 'error' ? 'bi-x-circle' : 
-                                  'bi-exclamation-triangle'} me-2"></i>
-                    ${mensaje}
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.remove()"></button>
+                <i class="bi ${tipo === 'success' ? 'bi-check-circle-fill' : 
+                              tipo === 'error' ? 'bi-x-circle-fill' : 
+                              'bi-exclamation-triangle-fill'}" style="font-size: 1.5rem;"></i>
+                <div class="flex-grow-1">${mensaje}</div>
+                <button type="button" class="btn-close btn-close-white" onclick="this.parentElement.remove()"></button>
             `;
             document.body.appendChild(alertaDiv);
             setTimeout(() => alertaDiv.remove(), 5000);
         }
 
         function mostrarFactura(id) {
-            // embed=1 para ocultar el botón "Volver" dentro del iframe (reimpresión desde ventas)
-            // Relacionado con: routes/facturas.js y views/factura.ejs
             document.getElementById('facturaFrame').src = `/api/facturas/${id}/imprimir?embed=1`;
-            document.querySelector('#facturaModal .modal-title').textContent = `Factura #${id}`;
+            document.querySelector('#facturaModal .modal-title').innerHTML = `<i class="bi bi-receipt me-2"></i>Factura #${id}`;
             facturaModal.show();
         }
 
@@ -284,25 +675,22 @@
             $.ajax({
                 url: `/api/facturas/${id}/detalles`,
                 success: function(data) {
-                    // Información del cliente
                     $('#detallesCliente').html(`
-                        <p><strong>Nombre:</strong> ${data.cliente.nombre}</p>
-                        <p><strong>Dirección:</strong> ${data.cliente.direccion || 'No especificada'}</p>
-                        <p><strong>Teléfono:</strong> ${data.cliente.telefono || 'No especificado'}</p>
+                        <p class="mb-2"><strong>Nombre:</strong> ${data.cliente.nombre}</p>
+                        <p class="mb-2"><strong>Dirección:</strong> ${data.cliente.direccion || 'No especificada'}</p>
+                        <p class="mb-0"><strong>Teléfono:</strong> ${data.cliente.telefono || 'No especificado'}</p>
                     `);
 
-                    // Información de la factura
-                    // Nota: si existe pago mixto, el backend devuelve data.pagos[]
                     $('#detallesFactura').html(`
-                        <p><strong>Factura #:</strong> ${data.factura.id}</p>
-                        <p><strong>Fecha:</strong> ${new Date(data.factura.fecha).toLocaleString()}</p>
-                        <p><strong>Forma de Pago:</strong> ${data.factura.forma_pago.charAt(0).toUpperCase() + data.factura.forma_pago.slice(1)}</p>
+                        <p class="mb-2"><strong>Factura #:</strong> ${data.factura.id}</p>
+                        <p class="mb-2"><strong>Fecha:</strong> ${new Date(data.factura.fecha).toLocaleString()}</p>
+                        <p class="mb-2"><strong>Forma de Pago:</strong> ${data.factura.forma_pago.charAt(0).toUpperCase() + data.factura.forma_pago.slice(1)}</p>
                         ${
                             Array.isArray(data.pagos) && data.pagos.length > 0
                             ? `
                                 <div class="mt-2">
                                     <strong>Pagos:</strong>
-                                    <ul class="mb-0">
+                                    <ul class="mb-0 mt-1">
                                         ${data.pagos.map(p => `
                                             <li>
                                                 <strong>${(p.metodo||'').charAt(0).toUpperCase() + (p.metodo||'').slice(1)}:</strong>
@@ -317,7 +705,6 @@
                         }
                     `);
 
-                    // Productos
                     const tbody = $('#detallesProductos');
                     tbody.empty();
                     let totalGeneral = 0;
@@ -349,86 +736,140 @@
         }
 
         function imprimirFactura() {
-            const frame = document.getElementById('facturaFrame');
-            frame.contentWindow.print();
+            document.getElementById('facturaFrame').contentWindow.print();
         }
 
-        document.getElementById('filtrarVentas').addEventListener('click', function() {
+
+        function aplicarFiltros() {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
-            const q = document.getElementById('buscarVentas').value || '';
+            const formaPago = document.getElementById('formaPagoFiltro').value;
+            const q = document.getElementById('buscarVentas').value.trim();
+            
             if (!desde || !hasta) {
                 mostrarAlerta('Por favor seleccione ambas fechas', 'warning');
                 return;
             }
-            const params = new URLSearchParams({ desde, hasta, q });
+            
+            const params = new URLSearchParams();
+            params.set('desde', desde);
+            params.set('hasta', hasta);
+            if (formaPago && formaPago !== 'todos') params.set('forma_pago', formaPago);
+            if (q) params.set('q', q);
+            
             window.location.href = `/ventas?${params.toString()}`;
+        }
+
+        document.getElementById('filtrarVentas').addEventListener('click', aplicarFiltros);
+        document.getElementById('buscarVentas').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') aplicarFiltros();
         });
 
-        document.getElementById('exportarVentas').addEventListener('click', function(){
+        document.getElementById('limpiarFiltros').addEventListener('click', function() {
+            window.location.href = '/ventas';
+        });
+
+        document.getElementById('exportarVentas').addEventListener('click', function() {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
-            const q = document.getElementById('buscarVentas').value || '';
+            const formaPago = document.getElementById('formaPagoFiltro').value;
+            const q = document.getElementById('buscarVentas').value.trim();
+            
             const params = new URLSearchParams();
-            if (desde && hasta) { params.set('desde', desde); params.set('hasta', hasta); }
+            if (desde && hasta) {
+                params.set('desde', desde);
+                params.set('hasta', hasta);
+            }
+            if (formaPago && formaPago !== 'todos') params.set('forma_pago', formaPago);
             if (q) params.set('q', q);
+            
             window.open(`/ventas/export?${params.toString()}`, '_blank');
         });
 
-        // Establecer valores iniciales desde la URL o defaults
-        (function initFiltrosDesdeURL(){
-            const p = new URLSearchParams(window.location.search);
-            const desde = p.get('desde');
-            const hasta = p.get('hasta');
-            const q = p.get('q') || '';
+        document.getElementById('registrosPorPagina').addEventListener('change', function() {
+            const limit = this.value;
+            const params = new URLSearchParams(window.location.search);
+            params.set('limit', limit);
+            params.delete('page');
+            window.location.href = `/ventas?${params.toString()}`;
+        });
+
+        document.querySelectorAll('[data-preset]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const preset = this.getAttribute('data-preset');
+                const hoy = new Date();
+                let desde, hasta;
+                
+                switch(preset) {
+                    case 'hoy':
+                        desde = hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'ayer':
+                        const ayer = new Date(hoy);
+                        ayer.setDate(ayer.getDate() - 1);
+                        desde = hasta = ayer.toISOString().split('T')[0];
+                        break;
+                    case 'semana':
+                        const inicioSemana = new Date(hoy);
+                        inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+                        desde = inicioSemana.toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'mes':
+                        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'mes-anterior':
+                        const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                        desde = mesAnterior.toISOString().split('T')[0];
+                        const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+                        hasta = finMesAnterior.toISOString().split('T')[0];
+                        break;
+                }
+                
+                document.getElementById('fechaDesde').value = desde;
+                document.getElementById('fechaHasta').value = hasta;
+                aplicarFiltros();
+            });
+        });
+
+        (function initFiltros() {
+            const params = new URLSearchParams(window.location.search);
+            const desde = params.get('desde');
+            const hasta = params.get('hasta');
+            const formaPago = params.get('forma_pago');
+            const q = params.get('q');
+            
             if (desde) document.getElementById('fechaDesde').value = desde;
             if (hasta) document.getElementById('fechaHasta').value = hasta;
+            if (formaPago) document.getElementById('formaPagoFiltro').value = formaPago;
             if (q) document.getElementById('buscarVentas').value = q;
+            
             if (!desde || !hasta) {
                 const hoy = new Date();
-                const hace30Dias = new Date();
-                hace30Dias.setDate(hace30Dias.getDate() - 30);
-                document.getElementById('fechaDesde').value = document.getElementById('fechaDesde').value || hace30Dias.toISOString().split('T')[0];
-                document.getElementById('fechaHasta').value = document.getElementById('fechaHasta').value || hoy.toISOString().split('T')[0];
+                const hace30 = new Date();
+                hace30.setDate(hace30.getDate() - 30);
+                
+                if (!desde) document.getElementById('fechaDesde').value = hace30.toISOString().split('T')[0];
+                if (!hasta) document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
             }
         })();
 
-        // Inicializar tooltips
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        const tooltipList = [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
 
-        // Totales por método (servidor) usando factura_pagos (incluye pago mixto)
-        // Relacionado con: routes/ventas.js -> getTotalesPorMetodo()
-        function aplicarTotalesServidor() {
-            const t = <%- JSON.stringify(totales || {}) %>;
-            const tef = Number(t.efectivo || 0);
-            const ttr = Number(t.transferencia || 0);
-            const tta = Number(t.tarjeta || 0);
-            const tge = Number(t.general || (tef + ttr + tta));
-
-            document.getElementById('totalEfectivo').textContent = `$${tef.toFixed(2)}`;
-            document.getElementById('totalTransferencia').textContent = `$${ttr.toFixed(2)}`;
-            document.getElementById('totalTarjeta').textContent = `$${tta.toFixed(2)}`;
-            document.getElementById('totalGeneral').textContent = `$${tge.toFixed(2)}`;
-        }
-
-        // Aplicar al cargar la página (ya incluye filtros por fecha/búsqueda)
-        aplicarTotalesServidor();
-
-        // Manejador para reimprimir facturas y ver detalles
         document.querySelectorAll('.btn-reimprimir').forEach(button => {
             button.addEventListener('click', function() {
-                const facturaId = this.getAttribute('data-factura-id');
-                mostrarFactura(facturaId);
+                mostrarFactura(this.getAttribute('data-factura-id'));
             });
         });
 
         document.querySelectorAll('.btn-detalles').forEach(button => {
             button.addEventListener('click', function() {
-                const facturaId = this.getAttribute('data-factura-id');
-                mostrarDetalles(facturaId);
+                mostrarDetalles(this.getAttribute('data-factura-id'));
             });
         });
     </script>
 </body>
-</html> 
+</html>

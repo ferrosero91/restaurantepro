@@ -3,38 +3,387 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuración de Impresión</title>
+    <title>Configuración - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
     <style>
         html, body { height: 100%; }
-        body { min-height: 100vh; display: flex; flex-direction: column; }
-        body{background-color:#f8f9fa}
+        body { 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+        
+        .page-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .nav-tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .nav-tabs::-webkit-scrollbar-thumb {
+            background: #3498db;
+            border-radius: 4px;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #6c757d;
+            border: none;
+            padding: 0.875rem 1.25rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: #3498db;
+            border: none;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #3498db;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .nav-tabs .nav-link i {
+            font-size: 1rem;
+        }
+        
+        .tab-content {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+        
+        .section-title {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            padding: 0.625rem 0.875rem;
+            font-size: 0.9rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+            padding: 0.625rem 1.5rem;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .user-avatar, .client-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .badge-rol {
+            padding: 0.5rem 0.875rem;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            padding: 0.875rem 0.75rem;
+        }
+        
+        .table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .table tbody td {
+            padding: 0.875rem 0.75rem;
+            vertical-align: middle;
+        }
+        
+        .permission-card {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.875rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            height: 100%;
+            background: white;
+        }
+        
+        .permission-card:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        
+        .permission-card.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        
+        .permission-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .permission-icon.purple { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .permission-icon.blue { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+        .permission-icon.green { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+        .permission-icon.orange { background: rgba(243, 156, 18, 0.1); color: #f39c12; }
+        
+        .permission-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.125rem;
+            font-size: 0.875rem;
+        }
+        
+        .permission-desc {
+            font-size: 0.75rem;
+            color: #6c757d;
+            line-height: 1.3;
+        }
+        
+        .admin-checkbox {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .admin-checkbox.checked {
+            background: #e3f2fd;
+            border-color: #3498db;
+        }
+        
+        .modal-header {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .modal-title {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 1rem;
+            }
+            
+            .page-header h2 {
+                font-size: 1.25rem;
+            }
+            
+            .page-header p {
+                font-size: 0.875rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
+            }
+            
+            .nav-tabs .nav-link i {
+                font-size: 0.9rem;
+            }
+            
+            .tab-content {
+                padding: 1rem;
+            }
+            
+            .section-title {
+                font-size: 0.9rem;
+            }
+            
+            .table {
+                font-size: 0.85rem;
+            }
+            
+            .table thead th {
+                padding: 0.625rem 0.5rem;
+                font-size: 0.75rem;
+            }
+            
+            .table tbody td {
+                padding: 0.625rem 0.5rem;
+            }
+            
+            .user-avatar, .client-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+            }
+            
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+            }
+            
+            .permission-card {
+                padding: 0.75rem;
+            }
+            
+            .permission-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+            
+            .permission-title {
+                font-size: 0.8rem;
+            }
+            
+            .permission-desc {
+                font-size: 0.7rem;
+            }
+            
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+            
+            .modal-body {
+                padding: 1rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .table-responsive {
+                font-size: 0.8rem;
+            }
+            
+            .d-flex.gap-2 {
+                flex-direction: column;
+            }
+            
+            .d-flex.gap-2 .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
     <%- include('partials/navbar') %>
     <main class="flex-grow-1">
-    <div class="container mt-4">
-        <h2 class="mb-4">Configuración de Factura</h2>
+    <div class="container-fluid px-3 px-md-4 py-3">
         
-        <form action="/configuracion" method="POST" enctype="multipart/form-data">
-            <div class="card mb-4">
-                <div class="card-header">
-                    Datos del Negocio
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
+        <!-- Tabs de navegación -->
+        <ul class="nav nav-tabs mb-0" id="configTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="negocio-tab" data-bs-toggle="tab" data-bs-target="#negocio" type="button">
+                    <i class="bi bi-shop me-2"></i>Negocio
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="impresion-tab" data-bs-toggle="tab" data-bs-target="#impresion" type="button">
+                    <i class="bi bi-printer me-2"></i>Impresión
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button">
+                    <i class="bi bi-tags me-2"></i>Categorías
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button">
+                    <i class="bi bi-people me-2"></i>Clientes
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios" type="button">
+                    <i class="bi bi-person-badge me-2"></i>Usuarios
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Contenido de las tabs -->
+        <div class="tab-content" id="configTabContent">
+        
+        <!-- Contenido de las tabs -->
+        <div class="tab-content" id="configTabContent">
+            
+            <!-- TAB: Datos del Negocio -->
+            <div class="tab-pane fade show active" id="negocio" role="tabpanel">
+                <form action="/configuracion" method="POST" enctype="multipart/form-data">
+                    <div class="section-title">
+                        <i class="bi bi-building me-2"></i>Información del Negocio
+                    </div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label">Nombre del Negocio</label>
+                            <label class="form-label">Nombre del Negocio <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="nombre_negocio" value="<%= config.nombre_negocio || '' %>" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">NIT/RUT</label>
                             <input type="text" class="form-control" name="nit" value="<%= config.nit || '' %>">
                         </div>
-                    </div>
-                    <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Dirección</label>
                             <input type="text" class="form-control" name="direccion" value="<%= config.direccion || '' %>">
@@ -44,13 +393,14 @@
                             <input type="text" class="form-control" name="telefono" value="<%= config.telefono || '' %>">
                         </div>
                     </div>
-                    <div class="row mb-3">
+                    
+                    <div class="section-title">
+                        <i class="bi bi-image me-2"></i>Imágenes
+                    </div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="form-label">Logo del Negocio</label>
-                            <!-- Input de logo: guarda en configuracion_impresion.logo_data/logo_tipo (routes/configuracion.js) -->
                             <input id="inputLogo" type="file" class="form-control" name="logo" accept="image/*">
-
-                            <!-- Estado + previsualización (si ya existe en BD o si el usuario selecciona uno nuevo) -->
                             <div class="mt-2">
                                 <% if (config.logo_src) { %>
                                     <div class="small text-success mb-1">
@@ -61,22 +411,14 @@
                                         <i class="bi bi-info-circle me-1"></i>No hay logo guardado
                                     </div>
                                 <% } %>
-
-                                <img
-                                    id="previewLogo"
-                                    src="<%= config.logo_src || '' %>"
-                                    alt="Previsualización de Logo"
-                                    class="border rounded p-1 bg-white"
-                                    style="max-width: 200px; display: <%= config.logo_src ? 'block' : 'none' %>;"
-                                >
+                                <img id="previewLogo" src="<%= config.logo_src || '' %>" alt="Logo" 
+                                     class="border rounded p-1 bg-white" 
+                                     style="max-width: 200px; display: <%= config.logo_src ? 'block' : 'none' %>;">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">QR para Transferencias</label>
-                            <!-- Input de QR: guarda en configuracion_impresion.qr_data/qr_tipo (routes/configuracion.js) -->
                             <input id="inputQr" type="file" class="form-control" name="qr" accept="image/*">
-
-                            <!-- Estado + previsualización -->
                             <div class="mt-2">
                                 <% if (config.qr_src) { %>
                                     <div class="small text-success mb-1">
@@ -87,32 +429,33 @@
                                         <i class="bi bi-info-circle me-1"></i>No hay QR guardado
                                     </div>
                                 <% } %>
-
-                                <img
-                                    id="previewQr"
-                                    src="<%= config.qr_src || '' %>"
-                                    alt="Previsualización de QR"
-                                    class="border rounded p-1 bg-white"
-                                    style="max-width: 150px; display: <%= config.qr_src ? 'block' : 'none' %>;"
-                                >
+                                <img id="previewQr" src="<%= config.qr_src || '' %>" alt="QR" 
+                                     class="border rounded p-1 bg-white" 
+                                     style="max-width: 150px; display: <%= config.qr_src ? 'block' : 'none' %>;">
                             </div>
                         </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label class="form-label">Pie de Página</label>
                             <textarea class="form-control" name="pie_pagina" rows="3"><%= config.pie_pagina || '' %></textarea>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
             </div>
-
-            <div class="card mb-4">
-                <div class="card-header">
-                    Formato de Impresión
-                </div>
-                <div class="card-body">
-                    <div class="row">
+            
+            <!-- TAB: Impresión -->
+            <div class="tab-pane fade" id="impresion" role="tabpanel">
+                <form action="/configuracion" method="POST">
+                    <div class="section-title">
+                        <i class="bi bi-printer me-2"></i>Formato de Impresión
+                    </div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="form-label">Ancho del Papel (mm)</label>
                             <input type="number" class="form-control" name="ancho_papel" value="<%= config.ancho_papel || 80 %>" min="58" max="80">
@@ -126,28 +469,90 @@
                             </select>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
             </div>
-
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-tags me-2"></i>Categorías de Productos</span>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria">
-                        <i class="bi bi-plus-circle me-1"></i>Nueva Categoría
+            
+            <!-- TAB: Categorías -->
+            <div class="tab-pane fade" id="categorias" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div class="section-title mb-0">
+                        <i class="bi bi-tags me-2"></i>Categorías de Productos
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria">
+                        <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
                     </button>
                 </div>
-                <div class="card-body">
-                    <div id="listaCategorias" class="row g-3">
-                        <!-- Se carga dinámicamente -->
-                    </div>
+                <div id="listaCategorias" class="row g-3">
+                    <!-- Se carga dinámicamente -->
                 </div>
             </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Guardar Configuración</button>
-                <a href="/" class="btn btn-secondary">Volver</a>
+            
+            <!-- TAB: Clientes -->
+            <div class="tab-pane fade" id="clientes" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div class="section-title mb-0">
+                        <i class="bi bi-people me-2"></i>Gestión de Clientes
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente">
+                        <i class="bi bi-plus-circle me-2"></i>Nuevo Cliente
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="tablaClientes">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Documento</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Ciudad</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Se carga dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </form>
+            
+            <!-- TAB: Usuarios -->
+            <div class="tab-pane fade" id="usuarios" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div class="section-title mb-0">
+                        <i class="bi bi-person-badge me-2"></i>Gestión de Usuarios
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+                        <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="tablaUsuarios">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Se carga dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
     </div>
 
     <!-- Modal Nueva Categoría -->
@@ -161,7 +566,7 @@
                 <div class="modal-body">
                     <form id="formNuevaCategoria">
                         <div class="mb-3">
-                            <label class="form-label">Nombre *</label>
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="nombre" required>
                         </div>
                         <div class="mb-3">
@@ -181,7 +586,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="guardarCategoria()">Guardar</button>
                 </div>
             </div>
@@ -200,7 +605,7 @@
                     <form id="formEditarCategoria">
                         <input type="hidden" name="id" id="edit_cat_id">
                         <div class="mb-3">
-                            <label class="form-label">Nombre *</label>
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="nombre" id="edit_cat_nombre" required>
                         </div>
                         <div class="mb-3">
@@ -220,8 +625,317 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="actualizarCategoria()">Actualizar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Nuevo Cliente -->
+    <div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevoCliente">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Persona <span class="text-danger">*</span></label>
+                                <select class="form-select" name="tipo_persona" id="nuevo_tipo_persona" required>
+                                    <option value="Natural">Persona Natural</option>
+                                    <option value="Juridica">Persona Jurídica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Documento <span class="text-danger">*</span></label>
+                                <select class="form-select" name="tipo_documento" id="nuevo_tipo_documento" required>
+                                    <option value="CC">Cédula de Ciudadanía</option>
+                                    <option value="NIT">NIT</option>
+                                    <option value="CE">Cédula de Extranjería</option>
+                                    <option value="Pasaporte">Pasaporte</option>
+                                    <option value="TI">Tarjeta de Identidad</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Número de Documento <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="numero_documento" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" id="nuevo_label_nombre">Nombre Completo <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="nombre" required>
+                            </div>
+                            <div class="col-md-12" id="nuevo_razon_social_group" style="display: none;">
+                                <label class="form-label">Razón Social</label>
+                                <input type="text" class="form-control" name="razon_social">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" name="telefono">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Dirección</label>
+                                <input type="text" class="form-control" name="direccion">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" name="ciudad">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Departamento</label>
+                                <input type="text" class="form-control" name="departamento">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" class="form-control" name="codigo_postal">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Régimen Fiscal</label>
+                                <select class="form-select" name="regimen">
+                                    <option value="Simplificado">Simplificado</option>
+                                    <option value="Común">Común</option>
+                                    <option value="Gran Contribuyente">Gran Contribuyente</option>
+                                    <option value="No Responsable">No Responsable</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Responsabilidad Fiscal</label>
+                                <input type="text" class="form-control" name="responsabilidad_fiscal" value="R-99-PN" placeholder="Ej: R-99-PN, O-13, O-15">
+                                <small class="text-muted">Código DIAN de responsabilidad fiscal</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarCliente()">
+                        <i class="bi bi-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Editar Cliente -->
+    <div class="modal fade" id="modalEditarCliente" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarCliente">
+                        <input type="hidden" name="id" id="edit_client_id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Persona <span class="text-danger">*</span></label>
+                                <select class="form-select" name="tipo_persona" id="edit_tipo_persona" required>
+                                    <option value="Natural">Persona Natural</option>
+                                    <option value="Juridica">Persona Jurídica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Documento <span class="text-danger">*</span></label>
+                                <select class="form-select" name="tipo_documento" id="edit_tipo_documento" required>
+                                    <option value="CC">Cédula de Ciudadanía</option>
+                                    <option value="NIT">NIT</option>
+                                    <option value="CE">Cédula de Extranjería</option>
+                                    <option value="Pasaporte">Pasaporte</option>
+                                    <option value="TI">Tarjeta de Identidad</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Número de Documento <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="numero_documento" id="edit_client_numero_documento" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" id="edit_label_nombre">Nombre Completo <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="nombre" id="edit_client_nombre" required>
+                            </div>
+                            <div class="col-md-12" id="edit_razon_social_group" style="display: none;">
+                                <label class="form-label">Razón Social</label>
+                                <input type="text" class="form-control" name="razon_social" id="edit_client_razon_social">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email" id="edit_client_email">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" name="telefono" id="edit_client_telefono">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Dirección</label>
+                                <input type="text" class="form-control" name="direccion" id="edit_client_direccion">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" name="ciudad" id="edit_client_ciudad">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Departamento</label>
+                                <input type="text" class="form-control" name="departamento" id="edit_client_departamento">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" class="form-control" name="codigo_postal" id="edit_client_codigo_postal">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Régimen Fiscal</label>
+                                <select class="form-select" name="regimen" id="edit_client_regimen">
+                                    <option value="Simplificado">Simplificado</option>
+                                    <option value="Común">Común</option>
+                                    <option value="Gran Contribuyente">Gran Contribuyente</option>
+                                    <option value="No Responsable">No Responsable</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Responsabilidad Fiscal</label>
+                                <input type="text" class="form-control" name="responsabilidad_fiscal" id="edit_client_responsabilidad_fiscal" placeholder="Ej: R-99-PN, O-13, O-15">
+                                <small class="text-muted">Código DIAN de responsabilidad fiscal</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" name="activo" id="edit_client_activo">
+                                    <option value="true">Activo</option>
+                                    <option value="false">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="actualizarCliente()">
+                        <i class="bi bi-save me-2"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Nuevo Usuario -->
+    <div class="modal fade" id="modalNuevoUsuario" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevoUsuario">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombres <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="nombres" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellidos <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="apellidos" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" name="telefono">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contraseña <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" name="password" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Rol <span class="text-danger">*</span></label>
+                                <select class="form-select" name="rol_id" id="nuevoRolSelect" required>
+                                    <option value="">Seleccionar rol...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="nuevoPermisosSection">
+                            <label class="form-label d-block mb-3">Permisos de Acceso</label>
+                            <div class="row g-2" id="nuevoPermisosContainer">
+                                <!-- Se carga dinámicamente -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Editar Usuario -->
+    <div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarUsuario">
+                        <input type="hidden" name="id" id="edit_user_id">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombres <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="nombres" id="edit_user_nombres" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellidos <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="apellidos" id="edit_user_apellidos" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" id="edit_user_email" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" name="telefono" id="edit_user_telefono">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" name="password" id="edit_user_password">
+                                <small class="text-muted">Dejar en blanco para mantener la actual</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Rol <span class="text-danger">*</span></label>
+                                <select class="form-select" name="rol_id" id="editRolSelect" required>
+                                    <option value="">Seleccionar rol...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" name="activo" id="edit_user_activo">
+                                    <option value="true">Activo</option>
+                                    <option value="false">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="editPermisosSection">
+                            <label class="form-label d-block mb-3">Permisos de Acceso</label>
+                            <div class="row g-2" id="editPermisosContainer">
+                                <!-- Se carga dinámicamente -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>
                 </div>
             </div>
         </div>
@@ -233,7 +947,10 @@
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Cargar categorías
+        let rolesData = [];
+        let permisosData = [];
+        
+        // ===== CATEGORÍAS =====
         async function cargarCategorias() {
             try {
                 const response = await fetch('/categorias');
@@ -354,12 +1071,500 @@
                 alert('Error al eliminar categoría');
             }
         }
+        
+        // ===== CLIENTES =====
+        async function cargarClientes() {
+            try {
+                // Usar el endpoint correcto que devuelve JSON
+                const response = await fetch('/api/clientes/buscar?q=');
+                const clientes = await response.json();
+                
+                const tbody = document.querySelector('#tablaClientes tbody');
+                if (!clientes || clientes.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p class="mt-3">No hay clientes registrados</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = clientes.map(c => {
+                    const tipoDoc = c.tipo_documento || 'CC';
+                    const numDoc = c.numero_documento || 'Sin documento';
+                    const displayName = c.razon_social || c.nombre;
+                    
+                    return `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="client-avatar">
+                                    ${displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <strong>${displayName}</strong>
+                                    ${c.tipo_persona === 'Juridica' && c.nombre !== c.razon_social ? `<br><small class="text-muted">${c.nombre}</small>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">${tipoDoc}</span>
+                            <br><small>${numDoc}</small>
+                        </td>
+                        <td>${c.email || '-'}</td>
+                        <td>${c.telefono || '-'}</td>
+                        <td>${c.ciudad || '-'}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editarCliente(${c.id})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarCliente(${c.id}, '${displayName.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                }).join('');
+            } catch (error) {
+                console.error('Error al cargar clientes:', error);
+                const tbody = document.querySelector('#tablaClientes tbody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger py-5">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Error al cargar clientes</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Manejar cambio de tipo de persona en nuevo cliente
+        document.getElementById('nuevo_tipo_persona').addEventListener('change', function() {
+            const esJuridica = this.value === 'Juridica';
+            const tipoDocSelect = document.getElementById('nuevo_tipo_documento');
+            const razonSocialGroup = document.getElementById('nuevo_razon_social_group');
+            const labelNombre = document.getElementById('nuevo_label_nombre');
+            
+            if (esJuridica) {
+                tipoDocSelect.value = 'NIT';
+                razonSocialGroup.style.display = 'block';
+                labelNombre.innerHTML = 'Nombre del Representante Legal <span class="text-danger">*</span>';
+            } else {
+                tipoDocSelect.value = 'CC';
+                razonSocialGroup.style.display = 'none';
+                labelNombre.innerHTML = 'Nombre Completo <span class="text-danger">*</span>';
+            }
+        });
+        
+        // Manejar cambio de tipo de persona en editar cliente
+        document.getElementById('edit_tipo_persona').addEventListener('change', function() {
+            const esJuridica = this.value === 'Juridica';
+            const tipoDocSelect = document.getElementById('edit_tipo_documento');
+            const razonSocialGroup = document.getElementById('edit_razon_social_group');
+            const labelNombre = document.getElementById('edit_label_nombre');
+            
+            if (esJuridica) {
+                tipoDocSelect.value = 'NIT';
+                razonSocialGroup.style.display = 'block';
+                labelNombre.innerHTML = 'Nombre del Representante Legal <span class="text-danger">*</span>';
+            } else {
+                tipoDocSelect.value = 'CC';
+                razonSocialGroup.style.display = 'none';
+                labelNombre.innerHTML = 'Nombre Completo <span class="text-danger">*</span>';
+            }
+        });
+        
+        async function guardarCliente() {
+            const form = document.getElementById('formNuevoCliente');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch('/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Cliente creado exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalNuevoCliente')).hide();
+                    form.reset();
+                    cargarClientes();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al crear cliente');
+            }
+        }
+        
+        async function editarCliente(id) {
+            try {
+                const response = await fetch(`/clientes/${id}`);
+                const cliente = await response.json();
+                
+                document.getElementById('edit_client_id').value = cliente.id;
+                document.getElementById('edit_client_nombre').value = cliente.nombre || '';
+                document.getElementById('edit_tipo_persona').value = cliente.tipo_persona || 'Natural';
+                document.getElementById('edit_tipo_documento').value = cliente.tipo_documento || 'CC';
+                document.getElementById('edit_client_numero_documento').value = cliente.numero_documento || '';
+                document.getElementById('edit_client_razon_social').value = cliente.razon_social || '';
+                document.getElementById('edit_client_email').value = cliente.email || '';
+                document.getElementById('edit_client_telefono').value = cliente.telefono || '';
+                document.getElementById('edit_client_direccion').value = cliente.direccion || '';
+                document.getElementById('edit_client_ciudad').value = cliente.ciudad || '';
+                document.getElementById('edit_client_departamento').value = cliente.departamento || '';
+                document.getElementById('edit_client_codigo_postal').value = cliente.codigo_postal || '';
+                document.getElementById('edit_client_regimen').value = cliente.regimen || 'Simplificado';
+                document.getElementById('edit_client_responsabilidad_fiscal').value = cliente.responsabilidad_fiscal || 'R-99-PN';
+                document.getElementById('edit_client_activo').value = cliente.activo ? 'true' : 'false';
+                
+                // Trigger change event para mostrar/ocultar campos
+                document.getElementById('edit_tipo_persona').dispatchEvent(new Event('change'));
+                
+                new bootstrap.Modal(document.getElementById('modalEditarCliente')).show();
+            } catch (error) {
+                console.error('Error al cargar cliente:', error);
+                alert('Error al cargar cliente');
+            }
+        }
+        
+        async function actualizarCliente() {
+            const form = document.getElementById('formEditarCliente');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            delete data.id;
+            
+            try {
+                const response = await fetch(`/clientes/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Cliente actualizado exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarCliente')).hide();
+                    cargarClientes();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al actualizar cliente');
+            }
+        }
+        
+        async function eliminarCliente(id, nombre) {
+            if (!confirm(`¿Eliminar el cliente "${nombre}"?`)) return;
+            
+            try {
+                const response = await fetch(`/clientes/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Cliente eliminado');
+                    cargarClientes();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar cliente');
+            }
+        }
+        
+        // ===== USUARIOS =====
+        async function cargarRolesYPermisos() {
+            try {
+                const [rolesRes, permisosRes] = await Promise.all([
+                    fetch('/usuarios/api/roles'),
+                    fetch('/usuarios/api/permisos')
+                ]);
+                
+                rolesData = await rolesRes.json();
+                permisosData = await permisosRes.json();
+                
+                // Llenar selects de roles
+                const nuevoRolSelect = document.getElementById('nuevoRolSelect');
+                const editRolSelect = document.getElementById('editRolSelect');
+                
+                const rolesOptions = rolesData.map(r => 
+                    `<option value="${r.id}" data-admin="${r.es_admin}">${r.nombre}</option>`
+                ).join('');
+                
+                nuevoRolSelect.innerHTML = '<option value="">Seleccionar rol...</option>' + rolesOptions;
+                editRolSelect.innerHTML = '<option value="">Seleccionar rol...</option>' + rolesOptions;
+                
+            } catch (error) {
+                console.error('Error al cargar roles y permisos:', error);
+            }
+        }
+        
+        function renderizarPermisos(containerId, permisosSeleccionados = []) {
+            const container = document.getElementById(containerId);
+            const colors = ['purple', 'blue', 'green', 'orange'];
+            
+            container.innerHTML = permisosData.map((permiso, index) => {
+                const isSelected = permisosSeleccionados.includes(permiso.id);
+                const color = colors[index % colors.length];
+                
+                return `
+                    <div class="col-md-6">
+                        <div class="permission-card ${isSelected ? 'selected' : ''}" data-permiso-id="${permiso.id}">
+                            <input type="checkbox" class="form-check-input d-none" name="permisos[]" value="${permiso.id}" ${isSelected ? 'checked' : ''}>
+                            <div class="d-flex align-items-start gap-2">
+                                <div class="permission-icon ${color}">
+                                    <i class="${permiso.icono}"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="permission-title">${permiso.nombre}</div>
+                                    <div class="permission-desc">${permiso.descripcion}</div>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" ${isSelected ? 'checked' : ''}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Agregar event listeners
+            container.querySelectorAll('.permission-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[name="permisos[]"]');
+                        const visibleCheckbox = this.querySelector('.form-check-input:not([name])');
+                        checkbox.checked = !checkbox.checked;
+                        visibleCheckbox.checked = checkbox.checked;
+                        this.classList.toggle('selected', checkbox.checked);
+                    }
+                });
+                
+                const visibleCheckbox = card.querySelector('.form-check-input:not([name])');
+                visibleCheckbox.addEventListener('change', function() {
+                    const checkbox = card.querySelector('input[name="permisos[]"]');
+                    checkbox.checked = this.checked;
+                    card.classList.toggle('selected', this.checked);
+                });
+            });
+        }
+        
+        async function cargarUsuarios() {
+            try {
+                const response = await fetch('/usuarios/api/list');
+                const usuarios = await response.json();
+                
+                const tbody = document.querySelector('#tablaUsuarios tbody');
+                if (usuarios.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p class="mt-3">No hay usuarios registrados</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = usuarios.map(u => `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="user-avatar">
+                                    ${(u.nombres || u.email).charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <strong>${u.nombres || ''} ${u.apellidos || ''}</strong>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${u.email}</td>
+                        <td>${u.telefono || '-'}</td>
+                        <td>
+                            <span class="badge-rol ${u.rol_nombre === 'Administrador' ? 'bg-danger' : u.rol_nombre === 'Gerente' ? 'bg-warning' : 'bg-primary'}">
+                                ${u.rol_nombre || 'Sin rol'}
+                            </span>
+                        </td>
+                        <td>
+                            ${u.activo ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editarUsuario(${u.id})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarUsuario(${u.id}, '${u.nombres} ${u.apellidos}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error al cargar usuarios:', error);
+            }
+        }
+        
+        // Manejar cambio de rol en nuevo usuario
+        document.getElementById('nuevoRolSelect').addEventListener('change', async function() {
+            if (!this.value) return;
+            
+            const selectedOption = this.options[this.selectedIndex];
+            const esAdmin = selectedOption.getAttribute('data-admin') === '1';
+            
+            if (esAdmin) {
+                // Seleccionar todos los permisos
+                const todosIds = permisosData.map(p => p.id);
+                renderizarPermisos('nuevoPermisosContainer', todosIds);
+            } else {
+                // Cargar permisos del rol
+                try {
+                    const response = await fetch(`/usuarios/api/roles/${this.value}/permisos`);
+                    const permisos = await response.json();
+                    const permisosIds = permisos.map(p => p.id);
+                    renderizarPermisos('nuevoPermisosContainer', permisosIds);
+                } catch (error) {
+                    console.error('Error al cargar permisos del rol:', error);
+                    renderizarPermisos('nuevoPermisosContainer', []);
+                }
+            }
+        });
+        
+        // Manejar cambio de rol en editar usuario
+        document.getElementById('editRolSelect').addEventListener('change', async function() {
+            if (!this.value) return;
+            
+            const selectedOption = this.options[this.selectedIndex];
+            const esAdmin = selectedOption.getAttribute('data-admin') === '1';
+            
+            if (esAdmin) {
+                const todosIds = permisosData.map(p => p.id);
+                renderizarPermisos('editPermisosContainer', todosIds);
+            } else {
+                try {
+                    const response = await fetch(`/usuarios/api/roles/${this.value}/permisos`);
+                    const permisos = await response.json();
+                    const permisosIds = permisos.map(p => p.id);
+                    renderizarPermisos('editPermisosContainer', permisosIds);
+                } catch (error) {
+                    console.error('Error al cargar permisos del rol:', error);
+                    renderizarPermisos('editPermisosContainer', []);
+                }
+            }
+        });
+        
+        async function guardarUsuario() {
+            const form = document.getElementById('formNuevoUsuario');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            data.permisos = formData.getAll('permisos[]');
+            
+            try {
+                const response = await fetch('/usuarios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Usuario creado exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalNuevoUsuario')).hide();
+                    form.reset();
+                    cargarUsuarios();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al crear usuario');
+            }
+        }
+        
+        async function editarUsuario(id) {
+            try {
+                const response = await fetch(`/usuarios/${id}`);
+                const usuario = await response.json();
+                
+                document.getElementById('edit_user_id').value = usuario.id;
+                document.getElementById('edit_user_nombres').value = usuario.nombres || '';
+                document.getElementById('edit_user_apellidos').value = usuario.apellidos || '';
+                document.getElementById('edit_user_email').value = usuario.email;
+                document.getElementById('edit_user_telefono').value = usuario.telefono || '';
+                document.getElementById('edit_user_activo').value = usuario.activo ? 'true' : 'false';
+                document.getElementById('editRolSelect').value = usuario.rol_id || '';
+                
+                // Cargar permisos individuales del usuario
+                const permisosIds = usuario.permisos || [];
+                renderizarPermisos('editPermisosContainer', permisosIds);
+                
+                new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+            } catch (error) {
+                console.error('Error al cargar usuario:', error);
+                alert('Error al cargar usuario');
+            }
+        }
+        
+        async function actualizarUsuario() {
+            const form = document.getElementById('formEditarUsuario');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            delete data.id;
+            data.permisos = formData.getAll('permisos[]');
+            
+            try {
+                const response = await fetch(`/usuarios/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Usuario actualizado exitosamente');
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario')).hide();
+                    cargarUsuarios();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al actualizar usuario');
+            }
+        }
+        
+        async function eliminarUsuario(id, nombre) {
+            if (!confirm(`¿Eliminar el usuario "${nombre}"?`)) return;
+            
+            try {
+                const response = await fetch(`/usuarios/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Usuario eliminado');
+                    cargarUsuarios();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Error al eliminar usuario');
+            }
+        }
 
-        // Cargar categorías al iniciar
-        cargarCategorias();
-
-        // Previsualización inmediata de imágenes antes de guardar
-        // Relacionado con: inputs #inputLogo y #inputQr en esta vista
+        // Previsualización de imágenes
         (function initPrevisualizadores() {
             function previewFile(inputEl, imgEl) {
                 if (!inputEl || !imgEl) return;
@@ -372,7 +1577,6 @@
                     imgEl.src = url;
                     imgEl.style.display = 'block';
 
-                    // Liberar el blob url cuando cargue (evita fugas de memoria)
                     imgEl.onload = function() {
                         try { URL.revokeObjectURL(url); } catch (_) {}
                     };
@@ -382,6 +1586,15 @@
             previewFile(document.getElementById('inputLogo'), document.getElementById('previewLogo'));
             previewFile(document.getElementById('inputQr'), document.getElementById('previewQr'));
         })();
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarCategorias();
+            cargarClientes();
+            cargarRolesYPermisos().then(() => {
+                cargarUsuarios();
+            });
+        });
     </script>
 </body>
 </html> 

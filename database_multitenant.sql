@@ -33,10 +33,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     restaurante_id INT NULL,
     nombre VARCHAR(100) NOT NULL,
+    nombres VARCHAR(100),
+    apellidos VARCHAR(100),
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     rol ENUM('superadmin', 'admin', 'cajero', 'mesero', 'cocinero') DEFAULT 'admin',
+    rol_id INT NULL,
+    telefono VARCHAR(20),
     estado ENUM('activo', 'inactivo') DEFAULT 'activo',
+    activo BOOLEAN DEFAULT TRUE,
     ultimo_acceso TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -44,6 +49,48 @@ CREATE TABLE IF NOT EXISTS usuarios (
     INDEX idx_email (email),
     INDEX idx_restaurante (restaurante_id),
     INDEX idx_rol (rol)
+);
+
+-- Tabla de roles (para sistema de permisos granular)
+CREATE TABLE IF NOT EXISTS roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    es_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabla de permisos/módulos
+CREATE TABLE IF NOT EXISTS permisos (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    icono VARCHAR(50),
+    ruta VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de relación roles-permisos
+CREATE TABLE IF NOT EXISTS rol_permisos (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    rol_id INT NOT NULL,
+    permiso_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (permiso_id) REFERENCES permisos(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_rol_permiso (rol_id, permiso_id)
+);
+
+-- Tabla de permisos por usuario (permisos individuales)
+CREATE TABLE IF NOT EXISTS usuario_permisos (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    usuario_id INT NOT NULL,
+    permiso_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (permiso_id) REFERENCES permisos(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_usuario_permiso (usuario_id, permiso_id)
 );
 
 -- Tabla de sesiones
@@ -81,17 +128,32 @@ CREATE TABLE IF NOT EXISTS productos (
     INDEX idx_codigo (codigo)
 );
 
--- Clientes por restaurante
+-- Clientes por restaurante (con campos para facturación electrónica)
 CREATE TABLE IF NOT EXISTS clientes (
     id INT PRIMARY KEY AUTO_INCREMENT,
     restaurante_id INT NOT NULL,
     nombre VARCHAR(100) NOT NULL,
+    tipo_documento ENUM('CC', 'NIT', 'CE', 'Pasaporte', 'TI') DEFAULT 'CC',
+    numero_documento VARCHAR(50),
+    razon_social VARCHAR(200),
+    tipo_persona ENUM('Natural', 'Juridica') DEFAULT 'Natural',
     direccion TEXT,
+    ciudad VARCHAR(100),
+    departamento VARCHAR(100),
+    codigo_postal VARCHAR(20),
     telefono VARCHAR(20),
+    email VARCHAR(100),
+    regimen ENUM('Simplificado', 'Común', 'Gran Contribuyente', 'No Responsable') DEFAULT 'Simplificado',
+    responsabilidad_fiscal VARCHAR(10) DEFAULT 'R-99-PN',
+    activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
     INDEX idx_restaurante (restaurante_id),
-    INDEX idx_nombre (nombre)
+    INDEX idx_nombre (nombre),
+    INDEX idx_numero_documento (numero_documento),
+    INDEX idx_tipo_documento (tipo_documento),
+    INDEX idx_email (email),
+    INDEX idx_activo (activo)
 );
 
 -- Facturas por restaurante
@@ -342,6 +404,77 @@ CREATE TABLE IF NOT EXISTS sistema_facturas (
 -- ===========================
 -- DATOS INICIALES
 -- ===========================
+
+-- Insertar roles predeterminados
+INSERT INTO roles (nombre, descripcion, es_admin) VALUES
+('Administrador', 'Acceso completo a todos los módulos', TRUE),
+('Cajero', 'Acceso a facturación y ventas', FALSE),
+('Mesero', 'Acceso a mesas y pedidos', FALSE),
+('Cocina', 'Acceso a módulo de cocina', FALSE),
+('Gerente', 'Acceso a reportes y configuración', FALSE)
+ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
+
+-- Insertar permisos/módulos
+INSERT INTO permisos (nombre, descripcion, icono, ruta) VALUES
+('Dashboard', 'Panel principal con estadísticas', 'bi-house-fill', '/'),
+('Facturación', 'Crear y gestionar facturas', 'bi-receipt', '/'),
+('Mesas', 'Gestión de mesas', 'bi-grid', '/mesas'),
+('Cocina', 'Módulo de cocina', 'bi-egg-fried', '/cocina'),
+('Reportes', 'Reportes, estadísticas e historial de ventas', 'bi-bar-chart-line', '/reportes'),
+('Productos', 'Gestión de productos', 'bi-box', '/productos'),
+('Clientes', 'Gestión de clientes', 'bi-people', '/clientes'),
+('Configuración', 'Configuración del sistema', 'bi-gear', '/configuracion'),
+('Usuarios', 'Gestión de usuarios', 'bi-person-badge', '/usuarios')
+ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
+
+-- Asignar todos los permisos al rol Administrador
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permisos p
+WHERE r.nombre = 'Administrador'
+ON DUPLICATE KEY UPDATE rol_id = VALUES(rol_id);
+
+-- Asignar permisos al rol Cajero
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permisos p
+WHERE r.nombre = 'Cajero' 
+AND p.nombre IN ('Dashboard', 'Facturación', 'Reportes', 'Clientes')
+ON DUPLICATE KEY UPDATE rol_id = VALUES(rol_id);
+
+-- Asignar permisos al rol Mesero
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permisos p
+WHERE r.nombre = 'Mesero' 
+AND p.nombre IN ('Dashboard', 'Facturación', 'Mesas', 'Clientes')
+ON DUPLICATE KEY UPDATE rol_id = VALUES(rol_id);
+
+-- Asignar permisos al rol Cocina
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permisos p
+WHERE r.nombre = 'Cocina' 
+AND p.nombre IN ('Cocina')
+ON DUPLICATE KEY UPDATE rol_id = VALUES(rol_id);
+
+-- Asignar permisos al rol Gerente
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permisos p
+WHERE r.nombre = 'Gerente' 
+AND p.nombre IN ('Dashboard', 'Reportes', 'Productos', 'Clientes', 'Configuración')
+ON DUPLICATE KEY UPDATE rol_id = VALUES(rol_id);
+
+-- Agregar foreign key de rol_id a usuarios (después de crear la tabla roles)
+ALTER TABLE usuarios 
+ADD CONSTRAINT fk_usuarios_rol_id 
+FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE SET NULL;
 
 -- Insertar límites por plan
 INSERT INTO plan_limites (plan, max_usuarios, max_productos, max_mesas, max_facturas_mes, api_habilitada, webhooks_habilitados, soporte_prioritario, reportes_avanzados, precio_mensual) VALUES

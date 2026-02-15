@@ -1,138 +1,77 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const ReporteService = require('../services/ReporteService');
+const { generarHTMLPaginacion, generarTextoPaginacion } = require('../utils/paginacion');
 
-/**
- * Construye cláusula WHERE y params para filtros de ventas.
- * Relacionado con:
- * - views/ventas.ejs (filtros por fecha y búsqueda)
- * - routes/ventas.js (listado y export)
- */
-function buildVentasWhere(queryParams, tenantId) {
-    const where = [];
-    const params = [];
+// Instanciar servicio
+const reporteService = new ReporteService();
 
-    if (tenantId) {
-        where.push('f.restaurante_id = ?');
-        params.push(tenantId);
-    }
-
-    if (queryParams.desde && queryParams.hasta) {
-        where.push('DATE(f.fecha) BETWEEN ? AND ?');
-        params.push(queryParams.desde, queryParams.hasta);
-    }
-
-    if (queryParams.q) {
-        where.push('(c.nombre LIKE ? OR f.id LIKE ?)');
-        const term = `%${queryParams.q}%`;
-        params.push(term, term);
-    }
-
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    return { whereSql, params };
-}
-
-/**
- * Calcula totales por método usando factura_pagos (incluye facturas mixtas).
- * Si una factura no tiene registros en factura_pagos (legacy), cae a f.forma_pago + f.total.
- */
-async function getTotalesPorMetodo(queryParams, tenantId) {
-    const { whereSql, params } = buildVentasWhere(queryParams, tenantId);
-
-    // Para el segundo SELECT (fallback) necesitamos agregar condición fp2.id IS NULL
-    const whereSqlFallback = whereSql
-        ? `${whereSql} AND fp2.id IS NULL`
-        : 'WHERE fp2.id IS NULL';
-
-    // params se usa dos veces (UNION)
-    const unionParams = [...params, ...params];
-
-    // Solo totalizamos los métodos reales (no "mixto")
-    const sql = `
-        SELECT metodo, SUM(monto) AS total
-        FROM (
-            -- Facturas con pagos detallados
-            SELECT fp.metodo AS metodo, fp.monto AS monto
-            FROM factura_pagos fp
-            JOIN facturas f ON f.id = fp.factura_id
-            JOIN clientes c ON f.cliente_id = c.id
-            ${whereSql}
-
-            UNION ALL
-
-            -- Fallback legacy: facturas sin registros en factura_pagos
-            SELECT f.forma_pago AS metodo, f.total AS monto
-            FROM facturas f
-            JOIN clientes c ON f.cliente_id = c.id
-            LEFT JOIN factura_pagos fp2 ON fp2.factura_id = f.id
-            ${whereSqlFallback}
-        ) t
-        WHERE t.metodo IN ('efectivo','transferencia','tarjeta')
-        GROUP BY t.metodo
-    `;
-
-    const totales = { efectivo: 0, transferencia: 0, tarjeta: 0, general: 0 };
-
-    try {
-        const [rows] = await db.query(sql, unionParams);
-        (rows || []).forEach(r => {
-            const metodo = String(r.metodo || '').toLowerCase();
-            const val = Number(r.total || 0);
-            if (metodo === 'efectivo') totales.efectivo = val;
-            if (metodo === 'transferencia') totales.transferencia = val;
-            if (metodo === 'tarjeta') totales.tarjeta = val;
-        });
-    } catch (err) {
-        // Si no existe factura_pagos (instalación vieja), no rompemos: fallback a forma_pago
-        try {
-            const sqlOld = `
-                SELECT f.forma_pago AS metodo, SUM(f.total) AS total
-                FROM facturas f
-                JOIN clientes c ON f.cliente_id = c.id
-                ${whereSql}
-                GROUP BY f.forma_pago
-            `;
-            const [rowsOld] = await db.query(sqlOld, params);
-            (rowsOld || []).forEach(r => {
-                const metodo = String(r.metodo || '').toLowerCase();
-                const val = Number(r.total || 0);
-                if (metodo === 'efectivo') totales.efectivo = val;
-                if (metodo === 'transferencia') totales.transferencia = val;
-                if (metodo === 'tarjeta') totales.tarjeta = val;
-            });
-        } catch (_) {
-            // si todo falla, dejamos en 0
-        }
-        console.error('Error calculando totales por método:', err);
-    }
-
-    totales.general = Number(totales.efectivo) + Number(totales.transferencia) + Number(totales.tarjeta);
-    return totales;
-}
-
-// Ruta principal de ventas con filtros opcionales por fecha
+// Ruta principal de ventas con filtros y paginación
 router.get('/', async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { whereSql, params } = buildVentasWhere(req.query, tenantId);
-        const query = `
-            SELECT f.*, c.nombre as cliente_nombre
-            FROM facturas f
-            JOIN clientes c ON f.cliente_id = c.id
-            ${whereSql}
-            ORDER BY f.fecha DESC
-        `;
-
-        const [ventas] = await db.query(query, params);
-        const totales = await getTotalesPorMetodo(req.query, tenantId);
-        res.render('ventas', { ventas, totales });
+        
+        // Establecer fechas por defecto si no existen (últimos 30 días)
+        const filtros = { ...req.query };
+        if (!filtros.desde || !filtros.hasta) {
+            const hoy = new Date();
+            const hace30 = new Date();
+            hace30.setDate(hace30.getDate() - 30);
+            
+            if (!filtros.desde) {
+                filtros.desde = hace30.toISOString().split('T')[0];
+            }
+            if (!filtros.hasta) {
+                filtros.hasta = hoy.toISOString().split('T')[0];
+            }
+        }
+        
+        // Obtener ventas con paginación
+        const { ventas, paginacion } = await reporteService.obtenerVentas(filtros, tenantId);
+        
+        // Obtener totales
+        const totales = await reporteService.obtenerTotales(filtros, tenantId);
+        
+        // Obtener estadísticas
+        const estadisticas = await reporteService.obtenerEstadisticas(filtros, tenantId);
+        
+        // Generar HTML de paginación
+        const baseUrl = '/ventas';
+        const queryParams = new URLSearchParams(filtros);
+        queryParams.delete('page'); // Remover page para reconstruir
+        const urlConFiltros = queryParams.toString() ? `${baseUrl}?${queryParams.toString()}&` : `${baseUrl}?`;
+        
+        res.render('ventas', { 
+            ventas: ventas || [], 
+            totales: totales || { efectivo: 0, transferencia: 0, tarjeta: 0, general: 0 },
+            estadisticas: estadisticas || { total_facturas: 0, total_ventas: 0, ticket_promedio: 0, venta_minima: 0, venta_maxima: 0 },
+            paginacion: paginacion || { totalRegistros: 0, totalPaginas: 1, paginaActual: 1, registrosPorPagina: 50, desde: 0, hasta: 0 },
+            paginacionHTML: generarHTMLPaginacion(paginacion, urlConFiltros.slice(0, -1)),
+            textoPaginacion: generarTextoPaginacion(paginacion),
+            filtros,
+            user: req.user
+        });
     } catch (error) {
         console.error('Error al obtener ventas:', error);
-        res.status(500).send('Error al cargar el historial de ventas');
+        console.error('Stack:', error.stack);
+        
+        // Renderizar con valores por defecto en caso de error
+        res.render('ventas', { 
+            ventas: [], 
+            totales: { efectivo: 0, transferencia: 0, tarjeta: 0, general: 0 },
+            estadisticas: { total_facturas: 0, total_ventas: 0, ticket_promedio: 0, venta_minima: 0, venta_maxima: 0 },
+            paginacion: { totalRegistros: 0, totalPaginas: 1, paginaActual: 1, registrosPorPagina: 50, desde: 0, hasta: 0, tienePaginaAnterior: false, tienePaginaSiguiente: false, paginas: [1] },
+            paginacionHTML: '',
+            textoPaginacion: 'No se encontraron registros',
+            filtros: req.query,
+            error: 'Ocurrió un error al cargar los datos. Por favor, intente nuevamente.',
+            user: req.user
+        });
     }
 });
 
-// GET /ventas/export - Exportar CSV por rango y búsqueda
+// GET /ventas/export - Exportar Excel por rango y búsqueda
 router.get('/export', async (req, res) => {
     try {
         const tenantId = req.tenantId;
@@ -144,17 +83,15 @@ router.get('/export', async (req, res) => {
         } catch (e) {
             return res.status(500).send('Exportación a Excel no disponible. Instale la dependencia con: npm install exceljs');
         }
-        const { whereSql, params } = buildVentasWhere(req.query, tenantId);
-        const query = `
-            SELECT f.id, f.fecha, c.nombre as cliente, f.forma_pago, f.total
-            FROM facturas f
-            JOIN clientes c ON f.cliente_id = c.id
-            ${whereSql}
-        `;
-        const queryFinal = `${query} ORDER BY f.fecha DESC`;
 
-        const [rows] = await db.query(queryFinal, params);
-        const totales = await getTotalesPorMetodo(req.query, tenantId);
+        // Obtener ventas SIN paginación para exportar todo
+        const filtrosSinPaginacion = { ...req.query };
+        delete filtrosSinPaginacion.page;
+        delete filtrosSinPaginacion.limit;
+        filtrosSinPaginacion.limit = 10000; // Límite alto para exportación
+        
+        const { ventas } = await reporteService.obtenerVentas(filtrosSinPaginacion, tenantId);
+        const totales = await reporteService.obtenerTotales(req.query, tenantId);
 
         // Crear Excel con ExcelJS
         const wb = new ExcelJS.Workbook();
@@ -224,16 +161,15 @@ router.get('/export', async (req, res) => {
 
         // Datos y totales
         let totalEfectivo = 0, totalTransferencia = 0, totalTarjeta = 0, totalGeneral = 0;
-        rows.forEach(r => {
-            const fecha = new Date(r.fecha);
-            const total = Number(r.total || 0);
+        ventas.forEach(v => {
+            const fecha = new Date(v.fecha);
+            const total = Number(v.total || 0);
             totalGeneral += total;
-            // Para Excel: mantenemos el cálculo general por facturas, pero los totales por método vienen de factura_pagos
             ws.addRow([
-                r.id,
+                v.id,
                 fecha.toLocaleString(),
-                r.cliente || '',
-                (r.forma_pago || '').charAt(0).toUpperCase() + (r.forma_pago || '').slice(1),
+                v.cliente_nombre || '',
+                (v.forma_pago || '').charAt(0).toUpperCase() + (v.forma_pago || '').slice(1),
                 total
             ]);
         });

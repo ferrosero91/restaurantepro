@@ -1,0 +1,57 @@
+===============================================
+RestaurantPro - Guía de Instalación
+===============================================
+
+REQUISITOS:
+-----------
+- Node.js 18 o superior
+- MySQL 8.0 o superior
+- npm
+
+PASOS DE INSTALACIÓN:
+---------------------
+
+1. Configurar Variables de Entorno
+   - Copiar .env.example a .env
+   - Editar .env con tus credenciales de MySQL
+
+2. Instalar Dependencias
+   npm install
+
+3. Crear Base de Datos
+   npm run install:db
+
+4. Iniciar Servidor
+   npm start
+
+5. Acceder al Sistema
+   http://localhost:3000
+
+CREDENCIALES INICIALES:
+-----------------------
+Email: admin@sistema.com
+Password: admin123
+
+⚠️ CAMBIAR LA CONTRASEÑA EN PRODUCCIÓN
+
+ESTRUCTURA CREADA:
+------------------
+✓ Base de datos: restaurante_saas
+✓ Tablas: restaurantes, usuarios, clientes, productos, facturas, mesas, pedidos
+✓ Sistema de roles: Administrador, Cajero, Mesero, Cocina, Gerente
+✓ 10 módulos/permisos configurados
+✓ Datos iniciales insertados
+
+COMANDOS DISPONIBLES:
+---------------------
+npm start          - Iniciar servidor
+npm run dev        - Modo desarrollo con auto-reload
+npm run install:db - Crear/recrear base de datos
+npm run build      - Compilar ejecutable
+
+SOPORTE:
+--------
+Para reinstalar la base de datos desde cero, ejecutar:
+npm run install:db
+
+Esto eliminará y recreará todas las tablas.

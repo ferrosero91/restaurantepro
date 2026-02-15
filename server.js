@@ -10,6 +10,7 @@ const config = require('./config/env');
 const { requireAuth } = require('./middleware/auth');
 const { requireTenant } = require('./middleware/tenant');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { requirePermission } = require('./middleware/auth');
 const {
     helmetConfig,
     sanitizeInput,
@@ -117,6 +118,8 @@ const cocinaRoutes = require('./routes/cocina');
 const configuracionRoutes = require('./routes/configuracion');
 const categoriasRoutes = require('./routes/categorias');
 const ventasRoutes = require('./routes/ventas');
+const reportesRoutes = require('./routes/reportes');
+const usuariosRoutes = require('./routes/usuarios');
 const apiRoutes = require('./routes/api');
 const { router: webhooksRouter } = require('./routes/webhooks');
 
@@ -150,20 +153,29 @@ app.get('/', requireAuth, (req, res) => {
 });
 
 // Usar las rutas (todas requieren autenticación y tenant)
-app.use('/productos', requireAuth, requireTenant, productosRoutes);
-app.use('/api/productos', requireAuth, requireTenant, productosRoutes);
-app.use('/clientes', requireAuth, requireTenant, clientesRoutes);
-app.use('/api/clientes', requireAuth, requireTenant, clientesRoutes);
-app.use('/facturas', requireAuth, requireTenant, facturasRoutes);
-app.use('/api/facturas', requireAuth, requireTenant, facturasRoutes);
-app.use('/mesas', requireAuth, requireTenant, mesasRoutes);
-app.use('/api/mesas', requireAuth, requireTenant, mesasRoutes);
-app.use('/cocina', requireAuth, requireTenant, cocinaRoutes);
-app.use('/api/cocina', requireAuth, requireTenant, cocinaRoutes);
-app.use('/configuracion', requireAuth, requireTenant, configuracionRoutes);
-app.use('/categorias', requireAuth, requireTenant, categoriasRoutes);
-app.use('/api/categorias', requireAuth, requireTenant, categoriasRoutes);
-app.use('/ventas', requireAuth, requireTenant, ventasRoutes);
+// Nota: Búsqueda de productos debe ser accesible para facturación
+app.use('/productos', requireAuth, requireTenant, requirePermission('/productos'), productosRoutes);
+app.use('/api/productos', requireAuth, requireTenant, productosRoutes); // Sin restricción para permitir búsqueda
+app.use('/clientes', requireAuth, requireTenant, requirePermission('/clientes'), clientesRoutes);
+app.use('/api/clientes', requireAuth, requireTenant, requirePermission('/clientes'), clientesRoutes);
+app.use('/facturas', requireAuth, requireTenant, requirePermission('/'), facturasRoutes);
+app.use('/api/facturas', requireAuth, requireTenant, requirePermission('/'), facturasRoutes);
+app.use('/mesas', requireAuth, requireTenant, requirePermission('/mesas'), mesasRoutes);
+app.use('/api/mesas', requireAuth, requireTenant, requirePermission('/mesas'), mesasRoutes);
+app.use('/cocina', requireAuth, requireTenant, requirePermission('/cocina'), cocinaRoutes);
+app.use('/api/cocina', requireAuth, requireTenant, requirePermission('/cocina'), cocinaRoutes);
+app.use('/configuracion', requireAuth, requireTenant, requirePermission('/configuracion'), configuracionRoutes);
+app.use('/categorias', requireAuth, requireTenant, requirePermission('/productos'), categoriasRoutes);
+app.use('/api/categorias', requireAuth, requireTenant, categoriasRoutes); // Sin restricción para facturación
+// Redirigir /ventas a /reportes (unificación de módulos)
+app.get('/ventas', requireAuth, requireTenant, (req, res) => {
+    res.redirect('/reportes');
+});
+app.use('/reportes', requireAuth, requireTenant, requirePermission('/reportes'), reportesRoutes);
+// Rutas API de usuarios para roles y permisos (necesarias para formularios)
+app.use('/usuarios/api/roles', requireAuth, requireTenant, usuariosRoutes);
+app.use('/usuarios/api/permisos', requireAuth, requireTenant, usuariosRoutes);
+app.use('/usuarios', requireAuth, requireTenant, requirePermission('/usuarios'), usuariosRoutes);
 
 // Ruta para la página de productos
 app.get('/productos', requireAuth, requireTenant, async (req, res) => {

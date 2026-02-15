@@ -8,41 +8,63 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
+        <% 
+        // Helper para verificar permisos
+        const hasPermission = (ruta) => {
+          if (!user) return false;
+          if (user.rol === 'superadmin') return true;
+          return user.permisosRutas && user.permisosRutas.includes(ruta);
+        };
+        %>
+        
+        <% if (hasPermission('/')) { %>
         <li class="nav-item">
           <a href="/" class="nav-link" data-bs-toggle="tooltip" title="Facturación">
             <i class="bi bi-house-fill me-1"></i>Inicio
           </a>
         </li>
+        <% } %>
+        
+        <% if (hasPermission('/mesas')) { %>
         <li class="nav-item">
           <a href="/mesas" class="nav-link" data-bs-toggle="tooltip" title="Mesas">
             <i class="bi bi-grid me-1"></i>Mesas
           </a>
         </li>
+        <% } %>
+        
+        <% if (hasPermission('/cocina')) { %>
         <li class="nav-item">
           <a href="/cocina" class="nav-link" data-bs-toggle="tooltip" title="Cocina">
             <i class="bi bi-egg-fried me-1"></i>Cocina
           </a>
         </li>
+        <% } %>
+        
+        <% if (hasPermission('/reportes')) { %>
         <li class="nav-item">
-          <a href="/ventas" class="nav-link" data-bs-toggle="tooltip" title="Ventas">
-            <i class="bi bi-receipt me-1"></i>Ventas
+          <a href="/reportes" class="nav-link" data-bs-toggle="tooltip" title="Reportes">
+            <i class="bi bi-bar-chart-line me-1"></i>Reportes
           </a>
         </li>
+        <% } %>
+        
+        <% if (hasPermission('/productos')) { %>
         <li class="nav-item">
           <a href="/productos" class="nav-link" data-bs-toggle="tooltip" title="Productos">
             <i class="bi bi-box me-1"></i>Productos
           </a>
         </li>
-        <li class="nav-item">
-          <a href="/clientes" class="nav-link" data-bs-toggle="tooltip" title="Clientes">
-            <i class="bi bi-people me-1"></i>Clientes
-          </a>
-        </li>
+        <% } %>
+        
+        <% if (hasPermission('/configuracion')) { %>
         <li class="nav-item">
           <a href="/configuracion" class="nav-link" data-bs-toggle="tooltip" title="Configuración">
             <i class="bi bi-gear me-1"></i>Config
           </a>
         </li>
+        <% } %>
+        
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle me-1"></i>Cuenta

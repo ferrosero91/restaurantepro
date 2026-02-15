@@ -44,9 +44,10 @@ class ClienteService {
     /**
      * Buscar clientes
      */
-    async buscar(termino, tenantId, limit = 10) {
+    async buscar(termino, tenantId, limit = 100) {
+        // Si no hay término de búsqueda, devolver todos los clientes
         if (!termino || termino.trim() === '') {
-            return [];
+            return await this.listar(tenantId, { limit });
         }
 
         return await this.clienteRepo.search(termino, tenantId, limit);

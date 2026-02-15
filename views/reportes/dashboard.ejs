@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Reportes - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+        
+        .dashboard-header {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+            height: 100%;
+            border-left: 4px solid;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-card.primary { border-left-color: #3498db; }
+        .stat-card.success { border-left-color: #2ecc71; }
+        .stat-card.info { border-left-color: #16a085; }
+        .stat-card.warning { border-left-color: #f39c12; }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+        
+        .stat-icon.primary { background: rgba(52,152,219,0.1); color: #3498db; }
+        .stat-icon.success { background: rgba(46,204,113,0.1); color: #2ecc71; }
+        .stat-icon.info { background: rgba(22,160,133,0.1); color: #16a085; }
+        .stat-icon.warning { background: rgba(243,156,18,0.1); color: #f39c12; }
+        
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            padding: 1rem 0.75rem;
+        }
+        
+        .table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge-rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        
+        .badge-rank.gold { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; }
+        .badge-rank.silver { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #000; }
+        .badge-rank.bronze { background: linear-gradient(135deg, #cd7f32, #e8a87c); color: #fff; }
+        .badge-rank.other { background: #e9ecef; color: #6c757d; }
+        
+        .filters-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            border-radius: 4px;
+            padding: 0.625rem 1.25rem;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            border-color: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+            border-color: #27ae60;
+        }
+        
+        .nav-tabs {
+            border: none;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            background: #f8f9fa;
+            color: #3498db;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .stat-card { margin-bottom: 1rem; }
+            .chart-card { padding: 1rem; }
+            canvas { max-height: 250px !important; }
+            .nav-tabs .nav-link {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+    
+    <main class="py-3">
+        <div class="container-fluid px-3 px-md-4">
+            
+            <!-- Tabs de navegación -->
+            <ul class="nav nav-tabs mb-3" style="background: white; border-radius: 8px; padding: 0.5rem;">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#dashboard">
+                        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#historial">
+                        <i class="bi bi-receipt me-2"></i>Historial de Ventas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/productos">
+                        <i class="bi bi-box-seam me-2"></i>Top Productos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/clientes">
+                        <i class="bi bi-people me-2"></i>Top Clientes
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Tab Dashboard -->
+                <div class="tab-pane fade show active" id="dashboard">
+
+            
+            <!-- Filtros -->
+            <div class="filters-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                        </label>
+                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                        </label>
+                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
+                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-clock-history me-2"></i>Presets
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" data-preset="hoy">Hoy</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="semana">Esta Semana</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="mes">Este Mes</a></li>
+                                <li><a class="dropdown-item" href="#" data-preset="trimestre">Último Trimestre</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estadísticas Principales -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card primary">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-muted small mb-1">TOTAL FACTURAS</div>
+                                <h3 class="mb-0"><%= estadisticas.total_facturas %></h3>
+                                <small class="text-muted">Facturas emitidas</small>
+                            </div>
+                            <div class="stat-icon primary">
+                                <i class="bi bi-receipt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card success">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-muted small mb-1">TOTAL VENTAS</div>
+                                <h3 class="mb-0">$<%= Number(estadisticas.total_ventas).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
+                                <small class="text-muted">Ingresos totales</small>
+                            </div>
+                            <div class="stat-icon success">
+                                <i class="bi bi-cash-stack"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card info">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-muted small mb-1">TICKET PROMEDIO</div>
+                                <h3 class="mb-0">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
+                                <small class="text-muted">Por factura</small>
+                            </div>
+                            <div class="stat-icon info">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card warning">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-muted small mb-1">VENTA MÁXIMA</div>
+                                <h3 class="mb-0">$<%= Number(estadisticas.venta_maxima).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
+                                <small class="text-muted">Mayor venta</small>
+                            </div>
+                            <div class="stat-icon warning">
+                                <i class="bi bi-trophy"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Gráficos -->
+            <div class="row g-3 mb-4">
+                <div class="col-lg-8">
+                    <div class="chart-card">
+                        <div class="chart-title">
+                            <i class="bi bi-graph-up text-primary"></i>
+                            Evolución de Ventas
+                        </div>
+                        <canvas id="ventasChart" height="80"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="chart-card">
+                        <div class="chart-title">
+                            <i class="bi bi-pie-chart text-success"></i>
+                            Distribución por Forma de Pago
+                        </div>
+                        <canvas id="pagoChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Productos y Clientes -->
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="table-card">
+                        <div class="chart-title mb-3">
+                            <i class="bi bi-box-seam text-warning"></i>
+                            Top 10 Productos Más Vendidos
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th width="50">#</th>
+                                        <th>Producto</th>
+                                        <th class="text-end">Cantidad</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (topProductos.length === 0) { %>
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                No hay datos disponibles
+                                            </td>
+                                        </tr>
+                                    <% } else { %>
+                                        <% topProductos.forEach((producto, index) => { %>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge-rank <%= index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'other' %>">
+                                                        <%= index + 1 %>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong><%= producto.nombre %></strong>
+                                                    <br><small class="text-muted"><%= producto.codigo %></small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <%= Number(producto.cantidad_vendida).toFixed(2) %>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>$<%= Number(producto.total_vendido).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="/reportes/productos" class="btn btn-sm btn-outline-primary">
+                                Ver Reporte Completo <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="table-card">
+                        <div class="chart-title mb-3">
+                            <i class="bi bi-people text-info"></i>
+                            Top 10 Mejores Clientes
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th width="50">#</th>
+                                        <th>Cliente</th>
+                                        <th class="text-end">Compras</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (topClientes.length === 0) { %>
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                No hay datos disponibles
+                                            </td>
+                                        </tr>
+                                    <% } else { %>
+                                        <% topClientes.forEach((cliente, index) => { %>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge-rank <%= index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'other' %>">
+                                                        <%= index + 1 %>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong><%= cliente.nombre %></strong>
+                                                    <br><small class="text-muted"><%= cliente.telefono || 'Sin teléfono' %></small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <%= cliente.total_compras %>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>$<%= Number(cliente.total_gastado).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="/reportes/clientes" class="btn btn-sm btn-outline-info">
+                                Ver Reporte Completo <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                </div>
+                <!-- Fin Tab Dashboard -->
+
+                <!-- Tab Historial de Ventas -->
+                <div class="tab-pane fade" id="historial">
+                    <div class="table-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="chart-title mb-0">
+                                <i class="bi bi-receipt text-primary"></i>
+                                Historial de Ventas
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Factura #</th>
+                                        <th>Fecha</th>
+                                        <th>Cliente</th>
+                                        <th>Forma de Pago</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (typeof historialVentas !== 'undefined' && historialVentas.ventas && historialVentas.ventas.length > 0) { %>
+                                        <% historialVentas.ventas.forEach(venta => { %>
+                                            <tr>
+                                                <td><strong>#<%= venta.id %></strong></td>
+                                                <td><%= new Date(venta.fecha).toLocaleString('es-CO', {dateStyle: 'short', timeStyle: 'short'}) %></td>
+                                                <td><%= venta.cliente_nombre %></td>
+                                                <td>
+                                                    <span class="badge bg-<%= venta.forma_pago === 'efectivo' ? 'success' : venta.forma_pago === 'tarjeta' ? 'primary' : 'info' %>">
+                                                        <%= venta.forma_pago %>
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>$<%= Number(venta.total).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
+                                                </td>
+                                                <td class="text-center">
+                                                    <a href="/facturas/<%= venta.id %>/imprimir" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                        <i class="bi bi-printer"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                No hay ventas registradas en el período seleccionado
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <% if (typeof historialVentas !== 'undefined' && historialVentas.paginacion) { %>
+                            <nav class="mt-3">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <% if (historialVentas.paginacion.paginaActual > 1) { %>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=<%= historialVentas.paginacion.paginaActual - 1 %>&desde=<%= filtros.desde %>&hasta=<%= filtros.hasta %>#historial">Anterior</a>
+                                        </li>
+                                    <% } %>
+                                    
+                                    <% for (let i = 1; i <= historialVentas.paginacion.totalPaginas; i++) { %>
+                                        <li class="page-item <%= i === historialVentas.paginacion.paginaActual ? 'active' : '' %>">
+                                            <a class="page-link" href="?page=<%= i %>&desde=<%= filtros.desde %>&hasta=<%= filtros.hasta %>#historial"><%= i %></a>
+                                        </li>
+                                    <% } %>
+                                    
+                                    <% if (historialVentas.paginacion.paginaActual < historialVentas.paginacion.totalPaginas) { %>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=<%= historialVentas.paginacion.paginaActual + 1 %>&desde=<%= filtros.desde %>&hasta=<%= filtros.hasta %>#historial">Siguiente</a>
+                                        </li>
+                                    <% } %>
+                                </ul>
+                            </nav>
+                        <% } %>
+                    </div>
+                </div>
+                <!-- Fin Tab Historial -->
+
+            </div>
+
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datos para gráficos
+        const ventasPorDia = <%- JSON.stringify(ventasPorDia) %>;
+        const distribucionPago = <%- JSON.stringify(distribucionPago) %>;
+        
+        // Gráfico de evolución de ventas
+        const ventasCtx = document.getElementById('ventasChart').getContext('2d');
+        new Chart(ventasCtx, {
+            type: 'line',
+            data: {
+                labels: ventasPorDia.map(v => new Date(v.fecha).toLocaleDateString('es-CO', {month: 'short', day: 'numeric'})),
+                datasets: [{
+                    label: 'Ventas Diarias',
+                    data: ventasPorDia.map(v => v.total_ventas),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Ventas: $' + context.parsed.y.toLocaleString('es-CO');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString('es-CO');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Gráfico de distribución por forma de pago
+        const pagoCtx = document.getElementById('pagoChart').getContext('2d');
+        new Chart(pagoCtx, {
+            type: 'doughnut',
+            data: {
+                labels: distribucionPago.map(d => d.metodo),
+                datasets: [{
+                    data: distribucionPago.map(d => d.total),
+                    backgroundColor: ['#27ae60', '#3498db', '#f39c12'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 15, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': $' + value.toLocaleString('es-CO') + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Funciones de filtros
+        function aplicarFiltros() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = document.getElementById('fechaHasta').value;
+            
+            if (!desde || !hasta) {
+                alert('Por favor seleccione ambas fechas');
+                return;
+            }
+            
+            window.location.href = `/reportes?desde=${desde}&hasta=${hasta}`;
+        }
+        
+        // Presets de fechas
+        document.querySelectorAll('[data-preset]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const preset = this.getAttribute('data-preset');
+                const hoy = new Date();
+                let desde, hasta;
+                
+                switch(preset) {
+                    case 'hoy':
+                        desde = hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'semana':
+                        const inicioSemana = new Date(hoy);
+                        inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+                        desde = inicioSemana.toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'mes':
+                        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'trimestre':
+                        const hace90 = new Date(hoy);
+                        hace90.setDate(hace90.getDate() - 90);
+                        desde = hace90.toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
+                }
+                
+                document.getElementById('fechaDesde').value = desde;
+                document.getElementById('fechaHasta').value = hasta;
+                aplicarFiltros();
+            });
+        });
+    </script>
+</body>
+</html>

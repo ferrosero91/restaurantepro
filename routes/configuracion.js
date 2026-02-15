@@ -29,60 +29,84 @@ async function verificarConfiguracion() {
 router.get('/', async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        
         if (!tenantId) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
 
+        // Obtener datos del restaurante
+        const [restaurante] = await db.query('SELECT * FROM restaurantes WHERE id = ? LIMIT 1', [tenantId]);
+        
+        if (!restaurante || restaurante.length === 0) {
+            return res.status(404).json({ error: 'Restaurante no encontrado' });
+        }
+        
+        // Obtener configuración de impresión
         const [config] = await db.query('SELECT * FROM configuracion_impresion WHERE restaurante_id = ? LIMIT 1', [tenantId]);
         
+        let configData;
+        
         if (!config || config.length === 0) {
-            // Si no hay configuración, renderizar la vista con valores por defecto
-            return res.render('configuracion', { 
-                config: {
-                    nombre_negocio: '',
-                    direccion: '',
-                    telefono: '',
-                    nit: '',
-                    pie_pagina: '',
-                    ancho_papel: 80,
-                    font_size: 1,
-                    logo_src: null,
-                    qr_src: null
-                },
-                user: req.user
-            });
-        }
-
-        // Construir previsualización (data URL) si ya hay logo/QR guardados
-        const configSinImagenes = { ...config[0] };
-        if (configSinImagenes.logo_data) {
-            try {
-                const logoBuffer = Buffer.from(configSinImagenes.logo_data);
-                const tipo = configSinImagenes.logo_tipo || 'png';
-                configSinImagenes.logo_src = `data:image/${tipo};base64,${logoBuffer.toString('base64')}`;
-            } catch (_) {
-                configSinImagenes.logo_src = null;
-            }
+            // Si no hay configuración, usar datos del restaurante
+            configData = {
+                nombre_negocio: restaurante[0].nombre || '',
+                direccion: restaurante[0].direccion || '',
+                telefono: restaurante[0].telefono || '',
+                nit: restaurante[0].nit || '',
+                pie_pagina: '',
+                ancho_papel: 80,
+                font_size: 1,
+                logo_src: null,
+                qr_src: null
+            };
         } else {
-            configSinImagenes.logo_src = null;
-        }
-        if (configSinImagenes.qr_data) {
-            try {
-                const qrBuffer = Buffer.from(configSinImagenes.qr_data);
-                const tipo = configSinImagenes.qr_tipo || 'png';
-                configSinImagenes.qr_src = `data:image/${tipo};base64,${qrBuffer.toString('base64')}`;
-            } catch (_) {
-                configSinImagenes.qr_src = null;
+            configData = { ...config[0] };
+            
+            // Si los campos están vacíos, usar datos del restaurante
+            if (!configData.nombre_negocio || configData.nombre_negocio.trim() === '') {
+                configData.nombre_negocio = restaurante[0].nombre || '';
             }
-        } else {
-            configSinImagenes.qr_src = null;
+            if (!configData.direccion || configData.direccion.trim() === '') {
+                configData.direccion = restaurante[0].direccion || '';
+            }
+            if (!configData.telefono || configData.telefono.trim() === '') {
+                configData.telefono = restaurante[0].telefono || '';
+            }
+            if (!configData.nit || configData.nit.trim() === '') {
+                configData.nit = restaurante[0].nit || '';
+            }
+            
+            // Procesar imágenes
+            if (configData.logo_data) {
+                try {
+                    const logoBuffer = Buffer.from(configData.logo_data);
+                    const tipo = configData.logo_tipo || 'png';
+                    configData.logo_src = `data:image/${tipo};base64,${logoBuffer.toString('base64')}`;
+                } catch (_) {
+                    configData.logo_src = null;
+                }
+            } else {
+                configData.logo_src = null;
+            }
+            
+            if (configData.qr_data) {
+                try {
+                    const qrBuffer = Buffer.from(configData.qr_data);
+                    const tipo = configData.qr_tipo || 'png';
+                    configData.qr_src = `data:image/${tipo};base64,${qrBuffer.toString('base64')}`;
+                } catch (_) {
+                    configData.qr_src = null;
+                }
+            } else {
+                configData.qr_src = null;
+            }
+            
+            // No enviar los datos binarios
+            delete configData.logo_data;
+            delete configData.qr_data;
         }
 
-        // No enviar los datos binarios de las imágenes a la vista (solo logo_src/qr_src)
-        delete configSinImagenes.logo_data;
-        delete configSinImagenes.qr_data;
-
-        res.render('configuracion', { config: configSinImagenes, user: req.user });
+        res.render('configuracion', { config: configData, user: req.user });
     } catch (error) {
         console.error('Error al obtener configuración:', error);
         res.status(500).json({ error: 'Error al obtener configuración' });

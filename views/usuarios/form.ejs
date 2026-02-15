@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= usuario ? 'Editar' : 'Nuevo' %> Usuario - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            padding: 0.625rem 0.875rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+        }
+        
+        .section-title {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .permission-card {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            height: 100%;
+        }
+        
+        .permission-card:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+        
+        .permission-card.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        
+        .permission-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .permission-icon.purple { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .permission-icon.blue { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+        .permission-icon.green { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+        .permission-icon.orange { background: rgba(243, 156, 18, 0.1); color: #f39c12; }
+        
+        .permission-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+        
+        .permission-desc {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+            padding: 0.75rem 2rem;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .admin-checkbox {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .admin-checkbox.checked {
+            background: #e3f2fd;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+    
+    <div class="form-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 style="color: #2c3e50; font-weight: 700;">
+                <i class="bi bi-person-badge me-2"></i>
+                <%= usuario ? 'Editar Usuario' : 'Nuevo Usuario' %>
+            </h2>
+            <a href="/usuarios" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+
+        <form id="usuarioForm">
+            <!-- Datos Personales -->
+            <div class="form-card">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombres <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="nombres" value="<%= usuario ? usuario.nombres : '' %>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Apellidos <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="apellidos" value="<%= usuario ? usuario.apellidos : '' %>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" value="<%= usuario ? usuario.email : '' %>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" name="telefono" value="<%= usuario ? usuario.telefono : '' %>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contraseña <%= usuario ? '' : '<span class="text-danger">*</span>' %></label>
+                        <input type="password" class="form-control" name="password" <%= usuario ? '' : 'required' %>>
+                        <% if (usuario) { %>
+                            <small class="text-muted">Dejar en blanco para mantener la actual</small>
+                        <% } %>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Rol <span class="text-danger">*</span></label>
+                        <select class="form-select" name="rol_id" id="rolSelect" required>
+                            <option value="">Seleccionar rol...</option>
+                            <% roles.forEach(rol => { %>
+                                <option value="<%= rol.id %>" 
+                                        data-admin="<%= rol.es_admin %>"
+                                        <%= usuario && usuario.rol_id === rol.id ? 'selected' : '' %>>
+                                    <%= rol.nombre %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <% if (usuario) { %>
+                    <div class="col-md-6">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" name="activo">
+                            <option value="true" <%= usuario.activo ? 'selected' : '' %>>Activo</option>
+                            <option value="false" <%= !usuario.activo ? 'selected' : '' %>>Inactivo</option>
+                        </select>
+                    </div>
+                    <% } %>
+                </div>
+                
+                <!-- Checkbox Administrador -->
+                <div class="admin-checkbox mt-3" id="adminCheckbox" style="display: none;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="esAdmin" disabled checked>
+                        <label class="form-check-label" for="esAdmin">
+                            <strong>Administrador</strong>
+                            <p class="mb-0 text-muted small">Acceso completo a todos los módulos</p>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control de Accesos -->
+            <div class="form-card" id="permisosSection">
+                <div class="section-title">
+                    <i class="bi bi-shield-check"></i>
+                    Control de Accesos
+                </div>
+                <p class="text-muted mb-4">Selecciona los módulos a los que tendrá acceso este usuario</p>
+                
+                <div class="row g-3" id="permisosContainer">
+                    <% permisos.forEach((permiso, index) => { 
+                        const isSelected = permisosSeleccionados.includes(permiso.id);
+                        const colors = ['purple', 'blue', 'green', 'orange'];
+                        const color = colors[index % colors.length];
+                    %>
+                        <div class="col-md-6">
+                            <div class="permission-card <%= isSelected ? 'selected' : '' %>" data-permiso-id="<%= permiso.id %>">
+                                <input type="checkbox" class="form-check-input d-none" name="permisos[]" value="<%= permiso.id %>" <%= isSelected ? 'checked' : '' %>>
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="permission-icon <%= color %>">
+                                        <i class="<%= permiso.icono %>"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="permission-title"><%= permiso.nombre %></div>
+                                        <div class="permission-desc"><%= permiso.descripcion %></div>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" <%= isSelected ? 'checked' : '' %>>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+                
+                <div class="mt-3 d-flex gap-3">
+                    <a href="#" class="text-primary" id="selectAll">
+                        <i class="bi bi-check-square me-1"></i>Seleccionar todos
+                    </a>
+                    <a href="#" class="text-secondary" id="deselectAll">
+                        <i class="bi bi-x-square me-1"></i>Deseleccionar todos
+                    </a>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="/usuarios" class="btn btn-outline-secondary px-4">Cancelar</a>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-save me-2"></i>Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <%- include('../partials/footer') %>
+    
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Manejar selección de permisos
+        document.querySelectorAll('.permission-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = this.querySelector('input[name="permisos[]"]');
+                    const visibleCheckbox = this.querySelector('.form-check-input:not([name])');
+                    checkbox.checked = !checkbox.checked;
+                    visibleCheckbox.checked = checkbox.checked;
+                    this.classList.toggle('selected', checkbox.checked);
+                }
+            });
+            
+            const visibleCheckbox = card.querySelector('.form-check-input:not([name])');
+            visibleCheckbox.addEventListener('change', function() {
+                const checkbox = card.querySelector('input[name="permisos[]"]');
+                checkbox.checked = this.checked;
+                card.classList.toggle('selected', this.checked);
+            });
+        });
+        
+        // Seleccionar/Deseleccionar todos
+        document.getElementById('selectAll').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.permission-card').forEach(card => {
+                card.classList.add('selected');
+                card.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+            });
+        });
+        
+        document.getElementById('deselectAll').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.permission-card').forEach(card => {
+                card.classList.remove('selected');
+                card.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            });
+        });
+        
+        // Manejar cambio de rol
+        document.getElementById('rolSelect').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const esAdmin = selectedOption.getAttribute('data-admin') === '1';
+            const adminCheckbox = document.getElementById('adminCheckbox');
+            const permisosSection = document.getElementById('permisosSection');
+            
+            if (esAdmin) {
+                adminCheckbox.style.display = 'block';
+                adminCheckbox.classList.add('checked');
+                permisosSection.style.display = 'none';
+                // Seleccionar todos los permisos
+                document.querySelectorAll('input[name="permisos[]"]').forEach(cb => cb.checked = true);
+            } else {
+                adminCheckbox.style.display = 'none';
+                adminCheckbox.classList.remove('checked');
+                permisosSection.style.display = 'block';
+                
+                // Cargar permisos del rol
+                if (this.value) {
+                    fetch(`/usuarios/api/roles/${this.value}/permisos`)
+                        .then(r => r.json())
+                        .then(permisos => {
+                            const permisosIds = permisos.map(p => p.id);
+                            document.querySelectorAll('.permission-card').forEach(card => {
+                                const permisoId = parseInt(card.getAttribute('data-permiso-id'));
+                                const isSelected = permisosIds.includes(permisoId);
+                                card.classList.toggle('selected', isSelected);
+                                card.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = isSelected);
+                            });
+                        });
+                }
+            }
+        });
+        
+        // Trigger inicial
+        document.getElementById('rolSelect').dispatchEvent(new Event('change'));
+        
+        // Enviar formulario
+        document.getElementById('usuarioForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            data.permisos = formData.getAll('permisos[]');
+            
+            const url = <%= usuario ? `'/usuarios/${usuario.id}'` : "'/usuarios'" %>;
+            const method = <%= usuario ? "'PUT'" : "'POST'" %>;
+            
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '/usuarios';
+                } else {
+                    alert(data.error || 'Error al guardar usuario');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al guardar usuario');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -28,6 +28,18 @@ async function requireAuth(req, res, next) {
         }
 
         req.user = usuarios[0];
+        
+        // Cargar permisos individuales del usuario
+        const [permisos] = await db.query(`
+            SELECT p.nombre, p.ruta, p.icono, p.descripcion
+            FROM usuario_permisos up
+            JOIN permisos p ON up.permiso_id = p.id
+            WHERE up.usuario_id = ?
+        `, [req.user.id]);
+        
+        req.user.permisos = permisos || [];
+        req.user.permisosRutas = permisos.map(p => p.ruta);
+        
         next();
     } catch (error) {
         console.error('Error en middleware de autenticación:', error);
@@ -82,9 +94,57 @@ async function optionalAuth(req, res, next) {
     }
 }
 
+/**
+ * Middleware para verificar permisos de acceso a una ruta
+ * @param {string} rutaRequerida - Ruta que se requiere permiso para acceder
+ */
+function requirePermission(rutaRequerida) {
+    return (req, res, next) => {
+        // Superadmin tiene acceso a todo
+        if (req.user && req.user.rol === 'superadmin') {
+            return next();
+        }
+        
+        // Verificar si el usuario tiene el permiso
+        if (!req.user || !req.user.permisosRutas) {
+            if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
+                return res.status(403).json({ error: 'Acceso denegado' });
+            }
+            return res.status(403).render('error', {
+                error: { message: 'No tienes permisos para acceder a este módulo' }
+            });
+        }
+        
+        // Verificar si tiene permiso para la ruta
+        const tienePermiso = req.user.permisosRutas.includes(rutaRequerida);
+        
+        if (!tienePermiso) {
+            if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
+                return res.status(403).json({ error: 'Acceso denegado' });
+            }
+            return res.status(403).render('error', {
+                error: { message: 'No tienes permisos para acceder a este módulo' }
+            });
+        }
+        
+        next();
+    };
+}
+
+/**
+ * Helper para verificar si el usuario tiene un permiso específico
+ */
+function hasPermission(user, ruta) {
+    if (!user) return false;
+    if (user.rol === 'superadmin') return true;
+    return user.permisosRutas && user.permisosRutas.includes(ruta);
+}
+
 module.exports = {
     requireAuth,
     requireSuperAdmin,
     requireAdmin,
-    optionalAuth
+    optionalAuth,
+    requirePermission,
+    hasPermission
 };

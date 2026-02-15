@@ -136,7 +136,8 @@ router.get('/:id/imprimir', validateGetFactura, async (req, res) => {
             // Relacionado con: views/factura.ejs (botón Volver)
             return_to: return_to,
             // Relacionado con: index (modal) y ventas (reimprimir)
-            embed: embed
+            embed: embed,
+            user: req.user
         });
 
     } catch (error) {

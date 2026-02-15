@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
         
         const [items] = await db.query(query, params);
 
-        res.render('cocina', { items: items || [] });
+        res.render('cocina', { items: items || [], user: req.user });
     } catch (error) {
         console.error('Error al cargar cocina:', error);
         res.status(500).render('error', { error: { message: 'Error al cargar cocina', stack: error.stack } });
