@@ -15,12 +15,13 @@ services:
       - ./database_multitenant.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - restaurante-network
-    command: --default-authentication-plugin=mysql_native_password --max_connections=200
+    command: --default-authentication-plugin=mysql_native_password --max_connections=200 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   app:
     build:
@@ -41,6 +42,8 @@ services:
     volumes:
       - uploads:/app/public/uploads
       - logs:/app/logs
+    ports:
+      - "3000:3000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -52,27 +55,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 40s
-
-  nginx:
-    image: nginx:alpine
-    container_name: restaurante-nginx
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-      - uploads:/usr/share/nginx/html/uploads:ro
-    depends_on:
-      - app
-    networks:
-      - restaurante-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
 
 volumes:
   mysql_data:

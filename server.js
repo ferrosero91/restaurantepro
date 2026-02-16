@@ -123,6 +123,24 @@ const usuariosRoutes = require('./routes/usuarios');
 const apiRoutes = require('./routes/api');
 const { router: webhooksRouter } = require('./routes/webhooks');
 
+// Health check endpoint (sin autenticación para Docker healthcheck)
+app.get('/health', async (req, res) => {
+    try {
+        // Verificar conexión a base de datos
+        await db.query('SELECT 1');
+        res.status(200).json({ 
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime()
+        });
+    } catch (error) {
+        res.status(503).json({ 
+            status: 'error',
+            message: 'Database connection failed'
+        });
+    }
+});
+
 // Rutas públicas (sin autenticación)
 app.use('/', authRoutes);
 
