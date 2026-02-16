@@ -235,18 +235,7 @@ async function startServer() {
         console.log(`📝 Entorno: ${config.env}`);
         console.log(`🔒 Modo seguro: ${config.isProduction ? 'SÍ' : 'NO'}`);
         
-        // En producción, primero arreglar permisos y crear esquema
-        if (config.isProduction) {
-            const { initDatabase } = require('./init-db');
-            const dbInitialized = await initDatabase();
-            
-            if (!dbInitialized) {
-                console.error('❌ No se pudo inicializar la base de datos');
-                process.exit(1);
-            }
-        }
-        
-        console.log('🔌 Intentando conectar a la base de datos...');
+        console.log('🔌 Verificando conexión a la base de datos...');
         const connection = await db.getConnection();
         connection.release();
         console.log('✅ Conexión exitosa a la base de datos');
@@ -254,7 +243,7 @@ async function startServer() {
         // Asegurar esquema adicional
         await db.ensureSchema();
         
-        // Iniciar el servidor solo si la conexión a la base de datos es exitosa
+        // Iniciar el servidor
         const server = app.listen(PORT, config.host, () => {
             console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
             console.log(`🌐 Accesible en LAN: http://${config.host}:${PORT}`);

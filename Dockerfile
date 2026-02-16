@@ -32,12 +32,13 @@ RUN npm ci --only=production && npm cache clean --force
 # Copiar código desde builder
 COPY --from=builder /app .
 
-# Crear directorios necesarios
+# Crear directorios necesarios y dar permisos al script
 RUN mkdir -p public/uploads logs && \
     addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app && \
-    chmod -R 755 /app/public/uploads
+    chmod -R 755 /app/public/uploads && \
+    chmod +x /app/docker-entrypoint.sh
 
 # Cambiar a usuario no-root
 USER nodejs
@@ -50,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Comando de inicio
-CMD ["node", "server.js"]
+CMD ["/app/docker-entrypoint.sh"]
