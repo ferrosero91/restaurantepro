@@ -523,13 +523,11 @@ INSERT INTO plan_limites (plan, max_usuarios, max_productos, max_mesas, max_fact
 ON DUPLICATE KEY UPDATE plan=plan;
 
 -- Crear superadmin por defecto
+-- Email: admin@sistema.com
 -- Password: admin123 (debe cambiarse en producción)
 INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) 
-VALUES (NULL, 'Super Administrador', 'admin@sistema.com', '$2b$10$rBV2KXZpN8qYqH0YvZ5Ziu.Xo8xGxGxGxGxGxGxGxGxGxGxGxGxGxO', 'superadmin', 1, 'activo')
+VALUES (NULL, 'Super Administrador', 'admin@sistema.com', '$2b$10$N9qo8uLOickgx2ZMRZoMye7FRNpZeS2TqJScvTQDr3OIHTJKIMK6i', 'superadmin', 1, 'activo')
 ON DUPLICATE KEY UPDATE email=email;
-
--- Nota: El hash de password debe generarse con bcrypt
--- Este es un placeholder, se debe generar correctamente en la aplicación
 
 -- ===========================
 -- DATOS INICIALES: MEDIOS DE PAGO
