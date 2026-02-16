@@ -2,58 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 
-async function fixUserPermissions() {
-    let rootConnection;
-    try {
-        console.log('🔑 Intentando arreglar permisos de usuario...');
-        
-        // Intentar conectar como root para arreglar permisos
-        rootConnection = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: 'root',
-            password: process.env.DB_ROOT_PASSWORD || process.env.DB_PASSWORD,
-            multipleStatements: true
-        });
-        
-        console.log('✅ Conectado como root');
-        
-        // Crear base de datos si no existe
-        await rootConnection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}`);
-        
-        // Arreglar permisos del usuario desde cualquier IP
-        await rootConnection.query(`
-            GRANT ALL PRIVILEGES ON ${process.env.DB_NAME}.* 
-            TO '${process.env.DB_USER}'@'%' 
-            IDENTIFIED BY '${process.env.DB_PASSWORD}'
-        `);
-        
-        await rootConnection.query('FLUSH PRIVILEGES');
-        
-        console.log('✅ Permisos de usuario configurados correctamente');
-        
-        await rootConnection.end();
-        return true;
-    } catch (error) {
-        console.log('⚠️  No se pudieron arreglar permisos como root:', error.message);
-        if (rootConnection) {
-            await rootConnection.end();
-        }
-        return false;
-    }
-}
-
 async function initDatabase() {
     let connection;
     try {
-        console.log('🔧 Verificando esquema de base de datos...');
+        console.log('🔧 Inicializando esquema de base de datos...');
         
-        // Primero intentar arreglar permisos
-        await fixUserPermissions();
-        
-        // Esperar un momento para que los permisos se apliquen
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Conectar con el usuario normal
+        // Conectar con el usuario normal (los permisos deben estar configurados previamente)
         connection = await mysql.createConnection({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
@@ -62,7 +16,7 @@ async function initDatabase() {
             multipleStatements: true
         });
         
-        console.log('✅ Conexión establecida con usuario normal');
+        console.log('✅ Conexión establecida');
         
         // Leer el archivo SQL
         const sqlFile = path.join(__dirname, 'database_multitenant.sql');
@@ -92,15 +46,25 @@ async function initDatabase() {
             }
         }
         
-        console.log('✅ Esquema de base de datos verificado correctamente');
+        console.log('✅ Esquema de base de datos inicializado correctamente');
         
         await connection.end();
         return true;
     } catch (error) {
-        console.error('❌ Error al inicializar base de datos:', error);
+        console.error('❌ Error al inicializar base de datos:', error.message);
         if (connection) {
             await connection.end();
         }
+        
+        // Si el error es de permisos, dar instrucciones
+        if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+            console.error('');
+            console.error('⚠️  SOLUCIÓN: Ejecuta este comando en la terminal del contenedor MySQL:');
+            console.error('');
+            console.error('mysql -u root -pFrH2j39b3m -e "CREATE DATABASE IF NOT EXISTS restaurante; DROP USER IF EXISTS \'restaurante\'@\'%\'; CREATE USER \'restaurante\'@\'%\' IDENTIFIED BY \'FrH2j39b3m\'; GRANT ALL PRIVILEGES ON restaurante.* TO \'restaurante\'@\'%\'; FLUSH PRIVILEGES;"');
+            console.error('');
+        }
+        
         return false;
     }
 }
