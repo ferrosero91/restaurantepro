@@ -1,13 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
 
 async function initDatabase() {
     let connection;
     try {
-        console.log('🔧 Inicializando esquema de base de datos...');
+        console.log('🔧 Inicializando base de datos...');
         
-        // Conectar sin especificar base de datos primero
+        // Conectar sin base de datos específica
         connection = await mysql.createConnection({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
@@ -15,51 +16,55 @@ async function initDatabase() {
             multipleStatements: true
         });
         
-        console.log('✅ Conexión establecida');
+        console.log('✅ Conectado a MySQL');
         
-        // Crear base de datos si no existe
-        await connection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}`);
-        await connection.query(`USE ${process.env.DB_NAME}`);
+        const dbName = process.env.DB_NAME || 'restaurante';
         
-        console.log(`✅ Base de datos ${process.env.DB_NAME} seleccionada`);
+        // Crear base de datos
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        console.log(`✅ Base de datos ${dbName} creada/verificada`);
         
-        // Leer el archivo SQL
+        await connection.query(`USE \`${dbName}\``);
+        
+        // Leer y ejecutar SQL
         const sqlFile = path.join(__dirname, 'database_multitenant.sql');
+        let sql = fs.readFileSync(sqlFile, 'utf8');
         
-        if (!fs.existsSync(sqlFile)) {
-            console.error('❌ Archivo database_multitenant.sql no encontrado');
-            return false;
-        }
+        // Reemplazar nombre de BD si es necesario
+        sql = sql.replace(/USE restaurante;/g, `USE \`${dbName}\`;`);
+        sql = sql.replace(/CREATE DATABASE IF NOT EXISTS restaurante;/g, `CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
         
-        const sql = fs.readFileSync(sqlFile, 'utf8');
-        
-        // Ejecutar todo el SQL de una vez (multipleStatements: true)
-        console.log('📝 Ejecutando script SQL completo...');
+        console.log('📝 Ejecutando script SQL...');
         await connection.query(sql);
         
-        console.log('✅ Esquema de base de datos inicializado correctamente');
+        console.log('✅ Tablas creadas');
+        
+        // Verificar y crear usuario superadmin con bcrypt
+        const [users] = await connection.query("SELECT id FROM usuarios WHERE email='admin@sistema.com'");
+        
+        if (users.length === 0) {
+            console.log('👤 Creando usuario superadmin...');
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await connection.query(
+                "INSERT INTO usuarios (restaurante_id, nombre, email, password, rol, rol_id, estado) VALUES (NULL, 'Super Administrador', 'admin@sistema.com', ?, 'superadmin', 1, 'activo')",
+                [hashedPassword]
+            );
+            console.log('✅ Usuario superadmin creado');
+        } else {
+            console.log('✅ Usuario superadmin ya existe');
+        }
+        
+        // Verificar tablas
+        const [tables] = await connection.query('SHOW TABLES');
+        console.log(`✅ ${tables.length} tablas en la base de datos`);
         
         await connection.end();
         return true;
     } catch (error) {
-        console.error('❌ Error al inicializar base de datos:', error.message);
+        console.error('❌ Error:', error.message);
         if (connection) {
-            try {
-                await connection.end();
-            } catch (e) {
-                // Ignorar error al cerrar
-            }
+            try { await connection.end(); } catch(e) {}
         }
-        
-        // Si el error es de permisos, dar instrucciones
-        if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-            console.error('');
-            console.error('⚠️  SOLUCIÓN: Ejecuta este comando en la terminal del contenedor MySQL:');
-            console.error('');
-            console.error(`mysql -u root -p${process.env.DB_ROOT_PASSWORD || process.env.DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}; GRANT ALL PRIVILEGES ON ${process.env.DB_NAME}.* TO '${process.env.DB_USER}'@'%' IDENTIFIED BY '${process.env.DB_PASSWORD}'; FLUSH PRIVILEGES;"`);
-            console.error('');
-        }
-        
         return false;
     }
 }
