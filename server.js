@@ -240,6 +240,12 @@ async function startServer() {
         connection.release();
         console.log('✅ Conexión exitosa a la base de datos');
         
+        // Inicializar esquema de base de datos automáticamente
+        if (config.isProduction) {
+            const { initDatabase } = require('./init-db');
+            await initDatabase();
+        }
+        
         // Iniciar el servidor solo si la conexión a la base de datos es exitosa
         const server = app.listen(PORT, config.host, () => {
             console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
