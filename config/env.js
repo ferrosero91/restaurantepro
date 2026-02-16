@@ -63,7 +63,8 @@ const config = {
         waitForConnections: true,
         queueLimit: 0,
         enableKeepAlive: true,
-        keepAliveInitialDelay: 0
+        keepAliveInitialDelay: 0,
+        charset: 'utf8mb4'
     },
 
     // Sesión
