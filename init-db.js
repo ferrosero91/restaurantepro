@@ -7,44 +7,35 @@ async function initDatabase() {
     try {
         console.log('🔧 Inicializando esquema de base de datos...');
         
-        // Conectar con el usuario normal (los permisos deben estar configurados previamente)
+        // Conectar sin especificar base de datos primero
         connection = await mysql.createConnection({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
             multipleStatements: true
         });
         
         console.log('✅ Conexión establecida');
         
+        // Crear base de datos si no existe
+        await connection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}`);
+        await connection.query(`USE ${process.env.DB_NAME}`);
+        
+        console.log(`✅ Base de datos ${process.env.DB_NAME} seleccionada`);
+        
         // Leer el archivo SQL
         const sqlFile = path.join(__dirname, 'database_multitenant.sql');
+        
+        if (!fs.existsSync(sqlFile)) {
+            console.error('❌ Archivo database_multitenant.sql no encontrado');
+            return false;
+        }
+        
         const sql = fs.readFileSync(sqlFile, 'utf8');
         
-        // Dividir por statements (separados por ;)
-        const statements = sql
-            .split(';')
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && !s.startsWith('--') && s !== 'USE restaurante');
-        
-        console.log(`📝 Ejecutando ${statements.length} statements SQL...`);
-        
-        // Ejecutar cada statement
-        for (let i = 0; i < statements.length; i++) {
-            const statement = statements[i];
-            if (statement.trim()) {
-                try {
-                    await connection.query(statement);
-                } catch (error) {
-                    // Ignorar errores de "tabla ya existe"
-                    if (!error.message.includes('already exists') && 
-                        !error.message.includes('Duplicate entry')) {
-                        console.error(`Error en statement ${i + 1}:`, error.message);
-                    }
-                }
-            }
-        }
+        // Ejecutar todo el SQL de una vez (multipleStatements: true)
+        console.log('📝 Ejecutando script SQL completo...');
+        await connection.query(sql);
         
         console.log('✅ Esquema de base de datos inicializado correctamente');
         
@@ -53,7 +44,11 @@ async function initDatabase() {
     } catch (error) {
         console.error('❌ Error al inicializar base de datos:', error.message);
         if (connection) {
-            await connection.end();
+            try {
+                await connection.end();
+            } catch (e) {
+                // Ignorar error al cerrar
+            }
         }
         
         // Si el error es de permisos, dar instrucciones
@@ -61,7 +56,7 @@ async function initDatabase() {
             console.error('');
             console.error('⚠️  SOLUCIÓN: Ejecuta este comando en la terminal del contenedor MySQL:');
             console.error('');
-            console.error('mysql -u root -pFrH2j39b3m -e "CREATE DATABASE IF NOT EXISTS restaurante; DROP USER IF EXISTS \'restaurante\'@\'%\'; CREATE USER \'restaurante\'@\'%\' IDENTIFIED BY \'FrH2j39b3m\'; GRANT ALL PRIVILEGES ON restaurante.* TO \'restaurante\'@\'%\'; FLUSH PRIVILEGES;"');
+            console.error(`mysql -u root -p${process.env.DB_ROOT_PASSWORD || process.env.DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}; GRANT ALL PRIVILEGES ON ${process.env.DB_NAME}.* TO '${process.env.DB_USER}'@'%' IDENTIFIED BY '${process.env.DB_PASSWORD}'; FLUSH PRIVILEGES;"`);
             console.error('');
         }
         

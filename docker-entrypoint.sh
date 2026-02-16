@@ -3,7 +3,10 @@ set -e
 
 echo "🔍 Esperando a que MySQL esté listo..."
 
-# Esperar a que MySQL esté disponible
+# Esperar hasta 60 segundos a que MySQL esté disponible
+max_attempts=30
+attempt=0
+
 until node -e "
 const mysql = require('mysql2/promise');
 (async () => {
@@ -11,8 +14,7 @@ const mysql = require('mysql2/promise');
     const conn = await mysql.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
+      password: process.env.DB_PASSWORD
     });
     await conn.end();
     process.exit(0);
@@ -21,7 +23,12 @@ const mysql = require('mysql2/promise');
   }
 })();
 " 2>/dev/null; do
-  echo "⏳ MySQL no está listo, esperando..."
+  attempt=$((attempt + 1))
+  if [ $attempt -ge $max_attempts ]; then
+    echo "❌ MySQL no está disponible después de $max_attempts intentos"
+    exit 1
+  fi
+  echo "⏳ Intento $attempt/$max_attempts - MySQL no está listo, esperando..."
   sleep 2
 done
 
@@ -32,16 +39,13 @@ echo "🔧 Inicializando base de datos..."
 node -e "
 const { initDatabase } = require('./init-db');
 initDatabase().then(success => {
-  if (success) {
-    console.log('✅ Base de datos inicializada');
-    process.exit(0);
-  } else {
-    console.log('⚠️  Continuando sin inicialización completa');
-    process.exit(0);
+  if (!success) {
+    console.log('⚠️  Advertencia: La inicialización de BD no fue completamente exitosa');
   }
-}).catch(err => {
-  console.error('❌ Error:', err.message);
   process.exit(0);
+}).catch(err => {
+  console.error('❌ Error crítico:', err.message);
+  process.exit(1);
 });
 "
 
