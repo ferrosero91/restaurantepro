@@ -3,8 +3,8 @@
 -- Base de datos para múltiples restaurantes
 -- ===========================
 
-CREATE DATABASE IF NOT EXISTS restaurante_saas;
-USE restaurante_saas;
+CREATE DATABASE IF NOT EXISTS restaurante;
+USE restaurante;
 
 -- ===========================
 -- TABLAS GLOBALES (NO TENANT)
