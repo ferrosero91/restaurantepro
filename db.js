@@ -55,16 +55,5 @@ async function ensureSchema() {
     }
 }
 
-// Verificar la conexión
-pool.getConnection()
-    .then(connection => {
-        console.log('Conexión exitosa a la base de datos');
-        connection.release();
-        // Intentar asegurar esquema al iniciar (mejora compatibilidad al actualizar el sistema)
-        ensureSchema();
-    })
-    .catch(err => {
-        console.error('Error al conectar a la base de datos:', err);
-    });
-
-module.exports = pool; 
+module.exports = pool;
+module.exports.ensureSchema = ensureSchema; 
