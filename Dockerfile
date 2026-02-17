@@ -18,8 +18,8 @@ COPY . .
 # Etapa de producción
 FROM node:20-alpine
 
-# Instalar solo dependencias runtime necesarias
-RUN apk add --no-cache openssl
+# Instalar dependencias runtime y tzdata para zona horaria
+RUN apk add --no-cache openssl tzdata
 
 WORKDIR /app
 
