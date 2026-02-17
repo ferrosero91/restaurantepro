@@ -13,8 +13,12 @@ async function initDatabase() {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            multipleStatements: true
+            multipleStatements: true,
+            timezone: '-05:00'
         });
+        
+        // Configurar zona horaria de la sesión
+        await connection.query('SET time_zone = "-05:00"');
         
         console.log('✅ Conectado a MySQL');
         

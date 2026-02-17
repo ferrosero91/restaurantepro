@@ -4,6 +4,15 @@ const config = require('./config/env');
 
 const pool = mysql.createPool(config.database).promise();
 
+// Configurar zona horaria en cada conexión
+pool.on('connection', (connection) => {
+    connection.query('SET time_zone = "-05:00"', (error) => {
+        if (error) {
+            console.error('Error configurando timezone:', error);
+        }
+    });
+});
+
 /**
  * Asegura el esquema mínimo requerido para nuevas funcionalidades (sin romper instalaciones existentes).
  * - Crea tabla factura_pagos (1 factura -> N pagos)
