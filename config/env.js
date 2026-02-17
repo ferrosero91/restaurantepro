@@ -64,7 +64,8 @@ const config = {
         queueLimit: 0,
         enableKeepAlive: true,
         keepAliveInitialDelay: 0,
-        charset: 'utf8mb4'
+        charset: 'utf8mb4',
+        timezone: '-05:00'
     },
 
     // Sesión
