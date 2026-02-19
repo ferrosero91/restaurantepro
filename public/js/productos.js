@@ -70,12 +70,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const precioLibra = document.getElementById('precioLibra').value;
 
         if (!codigo || !nombre) {
-            alert('El código y nombre son requeridos');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos requeridos',
+                text: 'El código y nombre son obligatorios',
+                confirmButtonText: 'Entendido'
+            });
             return;
         }
 
         if (!precioKg || !precioUnidad || !precioLibra) {
-            alert('Todos los precios son requeridos');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Precios requeridos',
+                text: 'Todos los precios son obligatorios',
+                confirmButtonText: 'Entendido'
+            });
             return;
         }
 
@@ -115,10 +125,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error || 'Error al guardar el producto');
             }
 
-            alert('Producto guardado exitosamente');
-            location.reload();
+            // Cerrar modal
+            const modalElement = document.getElementById('nuevoProductoModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+
+            // Mostrar alerta de éxito con SweetAlert2
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: productoId ? 'Producto actualizado correctamente' : 'Producto creado correctamente',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: true
+            }).then(() => {
+                location.reload();
+            });
         } catch (error) {
-            alert(error.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message,
+                confirmButtonText: 'Cerrar'
+            });
             btnGuardar.disabled = false;
             btnGuardar.innerHTML = '<i class="bi bi-save me-1"></i>Guardar';
         }
@@ -186,23 +215,55 @@ function editarProducto(id) {
             const modal = new bootstrap.Modal(document.getElementById('nuevoProductoModal'));
             modal.show();
         })
-        .catch(error => alert('Error al cargar el producto'));
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo cargar el producto',
+                confirmButtonText: 'Cerrar'
+            });
+        });
 }
 
 // Función para eliminar producto
 function eliminarProducto(id) {
-    if (!confirm('¿Está seguro de eliminar este producto?')) {
-        return;
-    }
-
-    fetch(`/productos/${id}`, {
-        method: 'DELETE'
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al eliminar el producto');
-            }
-            location.reload();
-        })
-        .catch(error => alert(error.message));
+    Swal.fire({
+        title: '¿Eliminar producto?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/productos/${id}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al eliminar el producto');
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Eliminado!',
+                        text: 'El producto ha sido eliminado',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        timerProgressBar: true
+                    }).then(() => {
+                        location.reload();
+                    });
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message,
+                        confirmButtonText: 'Cerrar'
+                    });
+                });
+        }
+    });
 } 
