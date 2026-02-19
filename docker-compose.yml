@@ -17,9 +17,10 @@ services:
       HOST: 0.0.0.0
       SESSION_SECRET: ${SESSION_SECRET}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      TZ: America/Bogota
     volumes:
-      - uploads:/app/public/uploads
-      - logs:/app/logs
+      - restaurante_uploads:/app/public/uploads
+      - restaurante_logs:/app/logs
     ports:
       - "3000:3000"
     healthcheck:
@@ -30,7 +31,9 @@ services:
       start_period: 40s
 
 volumes:
-  uploads:
+  restaurante_uploads:
     driver: local
-  logs:
+    name: restaurante_uploads
+  restaurante_logs:
     driver: local
+    name: restaurante_logs

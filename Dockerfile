@@ -37,6 +37,7 @@ RUN mkdir -p public/uploads logs && \
     addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app/public && \
     chmod -R 755 /app/public/uploads && \
     chmod +x /app/docker-entrypoint.sh
 
