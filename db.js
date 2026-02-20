@@ -16,7 +16,7 @@ pool.on('connection', (connection) => {
 /**
  * Asegura el esquema mínimo requerido para nuevas funcionalidades (sin romper instalaciones existentes).
  * - Crea tabla factura_pagos (1 factura -> N pagos)
- * - Amplía ENUM facturas.forma_pago para soportar tarjeta/mixto
+ * - Cambia forma_pago a VARCHAR para soportar cualquier método de pago
  * - Convierte columna imagen de productos a LONGTEXT para Base64
  *
  * Relacionado con:
@@ -31,7 +31,7 @@ async function ensureSchema() {
             CREATE TABLE IF NOT EXISTS factura_pagos (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 factura_id INT NOT NULL,
-                metodo ENUM('efectivo', 'transferencia', 'tarjeta') NOT NULL,
+                metodo VARCHAR(50) NOT NULL,
                 monto DECIMAL(10,2) NOT NULL,
                 referencia VARCHAR(100) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -39,9 +39,9 @@ async function ensureSchema() {
             )
         `);
 
-        // Asegurar que el ENUM incluya tarjeta/mixto (si ya existe la tabla, CREATE TABLE no lo altera)
-        const [rows] = await pool.query(
-            `SELECT COLUMN_TYPE
+        // Cambiar forma_pago a VARCHAR para soportar cualquier método (nequi, daviplata, etc)
+        const [formaPagoColumn] = await pool.query(
+            `SELECT DATA_TYPE, COLUMN_TYPE
              FROM INFORMATION_SCHEMA.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE()
                AND TABLE_NAME = 'facturas'
@@ -49,15 +49,12 @@ async function ensureSchema() {
              LIMIT 1`
         );
 
-        const columnType = rows?.[0]?.COLUMN_TYPE || '';
-        const needsTarjeta = !columnType.includes("'tarjeta'");
-        const needsMixto = !columnType.includes("'mixto'");
-
-        if (columnType && (needsTarjeta || needsMixto)) {
+        if (formaPagoColumn.length > 0 && formaPagoColumn[0].DATA_TYPE !== 'varchar') {
+            console.log('🔄 Migrando forma_pago a VARCHAR para soportar métodos personalizados...');
             await pool.query(
-                `ALTER TABLE facturas
-                 MODIFY forma_pago ENUM('efectivo','transferencia','tarjeta','mixto') NOT NULL DEFAULT 'efectivo'`
+                `ALTER TABLE facturas MODIFY forma_pago VARCHAR(50) DEFAULT 'efectivo'`
             );
+            console.log('✅ Columna forma_pago migrada a VARCHAR');
         }
 
         // Migrar columna imagen de productos a LONGTEXT para Base64
