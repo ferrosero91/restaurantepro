@@ -197,7 +197,7 @@ $(function() {
     // Crear tarjetas
     productosFiltrados.forEach(producto => {
       const categoria = categorias.find(c => c.id == producto.categoria_id);
-      const imagenUrl = producto.imagen ? `/uploads/${producto.imagen}` : null;
+      const imagenUrl = producto.imagen || null;
 
       // Crear elemento de tarjeta
       const card = document.createElement('div');

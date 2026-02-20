@@ -1129,7 +1129,7 @@ $(function() {
     let html = '';
     productosFiltrados.forEach(producto => {
         const categoria = categorias.find(c => c.id == producto.categoria_id);
-        const imagenUrl = producto.imagen ? `/uploads/${producto.imagen}` : null;
+        const imagenUrl = producto.imagen || null;
         const nombreEscapado = String(producto.nombre).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         
         html += `
