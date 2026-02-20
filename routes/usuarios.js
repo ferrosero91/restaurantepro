@@ -128,11 +128,14 @@ router.post('/', async (req, res) => {
         // Hash de contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
         
+        // Concatenar nombres y apellidos para la columna nombre
+        const nombreCompleto = `${nombres} ${apellidos}`.trim();
+        
         // Insertar usuario
         const [result] = await connection.query(
-            `INSERT INTO usuarios (nombres, apellidos, email, telefono, password, rol_id, restaurante_id, activo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
-            [nombres, apellidos, email, telefono, hashedPassword, rol_id, tenantId]
+            `INSERT INTO usuarios (nombre, nombres, apellidos, email, telefono, password, rol_id, restaurante_id, activo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+            [nombreCompleto, nombres, apellidos, email, telefono, hashedPassword, rol_id, tenantId]
         );
         
         const usuarioId = result.insertId;

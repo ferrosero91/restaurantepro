@@ -6,6 +6,7 @@
     <title>Gestión de Usuarios - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/vendor/sweetalert2/sweetalert2.min.css">
 </head>
 <body style="background-color: #f8f9fa;">
     <%- include('../partials/navbar_superadmin') %>
@@ -159,11 +160,16 @@
 
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.btn-editar').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    alert('Editar usuario ' + this.dataset.id);
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Función en desarrollo',
+                        text: 'Editar usuario ' + this.dataset.id
+                    });
                 });
             });
 
@@ -190,7 +196,11 @@
 
             // Validar que las contraseñas coincidan
             if (data.nueva_password !== data.confirmar_password) {
-                alert('Las contraseñas no coinciden');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Contraseñas no coinciden',
+                    text: 'Las contraseñas ingresadas no son iguales'
+                });
                 return;
             }
 
@@ -202,15 +212,29 @@
                 });
 
                 if (response.ok) {
-                    alert('Contraseña cambiada exitosamente');
                     bootstrap.Modal.getInstance(document.getElementById('modalCambiarPassword')).hide();
                     form.reset();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Contraseña cambiada correctamente',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
                 } else {
                     const error = await response.json();
-                    alert('Error: ' + error.error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.error || 'No se pudo cambiar la contraseña'
+                    });
                 }
             } catch (error) {
-                alert('Error al cambiar contraseña');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cambiar contraseña'
+                });
             }
         }
 
@@ -227,14 +251,29 @@
                 });
 
                 if (response.ok) {
-                    alert('Usuario creado exitosamente');
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Usuario creado correctamente',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
                 } else {
                     const error = await response.json();
-                    alert('Error: ' + error.error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al crear usuario',
+                        text: error.error || 'No se pudo crear el usuario'
+                    });
                 }
             } catch (error) {
-                alert('Error al crear usuario');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al crear usuario'
+                });
             }
         }
 
@@ -247,13 +286,28 @@
                 });
 
                 if (response.ok) {
-                    alert('Usuario eliminado');
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Eliminado!',
+                        text: 'Usuario eliminado correctamente',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
                 } else {
-                    alert('Error al eliminar usuario');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo eliminar el usuario'
+                    });
                 }
             } catch (error) {
-                alert('Error al eliminar usuario');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al eliminar usuario'
+                });
             }
         }
     </script>
