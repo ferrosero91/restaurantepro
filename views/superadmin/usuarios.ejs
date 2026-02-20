@@ -162,6 +162,7 @@
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script>
+        // Version 2.0 - SweetAlert2 modals
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.btn-editar').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -278,37 +279,48 @@
         }
 
         async function eliminarUsuario(id) {
-            if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+            Swal.fire({
+                title: '¿Eliminar usuario?',
+                text: 'Esta acción no se puede deshacer',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const response = await fetch('/superadmin/usuarios/' + id, {
+                            method: 'DELETE'
+                        });
 
-            try {
-                const response = await fetch('/superadmin/usuarios/' + id, {
-                    method: 'DELETE'
-                });
-
-                if (response.ok) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Eliminado!',
-                        text: 'Usuario eliminado correctamente',
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo eliminar el usuario'
-                    });
+                        if (response.ok) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Eliminado!',
+                                text: 'Usuario eliminado correctamente',
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo eliminar el usuario'
+                            });
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error al eliminar usuario'
+                        });
+                    }
                 }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error al eliminar usuario'
-                });
-            }
+            });
         }
     </script>
 </body>
