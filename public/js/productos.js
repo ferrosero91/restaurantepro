@@ -205,7 +205,7 @@ function editarProducto(id) {
             // Mostrar imagen actual si existe
             const preview = document.getElementById('previewImagen');
             if (producto.imagen) {
-                preview.src = '/uploads/' + producto.imagen;
+                preview.src = producto.imagen;
                 preview.style.display = 'block';
             } else {
                 preview.style.display = 'none';

@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS productos (
     codigo VARCHAR(50) NOT NULL,
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT,
-    imagen VARCHAR(255),
+    imagen LONGTEXT,
     categoria_id INT NULL,
     precio_kg DECIMAL(10,2) NOT NULL DEFAULT 0,
     precio_unidad DECIMAL(10,2) NOT NULL DEFAULT 0,

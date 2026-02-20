@@ -84,7 +84,15 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
         }
         
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
-        const imagen = req.file ? req.file.filename : null;
+        
+        // Convertir imagen a Base64 si existe
+        let imagenBase64 = null;
+        if (req.file) {
+            const imageBuffer = fs.readFileSync(req.file.path);
+            imagenBase64 = `data:${req.file.mimetype};base64,${imageBuffer.toString('base64')}`;
+            // Eliminar archivo temporal
+            fs.unlinkSync(req.file.path);
+        }
 
         const producto = await productoService.crear({
             codigo,
@@ -94,7 +102,7 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
             precio_kg,
             precio_unidad,
             precio_libra,
-            imagen
+            imagen: imagenBase64
         }, req.tenantId);
 
         res.status(201).json({ 
@@ -103,10 +111,8 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
         });
     } catch (error) {
         // Si hay error, eliminar la imagen subida
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error('Error al eliminar imagen:', err);
-            });
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
         }
         next(error);
     }
@@ -116,22 +122,6 @@ router.post('/', upload.single('imagen'), validateCreateProducto, async (req, re
 router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, res, next) => {
     try {
         const { codigo, nombre, descripcion, categoria_id, precio_kg, precio_unidad, precio_libra } = req.body;
-        const nuevaImagen = req.file ? req.file.filename : null;
-
-        // Si hay nueva imagen, obtener la anterior para eliminarla
-        if (nuevaImagen) {
-            try {
-                const productoAnterior = await productoService.obtenerPorId(req.params.id, req.tenantId);
-                if (productoAnterior && productoAnterior.imagen) {
-                    const imagenAnterior = path.join(__dirname, '../public/uploads', productoAnterior.imagen);
-                    fs.unlink(imagenAnterior, (err) => {
-                        if (err) console.error('Error al eliminar imagen anterior:', err);
-                    });
-                }
-            } catch (err) {
-                console.error('Error al obtener producto anterior:', err);
-            }
-        }
 
         const dataActualizar = {
             codigo,
@@ -143,18 +133,20 @@ router.put('/:id', upload.single('imagen'), validateUpdateProducto, async (req, 
             precio_libra
         };
 
-        if (nuevaImagen) {
-            dataActualizar.imagen = nuevaImagen;
+        // Convertir nueva imagen a Base64 si existe
+        if (req.file) {
+            const imageBuffer = fs.readFileSync(req.file.path);
+            dataActualizar.imagen = `data:${req.file.mimetype};base64,${imageBuffer.toString('base64')}`;
+            // Eliminar archivo temporal
+            fs.unlinkSync(req.file.path);
         }
 
         await productoService.actualizar(req.params.id, dataActualizar, req.tenantId);
         res.json({ message: 'Producto actualizado exitosamente' });
     } catch (error) {
         // Si hay error, eliminar la nueva imagen subida
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error('Error al eliminar imagen:', err);
-            });
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
         }
         next(error);
     }

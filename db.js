@@ -17,6 +17,7 @@ pool.on('connection', (connection) => {
  * Asegura el esquema mínimo requerido para nuevas funcionalidades (sin romper instalaciones existentes).
  * - Crea tabla factura_pagos (1 factura -> N pagos)
  * - Amplía ENUM facturas.forma_pago para soportar tarjeta/mixto
+ * - Convierte columna imagen de productos a LONGTEXT para Base64
  *
  * Relacionado con:
  * - routes/facturas.js (facturación desde index)
@@ -57,6 +58,24 @@ async function ensureSchema() {
                 `ALTER TABLE facturas
                  MODIFY forma_pago ENUM('efectivo','transferencia','tarjeta','mixto') NOT NULL DEFAULT 'efectivo'`
             );
+        }
+
+        // Migrar columna imagen de productos a LONGTEXT para Base64
+        const [imagenColumn] = await pool.query(
+            `SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'productos'
+               AND COLUMN_NAME = 'imagen'
+             LIMIT 1`
+        );
+
+        if (imagenColumn.length > 0 && imagenColumn[0].DATA_TYPE !== 'longtext') {
+            console.log('🔄 Migrando columna imagen a LONGTEXT para Base64...');
+            await pool.query(
+                `ALTER TABLE productos MODIFY imagen LONGTEXT`
+            );
+            console.log('✅ Columna imagen migrada a LONGTEXT');
         }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
