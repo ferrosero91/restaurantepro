@@ -40,7 +40,7 @@ const helmetConfig = helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"], // Necesario para Bootstrap
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Permitir scripts inline
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"], // Permitir Chart.js CDN
             scriptSrcAttr: ["'unsafe-inline'"], // IMPORTANTE: Permitir onclick, onload, etc.
             imgSrc: ["'self'", "data:", "blob:"],
             fontSrc: ["'self'", "data:"],

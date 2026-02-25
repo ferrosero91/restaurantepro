@@ -6,182 +6,8 @@
     <title>Dashboard de Reportes - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        html, body { 
-            height: 100%; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
-        
-        body {
-            background-color: #f8f9fa;
-            min-height: 100vh;
-        }
-        
-        .dashboard-header {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-            transition: all 0.3s;
-            height: 100%;
-            border-left: 4px solid;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        }
-        
-        .stat-card.primary { border-left-color: #3498db; }
-        .stat-card.success { border-left-color: #2ecc71; }
-        .stat-card.info { border-left-color: #16a085; }
-        .stat-card.warning { border-left-color: #f39c12; }
-        
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-        }
-        
-        .stat-icon.primary { background: rgba(52,152,219,0.1); color: #3498db; }
-        .stat-icon.success { background: rgba(46,204,113,0.1); color: #2ecc71; }
-        .stat-icon.info { background: rgba(22,160,133,0.1); color: #16a085; }
-        .stat-icon.warning { background: rgba(243,156,18,0.1); color: #f39c12; }
-        
-        .chart-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-            margin-bottom: 1.5rem;
-        }
-        
-        .chart-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .table-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        }
-        
-        .table thead th {
-            background: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            color: #2c3e50;
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            padding: 1rem 0.75rem;
-        }
-        
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .badge-rank {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        
-        .badge-rank.gold { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; }
-        .badge-rank.silver { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #000; }
-        .badge-rank.bronze { background: linear-gradient(135deg, #cd7f32, #e8a87c); color: #fff; }
-        .badge-rank.other { background: #e9ecef; color: #6c757d; }
-        
-        .filters-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-            margin-bottom: 1.5rem;
-        }
-        
-        .btn {
-            border-radius: 4px;
-            padding: 0.625rem 1.25rem;
-            font-weight: 500;
-        }
-        
-        .btn-primary {
-            background-color: #3498db;
-            border-color: #3498db;
-        }
-        
-        .btn-primary:hover {
-            background-color: #2980b9;
-            border-color: #2980b9;
-        }
-        
-        .btn-success {
-            background-color: #2ecc71;
-            border-color: #2ecc71;
-        }
-        
-        .btn-success:hover {
-            background-color: #27ae60;
-            border-color: #27ae60;
-        }
-        
-        .nav-tabs {
-            border: none;
-        }
-        
-        .nav-tabs .nav-link {
-            border: none;
-            color: #6c757d;
-            font-weight: 500;
-            padding: 0.75rem 1.25rem;
-            border-radius: 4px;
-            transition: all 0.3s;
-        }
-        
-        .nav-tabs .nav-link:hover {
-            background: #f8f9fa;
-            color: #3498db;
-        }
-        
-        .nav-tabs .nav-link.active {
-            background: #3498db;
-            color: white;
-        }
-        
-        @media (max-width: 768px) {
-            .stat-card { margin-bottom: 1rem; }
-            .chart-card { padding: 1rem; }
-            canvas { max-height: 250px !important; }
-            .nav-tabs .nav-link {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.875rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/vendor/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="/css/reportes.css?v=2.2">
 </head>
 <body>
     <%- include('../partials/navbar') %>
@@ -190,25 +16,25 @@
         <div class="container-fluid px-3 px-md-4">
             
             <!-- Tabs de navegación -->
-            <ul class="nav nav-tabs mb-3" style="background: white; border-radius: 8px; padding: 0.5rem;">
+            <ul class="nav nav-tabs mb-3">
                 <li class="nav-item">
                     <a class="nav-link active" data-bs-toggle="tab" href="#dashboard">
-                        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                        <i class="bi bi-speedometer2"></i>Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#historial">
-                        <i class="bi bi-receipt me-2"></i>Historial de Ventas
+                        <i class="bi bi-receipt"></i>Historial de Ventas
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/reportes/productos">
-                        <i class="bi bi-box-seam me-2"></i>Top Productos
+                        <i class="bi bi-box-seam"></i>Top Productos
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/reportes/clientes">
-                        <i class="bi bi-people me-2"></i>Top Clientes
+                        <i class="bi bi-people"></i>Top Clientes
                     </a>
                 </li>
             </ul>
@@ -216,19 +42,18 @@
             <div class="tab-content">
                 <!-- Tab Dashboard -->
                 <div class="tab-pane fade show active" id="dashboard">
-
             
             <!-- Filtros -->
             <div class="filters-card">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label">
                             <i class="bi bi-calendar-event me-1"></i>Fecha Desde
                         </label>
                         <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label">
                             <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
                         </label>
                         <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
@@ -237,15 +62,21 @@
                         <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
                             <i class="bi bi-funnel me-2"></i>Aplicar Filtros
                         </button>
+                        <button class="btn btn-success me-2" onclick="exportarExcel()">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
                         <div class="btn-group">
                             <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                                 <i class="bi bi-clock-history me-2"></i>Presets
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#" data-preset="hoy">Hoy</a></li>
-                                <li><a class="dropdown-item" href="#" data-preset="semana">Esta Semana</a></li>
-                                <li><a class="dropdown-item" href="#" data-preset="mes">Este Mes</a></li>
-                                <li><a class="dropdown-item" href="#" data-preset="trimestre">Último Trimestre</a></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="hoy">Hoy</a></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="ayer">Ayer</a></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="semana">Esta Semana</a></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="mes">Este Mes</a></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="trimestre">Último Trimestre</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item preset-link" href="#" data-preset="limpiar">Últimos 30 días</a></li>
                             </ul>
                         </div>
                     </div>
@@ -256,11 +87,11 @@
             <div class="row g-3 mb-4">
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div class="stat-card primary">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-muted small mb-1">TOTAL FACTURAS</div>
-                                <h3 class="mb-0"><%= estadisticas.total_facturas %></h3>
-                                <small class="text-muted">Facturas emitidas</small>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">TOTAL FACTURAS</div>
+                                <div class="stat-value"><%= estadisticas.total_facturas %></div>
+                                <div class="stat-description">Facturas emitidas</div>
                             </div>
                             <div class="stat-icon primary">
                                 <i class="bi bi-receipt"></i>
@@ -270,11 +101,11 @@
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div class="stat-card success">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-muted small mb-1">TOTAL VENTAS</div>
-                                <h3 class="mb-0">$<%= Number(estadisticas.total_ventas).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
-                                <small class="text-muted">Ingresos totales</small>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">TOTAL VENTAS</div>
+                                <div class="stat-value">$<%= Number(estadisticas.total_ventas).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                                <div class="stat-description">Ingresos totales</div>
                             </div>
                             <div class="stat-icon success">
                                 <i class="bi bi-cash-stack"></i>
@@ -284,11 +115,11 @@
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div class="stat-card info">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-muted small mb-1">TICKET PROMEDIO</div>
-                                <h3 class="mb-0">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
-                                <small class="text-muted">Por factura</small>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">TICKET PROMEDIO</div>
+                                <div class="stat-value">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                                <div class="stat-description">Por factura</div>
                             </div>
                             <div class="stat-icon info">
                                 <i class="bi bi-graph-up"></i>
@@ -298,11 +129,11 @@
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div class="stat-card warning">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-muted small mb-1">VENTA MÁXIMA</div>
-                                <h3 class="mb-0">$<%= Number(estadisticas.venta_maxima).toLocaleString('es-CO', {maximumFractionDigits:0}) %></h3>
-                                <small class="text-muted">Mayor venta</small>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">VENTA MÁXIMA</div>
+                                <div class="stat-value">$<%= Number(estadisticas.venta_maxima).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                                <div class="stat-description">Mayor venta</div>
                             </div>
                             <div class="stat-icon warning">
                                 <i class="bi bi-trophy"></i>
@@ -312,25 +143,28 @@
                 </div>
             </div>
 
-
             <!-- Gráficos -->
             <div class="row g-3 mb-4">
-                <div class="col-lg-8">
+                <div class="col-12 col-xl-7">
                     <div class="chart-card">
                         <div class="chart-title">
                             <i class="bi bi-graph-up text-primary"></i>
                             Evolución de Ventas
                         </div>
-                        <canvas id="ventasChart" height="80"></canvas>
+                        <div class="chart-container">
+                            <canvas id="ventasChart"></canvas>
+                        </div>
                     </div>
                 </div>
-                <div class="col-lg-4">
+                <div class="col-12 col-xl-5">
                     <div class="chart-card">
                         <div class="chart-title">
                             <i class="bi bi-pie-chart text-success"></i>
                             Distribución por Forma de Pago
                         </div>
-                        <canvas id="pagoChart" height="200"></canvas>
+                        <div class="chart-container chart-container-doughnut">
+                            <canvas id="pagoChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -357,7 +191,11 @@
                                     <% if (topProductos.length === 0) { %>
                                         <tr>
                                             <td colspan="4" class="text-center text-muted py-4">
-                                                No hay datos disponibles
+                                                <div class="empty-state">
+                                                    <i class="bi bi-inbox"></i>
+                                                    <h5>No hay datos disponibles</h5>
+                                                    <p>No se encontraron productos en el período seleccionado</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     <% } else { %>
@@ -384,11 +222,13 @@
                                 </tbody>
                             </table>
                         </div>
+                        <% if (topProductos.length > 0) { %>
                         <div class="text-center mt-3">
-                            <a href="/reportes/productos" class="btn btn-sm btn-outline-primary">
+                            <a href="/reportes/productos?desde=<%= filtros.desde %>&hasta=<%= filtros.hasta %>" class="btn btn-sm btn-outline-primary">
                                 Ver Reporte Completo <i class="bi bi-arrow-right ms-1"></i>
                             </a>
                         </div>
+                        <% } %>
                     </div>
                 </div>
                 
@@ -412,7 +252,11 @@
                                     <% if (topClientes.length === 0) { %>
                                         <tr>
                                             <td colspan="4" class="text-center text-muted py-4">
-                                                No hay datos disponibles
+                                                <div class="empty-state">
+                                                    <i class="bi bi-inbox"></i>
+                                                    <h5>No hay datos disponibles</h5>
+                                                    <p>No se encontraron clientes en el período seleccionado</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     <% } else { %>
@@ -439,11 +283,13 @@
                                 </tbody>
                             </table>
                         </div>
+                        <% if (topClientes.length > 0) { %>
                         <div class="text-center mt-3">
-                            <a href="/reportes/clientes" class="btn btn-sm btn-outline-info">
+                            <a href="/reportes/clientes?desde=<%= filtros.desde %>&hasta=<%= filtros.hasta %>" class="btn btn-sm btn-outline-info">
                                 Ver Reporte Completo <i class="bi bi-arrow-right ms-1"></i>
                             </a>
                         </div>
+                        <% } %>
                     </div>
                 </div>
             </div>
@@ -481,8 +327,20 @@
                                                 <td><%= new Date(venta.fecha).toLocaleString('es-CO', {dateStyle: 'short', timeStyle: 'short'}) %></td>
                                                 <td><%= venta.cliente_nombre %></td>
                                                 <td>
-                                                    <span class="badge bg-<%= venta.forma_pago === 'efectivo' ? 'success' : venta.forma_pago === 'tarjeta' ? 'primary' : 'info' %>">
-                                                        <%= venta.forma_pago %>
+                                                    <% 
+                                                    // Determinar color del badge según el método de pago
+                                                    let badgeColor = 'secondary';
+                                                    const formaPago = (venta.forma_pago || '').toLowerCase();
+                                                    if (formaPago === 'efectivo') badgeColor = 'success';
+                                                    else if (formaPago === 'tarjeta') badgeColor = 'primary';
+                                                    else if (formaPago === 'transferencia' || formaPago === 'nequi' || formaPago === 'daviplata') badgeColor = 'info';
+                                                    else if (formaPago === 'mixto') badgeColor = 'warning';
+                                                    
+                                                    // Capitalizar primera letra
+                                                    const formaPagoDisplay = venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1);
+                                                    %>
+                                                    <span class="badge bg-<%= badgeColor %>">
+                                                        <%= formaPagoDisplay %>
                                                     </span>
                                                 </td>
                                                 <td class="text-end">
@@ -498,7 +356,11 @@
                                     <% } else { %>
                                         <tr>
                                             <td colspan="6" class="text-center text-muted py-4">
-                                                No hay ventas registradas en el período seleccionado
+                                                <div class="empty-state">
+                                                    <i class="bi bi-inbox"></i>
+                                                    <h5>No hay ventas registradas</h5>
+                                                    <p>No se encontraron ventas en el período seleccionado</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     <% } %>
@@ -506,7 +368,7 @@
                             </table>
                         </div>
 
-                        <% if (typeof historialVentas !== 'undefined' && historialVentas.paginacion) { %>
+                        <% if (typeof historialVentas !== 'undefined' && historialVentas.paginacion && historialVentas.paginacion.totalPaginas > 1) { %>
                             <nav class="mt-3">
                                 <ul class="pagination justify-content-center mb-0">
                                     <% if (historialVentas.paginacion.paginaActual > 1) { %>
@@ -540,116 +402,322 @@
 
     <%- include('../partials/footer') %>
 
-
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/vendor/chart.js/chart.umd.min.js"></script>
     <script>
+        // Version 2.1 - Reportes completamente funcionales
+        console.log('Reportes v2.1 cargado');
+        
         // Datos para gráficos
-        const ventasPorDia = <%- JSON.stringify(ventasPorDia) %>;
-        const distribucionPago = <%- JSON.stringify(distribucionPago) %>;
+        const ventasPorDia = JSON.parse('<%- JSON.stringify(ventasPorDia) %>');
+        const distribucionPago = JSON.parse('<%- JSON.stringify(distribucionPago) %>');
         
-        // Gráfico de evolución de ventas
-        const ventasCtx = document.getElementById('ventasChart').getContext('2d');
-        new Chart(ventasCtx, {
-            type: 'line',
-            data: {
-                labels: ventasPorDia.map(v => new Date(v.fecha).toLocaleDateString('es-CO', {month: 'short', day: 'numeric'})),
-                datasets: [{
-                    label: 'Ventas Diarias',
-                    data: ventasPorDia.map(v => v.total_ventas),
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return 'Ventas: $' + context.parsed.y.toLocaleString('es-CO');
-                            }
-                        }
-                    }
+        console.log('=== DEBUG REPORTES ===');
+        console.log('Ventas por día RAW:', ventasPorDia);
+        console.log('Distribución pago RAW:', distribucionPago);
+        console.log('Tipo ventasPorDia:', typeof ventasPorDia, Array.isArray(ventasPorDia));
+        console.log('Tipo distribucionPago:', typeof distribucionPago, Array.isArray(distribucionPago));
+        console.log('=====================');
+        
+        // Validar que haya datos
+        if (!ventasPorDia || ventasPorDia.length === 0) {
+            console.warn('No hay datos de ventas por día');
+            const ventasChartContainer = document.getElementById('ventasChart').parentElement;
+            ventasChartContainer.innerHTML = '<div class="empty-state" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><h5 style="margin-top: 1rem;">No hay datos disponibles</h5><p>No se encontraron ventas en el período seleccionado</p></div>';
+        } else {
+            // Gráfico de evolución de ventas
+            const ventasCtx = document.getElementById('ventasChart').getContext('2d');
+            new Chart(ventasCtx, {
+                type: 'line',
+                data: {
+                    labels: ventasPorDia.map(v => new Date(v.fecha).toLocaleDateString('es-CO', {month: 'short', day: 'numeric'})),
+                    datasets: [{
+                        label: 'Ventas Diarias',
+                        data: ventasPorDia.map(v => v.total_ventas),
+                        borderColor: '#0ea5e9',
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#0ea5e9',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString('es-CO');
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Ventas: $' + context.parsed.y.toLocaleString('es-CO');
+                                }
                             }
                         }
-                    }
-                }
-            }
-        });
-        
-        // Gráfico de distribución por forma de pago
-        const pagoCtx = document.getElementById('pagoChart').getContext('2d');
-        new Chart(pagoCtx, {
-            type: 'doughnut',
-            data: {
-                labels: distribucionPago.map(d => d.metodo),
-                datasets: [{
-                    data: distribucionPago.map(d => d.total),
-                    backgroundColor: ['#27ae60', '#3498db', '#f39c12'],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 15, font: { size: 12 } }
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return label + ': $' + value.toLocaleString('es-CO') + ' (' + percentage + '%)';
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
+        
+        // Validar datos de distribución
+        const totalDistribucion = distribucionPago.reduce((sum, d) => sum + (parseFloat(d.total) || 0), 0);
+        console.log('Total distribución:', totalDistribucion);
+        
+        if (!distribucionPago || distribucionPago.length === 0 || totalDistribucion === 0) {
+            console.warn('No hay datos de distribución de pago');
+            const pagoChartContainer = document.getElementById('pagoChart').parentElement;
+            pagoChartContainer.innerHTML = '<div class="empty-state" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><h5 style="margin-top: 1rem;">No hay datos disponibles</h5><p>No se encontraron pagos en el período seleccionado</p></div>';
+        } else {
+            // Filtrar solo los que tienen valores
+            const datosValidos = distribucionPago.filter(d => parseFloat(d.total) > 0);
+            
+            // Generar colores dinámicamente basados en la cantidad de métodos de pago
+            const coloresPaleta = [
+                '#10b981', // Verde (efectivo)
+                '#0ea5e9', // Azul (transferencia)
+                '#f59e0b', // Naranja (tarjeta)
+                '#8b5cf6', // Púrpura
+                '#ec4899', // Rosa
+                '#14b8a6', // Teal
+                '#f97316', // Naranja oscuro
+                '#06b6d4', // Cyan
+                '#84cc16', // Lima
+                '#6366f1'  // Índigo
+            ];
+            
+            // Asignar colores según la cantidad de métodos
+            const coloresChart = datosValidos.map((_, index) => 
+                coloresPaleta[index % coloresPaleta.length]
+            );
+            
+            // Gráfico de distribución por forma de pago
+            const pagoCtx = document.getElementById('pagoChart').getContext('2d');
+            new Chart(pagoCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: datosValidos.map(d => d.metodo),
+                    datasets: [{
+                        data: datosValidos.map(d => parseFloat(d.total)),
+                        backgroundColor: coloresChart,
+                        borderWidth: 3,
+                        borderColor: '#fff',
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { 
+                                padding: 20, 
+                                font: { size: 13, weight: '500' },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 12,
+                                boxHeight: 12
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': $' + value.toLocaleString('es-CO') + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
         
         // Funciones de filtros
         function aplicarFiltros() {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
             
+            console.log('Aplicando filtros:', { desde, hasta });
+            
             if (!desde || !hasta) {
-                alert('Por favor seleccione ambas fechas');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas requeridas',
+                    text: 'Por favor seleccione ambas fechas',
+                    confirmButtonText: 'Entendido'
+                });
                 return;
             }
             
+            // Validar que la fecha desde no sea mayor que hasta
+            if (new Date(desde) > new Date(hasta)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Fechas inválidas',
+                    text: 'La fecha "Desde" no puede ser mayor que la fecha "Hasta"',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Cargando reportes...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Redirigir con los filtros
             window.location.href = `/reportes?desde=${desde}&hasta=${hasta}`;
         }
         
+        // Exportar a Excel
+        function exportarExcel() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = document.getElementById('fechaHasta').value;
+            
+            if (!desde || !hasta) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas requeridas',
+                    text: 'Por favor seleccione el rango de fechas para exportar',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            
+            // Mostrar opciones de exportación
+            Swal.fire({
+                title: 'Exportar a Excel',
+                text: 'Seleccione el tipo de reporte a exportar',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Ventas',
+                denyButtonText: 'Productos',
+                cancelButtonText: 'Clientes',
+                confirmButtonColor: '#3498db',
+                denyButtonColor: '#f39c12',
+                cancelButtonColor: '#27ae60'
+            }).then((result) => {
+                let tipo = 'ventas';
+                if (result.isConfirmed) {
+                    tipo = 'ventas';
+                } else if (result.isDenied) {
+                    tipo = 'productos';
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    tipo = 'clientes';
+                } else {
+                    return; // Usuario cerró el diálogo
+                }
+                
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Generando archivo Excel...',
+                    text: 'Por favor espere',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Descargar archivo
+                const url = `/reportes/exportar?tipo=${tipo}&desde=${desde}&hasta=${hasta}`;
+                
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al generar el archivo');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        // Crear enlace de descarga
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `reporte_${tipo}_${desde}_${hasta}.xlsx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Archivo generado',
+                            text: 'El archivo Excel se ha descargado correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error al exportar:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error al exportar',
+                            text: 'No se pudo generar el archivo Excel. Por favor intente nuevamente.',
+                            confirmButtonText: 'Entendido'
+                        });
+                    });
+            });
+        }
+        
         // Presets de fechas
-        document.querySelectorAll('[data-preset]').forEach(link => {
+        document.querySelectorAll('.preset-link').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 const preset = this.getAttribute('data-preset');
                 const hoy = new Date();
                 let desde, hasta;
                 
+                console.log('Preset seleccionado:', preset);
+                
                 switch(preset) {
                     case 'hoy':
                         desde = hasta = hoy.toISOString().split('T')[0];
+                        break;
+                    case 'ayer':
+                        const ayer = new Date(hoy);
+                        ayer.setDate(hoy.getDate() - 1);
+                        desde = hasta = ayer.toISOString().split('T')[0];
                         break;
                     case 'semana':
                         const inicioSemana = new Date(hoy);
@@ -663,16 +731,90 @@
                         break;
                     case 'trimestre':
                         const hace90 = new Date(hoy);
-                        hace90.setDate(hace90.getDate() - 90);
+                        hace90.setDate(hoy.getDate() - 90);
                         desde = hace90.toISOString().split('T')[0];
                         hasta = hoy.toISOString().split('T')[0];
                         break;
+                    case 'limpiar':
+                        const hace30 = new Date(hoy);
+                        hace30.setDate(hace30.getDate() - 30);
+                        desde = hace30.toISOString().split('T')[0];
+                        hasta = hoy.toISOString().split('T')[0];
+                        break;
                 }
+                
+                console.log('Fechas calculadas:', { desde, hasta });
                 
                 document.getElementById('fechaDesde').value = desde;
                 document.getElementById('fechaHasta').value = hasta;
                 aplicarFiltros();
             });
+        });
+        
+        // Validación en tiempo real de fechas
+        document.getElementById('fechaDesde').addEventListener('change', function() {
+            const desde = this.value;
+            const hasta = document.getElementById('fechaHasta').value;
+            
+            if (desde && hasta && new Date(desde) > new Date(hasta)) {
+                this.classList.add('is-invalid');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fecha inválida',
+                    text: 'La fecha "Desde" no puede ser mayor que "Hasta"',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+        
+        document.getElementById('fechaHasta').addEventListener('change', function() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = this.value;
+            
+            if (desde && hasta && new Date(desde) > new Date(hasta)) {
+                this.classList.add('is-invalid');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fecha inválida',
+                    text: 'La fecha "Hasta" no puede ser menor que "Desde"',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+        
+        console.log('Filtros actuales:', {
+            desde: '<%= filtros.desde %>',
+            hasta: '<%= filtros.hasta %>'
+        });
+        
+        // Mantener la pestaña activa después de recargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Si hay un hash en la URL, activar esa pestaña
+            const hash = window.location.hash;
+            if (hash === '#historial') {
+                const historialTab = document.querySelector('a[href="#historial"]');
+                const dashboardTab = document.querySelector('a[href="#dashboard"]');
+                
+                if (historialTab && dashboardTab) {
+                    // Remover active del dashboard
+                    dashboardTab.classList.remove('active');
+                    document.getElementById('dashboard').classList.remove('show', 'active');
+                    
+                    // Activar historial
+                    historialTab.classList.add('active');
+                    document.getElementById('historial').classList.add('show', 'active');
+                }
+            }
         });
     </script>
 </body>

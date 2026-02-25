@@ -93,6 +93,7 @@ app.use('/vendor/jquery', express.static(path.join(__dirname, 'node_modules', 'j
 app.use('/vendor/sweetalert2', express.static(path.join(__dirname, 'node_modules', 'sweetalert2', 'dist')));
 app.use('/vendor/select2', express.static(path.join(__dirname, 'node_modules', 'select2', 'dist')));
 app.use('/vendor/select2-bootstrap-5-theme', express.static(path.join(__dirname, 'node_modules', 'select2-bootstrap-5-theme', 'dist')));
+app.use('/vendor/chart.js', express.static(path.join(__dirname, 'node_modules', 'chart.js', 'dist')));
 // bootstrap-icons usa fuentes (woff/woff2) -> servir carpeta font completa
 app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_modules', 'bootstrap-icons', 'font')));
 
