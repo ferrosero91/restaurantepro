@@ -50,8 +50,6 @@ class ReporteService {
             
             where.push('DATE(f.fecha) >= ? AND DATE(f.fecha) <= ?');
             params.push(desde, hasta);
-            
-            console.log('Filtro de fechas aplicado:', { desde, hasta });
         }
 
         // Filtro de búsqueda por texto
@@ -99,9 +97,6 @@ class ReporteService {
         }
 
         const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-        
-        console.log('WHERE SQL:', whereSql);
-        console.log('Params:', params);
         
         return { whereSql, params };
     }
@@ -208,7 +203,6 @@ class ReporteService {
             );
             
             const codigosValidos = new Set(mediosConfig.map(m => m.codigo.toLowerCase()));
-            console.log('Códigos válidos para totales:', Array.from(codigosValidos));
             
             const totales = { general: 0 };
 
@@ -241,7 +235,6 @@ class ReporteService {
                 `;
 
                 const [rows] = await this.db.query(sql, unionParams);
-                console.log('Resultados query factura_pagos (antes de filtrar):', rows);
                 
                 // Solo incluir métodos que están configurados
                 (rows || []).forEach(r => {
@@ -251,8 +244,6 @@ class ReporteService {
                     if (codigosValidos.has(metodo)) {
                         totales[metodo] = val;
                         totales.general += val;
-                    } else {
-                        console.log(`Método "${metodo}" ignorado - no está en medios_pago configurados`);
                     }
                 });
             } catch (err) {
@@ -267,11 +258,7 @@ class ReporteService {
                     GROUP BY f.forma_pago
                 `;
                 
-                console.log('Query fallback:', sqlOld);
-                console.log('Params fallback:', params);
-                
                 const [rowsOld] = await this.db.query(sqlOld, params);
-                console.log('Resultados fallback (antes de filtrar):', rowsOld);
                 
                 // Solo incluir métodos que están configurados
                 (rowsOld || []).forEach(r => {
@@ -281,14 +268,10 @@ class ReporteService {
                     if (codigosValidos.has(metodo)) {
                         totales[metodo] = val;
                         totales.general += val;
-                    } else {
-                        console.log(`Método "${metodo}" ignorado - no está en medios_pago configurados`);
                     }
                 });
             }
 
-            console.log('Totales finales calculados (solo medios configurados):', totales);
-            
             return totales;
         } catch (error) {
             console.error('Error al obtener totales:', error);
@@ -452,8 +435,6 @@ class ReporteService {
         try {
             const totales = await this.obtenerTotales(filtros, tenantId);
             
-            console.log('Totales obtenidos:', totales);
-            
             // Obtener medios de pago configurados (solo activos)
             const [medios] = await this.db.query(
                 'SELECT codigo, nombre FROM medios_pago WHERE restaurante_id = ? AND activo = TRUE ORDER BY orden ASC, nombre ASC',
@@ -469,8 +450,6 @@ class ReporteService {
                 nombresMap[codigo] = m.nombre;
             });
             
-            console.log('Códigos válidos de medios de pago:', Array.from(codigosValidos));
-            
             // Crear distribución SOLO con los medios configurados que tienen valores
             const distribucion = [];
             Object.keys(totales).forEach(metodo => {
@@ -485,8 +464,6 @@ class ReporteService {
                     });
                 }
             });
-            
-            console.log('Distribución calculada (solo medios configurados):', distribucion);
             
             return distribucion;
         } catch (error) {

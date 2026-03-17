@@ -195,6 +195,81 @@ router.get('/impresoras', (req, res) => {
     res.json([]);
 });
 
+// Ruta especial para migración de productos (solo admin)
+router.post('/migrar-productos', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        // Solo permitir a usuarios admin
+        if (req.user.rol !== 'admin' && req.user.rol !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores pueden ejecutar migraciones' });
+        }
+
+        console.log('Iniciando migración de restricciones de productos...');
+
+        // 1. Modificar factura_items
+        const [constraints] = await db.query(`
+            SELECT CONSTRAINT_NAME 
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'factura_items' 
+            AND COLUMN_NAME = 'producto_id' 
+            AND REFERENCED_TABLE_NAME = 'productos'
+        `);
+
+        if (constraints.length > 0) {
+            const constraintName = constraints[0].CONSTRAINT_NAME;
+            
+            await db.query(`ALTER TABLE factura_items DROP FOREIGN KEY ${constraintName}`);
+            
+            await db.query(`
+                ALTER TABLE factura_items 
+                ADD CONSTRAINT factura_items_producto_fk 
+                FOREIGN KEY (producto_id) REFERENCES productos(id) 
+                ON DELETE SET NULL
+            `);
+        }
+
+        // 2. Modificar pedido_items
+        const [constraints2] = await db.query(`
+            SELECT CONSTRAINT_NAME 
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'pedido_items' 
+            AND COLUMN_NAME = 'producto_id' 
+            AND REFERENCED_TABLE_NAME = 'productos'
+        `);
+
+        if (constraints2.length > 0) {
+            const constraintName2 = constraints2[0].CONSTRAINT_NAME;
+            
+            await db.query(`ALTER TABLE pedido_items DROP FOREIGN KEY ${constraintName2}`);
+            
+            await db.query(`
+                ALTER TABLE pedido_items 
+                ADD CONSTRAINT pedido_items_producto_fk 
+                FOREIGN KEY (producto_id) REFERENCES productos(id) 
+                ON DELETE SET NULL
+            `);
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Migración completada. Ahora puedes eliminar productos sin problemas.' 
+        });
+
+    } catch (error) {
+        console.error('Error en migración:', error);
+        res.status(500).json({ 
+            error: 'Error al ejecutar migración', 
+            details: error.message 
+        });
+    }
+});
+
 module.exports = router; 
 
 

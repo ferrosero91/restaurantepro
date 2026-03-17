@@ -101,13 +101,21 @@ class ProductoService {
             throw new NotFoundError('Producto');
         }
 
-        const eliminado = await this.productoRepo.delete(id, tenantId);
-        
-        if (!eliminado) {
-            throw new Error('No se pudo eliminar el producto');
-        }
+        try {
+            const eliminado = await this.productoRepo.delete(id, tenantId);
+            
+            if (!eliminado) {
+                throw new Error('No se pudo eliminar el producto');
+            }
 
-        return true;
+            return true;
+        } catch (error) {
+            // Si el error es por clave foránea, dar un mensaje más claro
+            if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
+                throw new ConflictError('No se puede eliminar el producto porque está siendo usado en facturas o pedidos');
+            }
+            throw error;
+        }
     }
 
     /**
