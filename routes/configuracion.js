@@ -211,6 +211,9 @@ router.post('/migrar-productos', async (req, res) => {
         console.log('Iniciando migración de restricciones de productos...');
 
         // 1. Modificar factura_items
+        console.log('Modificando factura_items...');
+        
+        // Primero, eliminar la restricción existente
         const [constraints] = await db.query(`
             SELECT CONSTRAINT_NAME 
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
@@ -222,18 +225,23 @@ router.post('/migrar-productos', async (req, res) => {
 
         if (constraints.length > 0) {
             const constraintName = constraints[0].CONSTRAINT_NAME;
-            
             await db.query(`ALTER TABLE factura_items DROP FOREIGN KEY ${constraintName}`);
-            
-            await db.query(`
-                ALTER TABLE factura_items 
-                ADD CONSTRAINT factura_items_producto_fk 
-                FOREIGN KEY (producto_id) REFERENCES productos(id) 
-                ON DELETE SET NULL
-            `);
         }
+        
+        // Modificar la columna para permitir NULL
+        await db.query(`ALTER TABLE factura_items MODIFY COLUMN producto_id INT NULL`);
+        
+        // Agregar nueva restricción con ON DELETE SET NULL
+        await db.query(`
+            ALTER TABLE factura_items 
+            ADD CONSTRAINT factura_items_producto_fk 
+            FOREIGN KEY (producto_id) REFERENCES productos(id) 
+            ON DELETE SET NULL
+        `);
 
         // 2. Modificar pedido_items
+        console.log('Modificando pedido_items...');
+        
         const [constraints2] = await db.query(`
             SELECT CONSTRAINT_NAME 
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
@@ -245,16 +253,21 @@ router.post('/migrar-productos', async (req, res) => {
 
         if (constraints2.length > 0) {
             const constraintName2 = constraints2[0].CONSTRAINT_NAME;
-            
             await db.query(`ALTER TABLE pedido_items DROP FOREIGN KEY ${constraintName2}`);
-            
-            await db.query(`
-                ALTER TABLE pedido_items 
-                ADD CONSTRAINT pedido_items_producto_fk 
-                FOREIGN KEY (producto_id) REFERENCES productos(id) 
-                ON DELETE SET NULL
-            `);
         }
+        
+        // Modificar la columna para permitir NULL
+        await db.query(`ALTER TABLE pedido_items MODIFY COLUMN producto_id INT NULL`);
+        
+        // Agregar nueva restricción con ON DELETE SET NULL
+        await db.query(`
+            ALTER TABLE pedido_items 
+            ADD CONSTRAINT pedido_items_producto_fk 
+            FOREIGN KEY (producto_id) REFERENCES productos(id) 
+            ON DELETE SET NULL
+        `);
+
+        console.log('Migración completada exitosamente');
 
         res.json({ 
             success: true, 
