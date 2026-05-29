@@ -702,7 +702,7 @@
         function renderDlvGrid(catFilter = '') {
             const el = document.getElementById('dlvGridProductos');
             const busqueda = document.getElementById('dlvBuscarProducto').value.toLowerCase().trim();
-            let prods = dlvProductos.filter(p => p.activo !== 0);
+            let prods = dlvProductos;
             if (catFilter) prods = prods.filter(p => (p.categoria_nombre || 'Sin categoría') === catFilter);
             if (busqueda) prods = prods.filter(p => p.nombre.toLowerCase().includes(busqueda) || (p.codigo || '').toLowerCase().includes(busqueda));
 

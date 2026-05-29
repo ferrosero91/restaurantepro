@@ -221,9 +221,7 @@ router.post('/', upload.fields([
             printer_name || null,
             printer_type || 'thermal',
             printer_ip || null,
-            printer_port || null,
-            whatsapp || null,
-            slogan || null
+            printer_port || null
         ];
 
         // Agregar datos de imágenes si se subieron nuevas
@@ -254,9 +252,15 @@ router.post('/', upload.fields([
                 UPDATE configuracion_impresion 
                 SET nombre_negocio = ?, direccion = ?, telefono = ?, nit = ?,
                     pie_pagina = ?, ancho_papel = ?, font_size = ?,
-                    printer_name = ?, printer_type = ?, printer_ip = ?, printer_port = ?,
-                    whatsapp = ?, slogan = ?
+                    printer_name = ?, printer_type = ?, printer_ip = ?, printer_port = ?
             `;
+            // Agregar whatsapp y slogan solo si la columna existe (compatibilidad)
+            try {
+                if (whatsapp !== undefined || slogan !== undefined) {
+                    sql += ', whatsapp = ?, slogan = ?';
+                    values.push(whatsapp || null, slogan || null);
+                }
+            } catch(e) {}
             if (req.files?.logo) sql += ', logo_data = ?, logo_tipo = ?';
             if (req.files?.qr) sql += ', qr_data = ?, qr_tipo = ?';
             sql += ' WHERE restaurante_id = ?';

@@ -99,7 +99,7 @@ router.get('/domiciliarios', async (req, res) => {
             SELECT u.id, u.nombres, u.apellidos, u.telefono
             FROM usuarios u
             INNER JOIN roles r ON u.rol_id = r.id
-            WHERE u.restaurante_id = ? AND r.nombre = 'Domiciliario' AND u.activo = 1
+            WHERE u.restaurante_id = ? AND r.nombre = 'Domiciliario'
             ORDER BY u.nombres
         `, [tenantId]);
         res.json({ success: true, domiciliarios });

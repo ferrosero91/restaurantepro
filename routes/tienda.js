@@ -241,10 +241,10 @@ router.post('/:slug/pedido', async (req, res) => {
         let valorDomicilio = 0;
         try {
             const [config] = await db.query(
-                'SELECT valor_domicilio FROM domicilios_config WHERE restaurante_id = ?',
+                'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ?',
                 [restaurante.id]
             );
-            if (config.length > 0) valorDomicilio = Number(config[0].valor_domicilio) || 0;
+            if (config.length > 0) valorDomicilio = Number(config[0].costo_domicilio) || 0;
         } catch (e) { /* tabla puede no existir */ }
 
         // Calcular total de productos

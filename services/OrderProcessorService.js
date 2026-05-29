@@ -353,7 +353,7 @@ class OrderProcessorService {
 
         // Verificar que todos los productos existan, estén activos y pertenezcan al tenant
         const [productos] = await db.query(
-            'SELECT id FROM productos WHERE id IN (?) AND restaurante_id = ? AND activo = TRUE',
+            'SELECT id FROM productos WHERE id IN (?) AND restaurante_id = ?',
             [productIds, restauranteId]
         );
 

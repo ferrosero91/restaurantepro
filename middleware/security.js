@@ -40,11 +40,11 @@ const helmetConfig = helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"], // Bootstrap + CDN icons
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"], // Permitir Chart.js CDN
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com"],
             scriptSrcAttr: ["'unsafe-inline'"], // IMPORTANTE: Permitir onclick, onload, etc.
             imgSrc: ["'self'", "data:", "blob:"],
             fontSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
-            connectSrc: ["'self'", "ws:", "wss:"],
+            connectSrc: ["'self'", "ws:", "wss:", "https://static.cloudflareinsights.com"],
             frameSrc: ["'none'"],
             objectSrc: ["'none'"]
         }
