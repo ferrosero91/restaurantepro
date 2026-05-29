@@ -343,7 +343,8 @@
         }
 
         function renderFilaTabla(p) {
-            const estadoBadge = `<span class="badge badge-${p.estado}"><i class="bi ${ESTADO_ICONS[p.estado]} me-1"></i>${ESTADO_LABELS[p.estado]}</span>`;
+            const estado = p.estado || 'pendiente';
+            const estadoBadge = `<span class="badge badge-${estado}"><i class="bi ${ESTADO_ICONS[estado] || 'bi-circle'} me-1"></i>${ESTADO_LABELS[estado] || estado}</span>`;
             const tiempoClase = esTiempoAlerta(p.tiempo_transcurrido) ? 'tiempo-alerta' : '';
             const acciones = renderAcciones(p);
 
@@ -373,7 +374,8 @@
         }
 
         function renderCard(p) {
-            const estadoBadge = `<span class="badge badge-${p.estado}"><i class="bi ${ESTADO_ICONS[p.estado]} me-1"></i>${ESTADO_LABELS[p.estado]}</span>`;
+            const estado = p.estado || 'pendiente';
+            const estadoBadge = `<span class="badge badge-${estado}"><i class="bi ${ESTADO_ICONS[estado] || 'bi-circle'} me-1"></i>${ESTADO_LABELS[estado] || estado}</span>`;
             const tiempoClase = esTiempoAlerta(p.tiempo_transcurrido) ? 'tiempo-alerta' : '';
             const acciones = renderAcciones(p);
 
@@ -824,6 +826,10 @@
             this.style.display = 'none';
         });
         document.getElementById('dlvBtnCrearCliente').addEventListener('click', async function() {
+            // Temporalmente quitar tabindex del modal padre para que SweetAlert funcione
+            const modalEl = document.getElementById('modalNuevoPedido');
+            modalEl.removeAttribute('tabindex');
+            
             const { value: formValues } = await Swal.fire({
                 title: 'Crear Cliente',
                 html: '<input id="swal-nombre" class="swal2-input" placeholder="Nombre *"><input id="swal-tel" class="swal2-input" placeholder="Teléfono *"><input id="swal-dir" class="swal2-input" placeholder="Dirección">',
@@ -832,12 +838,14 @@
                 confirmButtonText: 'Crear',
                 cancelButtonText: 'Cancelar',
                 didOpen: () => {
-                    // Fix: permitir input dentro de modal Bootstrap
                     const popup = Swal.getPopup();
                     popup.querySelectorAll('input').forEach(input => {
+                        input.removeAttribute('disabled');
+                        input.removeAttribute('readonly');
                         input.addEventListener('keydown', e => e.stopPropagation());
-                        input.addEventListener('input', e => e.stopPropagation());
                     });
+                    // Focus en el primer input
+                    setTimeout(() => document.getElementById('swal-nombre')?.focus(), 100);
                 },
                 preConfirm: () => {
                     const nombre = document.getElementById('swal-nombre').value.trim();
@@ -850,6 +858,9 @@
                     return { nombre, telefono, direccion };
                 }
             });
+            
+            // Restaurar tabindex
+            modalEl.setAttribute('tabindex', '-1');
             if (!formValues || !formValues.nombre || !formValues.telefono) return;
             try {
                 const resp = await fetch('/api/clientes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(formValues) });

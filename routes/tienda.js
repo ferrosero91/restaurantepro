@@ -325,8 +325,8 @@ router.post('/:slug/pedido', async (req, res) => {
     }
 });
 
-// GET /api/tienda/:slug/tracking/:token - Obtener estado del pedido por token
-router.get('/:slug/tracking/:token', async (req, res) => {
+// GET /api/tienda/:slug/track/:token - Obtener estado del pedido por token (API JSON)
+router.get('/:slug/track/:token', async (req, res) => {
     try {
         const restaurante = await getRestauranteBySlug(req.params.slug);
         if (!restaurante) {
@@ -334,7 +334,7 @@ router.get('/:slug/tracking/:token', async (req, res) => {
         }
 
         const [pedidos] = await db.query(
-            `SELECT p.id, p.estado, p.total, p.valor_domicilio, p.propina, p.direccion_entrega,
+            `SELECT p.id, p.estado, p.total, p.valor_domicilio, p.direccion_entrega,
                     p.created_at, p.tracking_token,
                     c.nombre as cliente_nombre
              FROM pedidos p
