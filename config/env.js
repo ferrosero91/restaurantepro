@@ -86,6 +86,13 @@ const config = {
         }
     },
 
+    // JWT para WebSocket authentication
+    jwtSecret: process.env.JWT_SECRET || process.env.SESSION_SECRET || (
+        process.env.NODE_ENV === 'production' 
+            ? (() => { throw new Error('JWT_SECRET es requerido en producción'); })()
+            : 'dev-jwt-secret-change-in-production'
+    ),
+
     // CORS
     cors: {
         allowedOrigins: process.env.ALLOWED_ORIGINS 

@@ -170,7 +170,21 @@
             <% }); %>
             
             <div class="total-final">
-                Total: $<%= Number(factura.total).toLocaleString('es-CO') %>
+                <% if (factura.propina && Number(factura.propina) > 0) { %>
+                    <div style="border-top: 1px dashed #000; padding-top: 5px; margin-bottom: 3px;">
+                        Subtotal: $<%= Number(factura.total).toLocaleString('es-CO') %>
+                    </div>
+                    <div style="margin-bottom: 3px;">
+                        Servicio: $<%= Number(factura.propina).toLocaleString('es-CO') %>
+                    </div>
+                    <div style="border-top: 2px solid #000; padding-top: 5px; font-weight: bold; font-size: 1.1em;">
+                        TOTAL: $<%= Number(Number(factura.total) + Number(factura.propina)).toLocaleString('es-CO') %>
+                    </div>
+                <% } else { %>
+                    <div style="border-top: 1px dashed #000; padding-top: 5px; font-weight: bold;">
+                        Total: $<%= Number(factura.total).toLocaleString('es-CO') %>
+                    </div>
+                <% } %>
             </div>
         </div>
 

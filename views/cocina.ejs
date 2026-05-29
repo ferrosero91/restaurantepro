@@ -43,6 +43,16 @@
           color:#6c757d;
           text-align:center;
         }
+        .toast-new-order {
+          border-left: 4px solid #0d6efd;
+          animation: slideInRight 0.3s ease-out;
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        #wsIndicator { font-size: 0.75rem; cursor: default; }
+        #wsIndicator.bg-success { opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -125,14 +135,23 @@
 
     <%- include('partials/footer') %>
 
+    <!-- Contenedor de notificaciones toast -->
+    <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1090"></div>
+
+    <!-- Indicador de conexión WebSocket -->
+    <div id="wsStatus" class="position-fixed bottom-0 end-0 m-3" style="z-index:1080">
+      <span id="wsIndicator" class="badge bg-secondary" title="Estado de conexión en tiempo real">
+        <i class="bi bi-wifi-off me-1"></i>Desconectado
+      </span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
-      // Render inicial (evita “pantalla vacía” mientras carga el fetch)
+      // Render inicial (evita "pantalla vacía" mientras carga el fetch)
       window.__COCINA_ITEMS__ = <%- JSON.stringify(items || []) %>;
     </script>
     <script src="/js/cocina.js"></script>
 </body>
 </html>
-
-

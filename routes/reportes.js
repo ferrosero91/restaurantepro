@@ -5,6 +5,23 @@ const ReporteService = require('../services/ReporteService');
 const reporteService = new ReporteService();
 
 /**
+ * Obtener fecha local en formato YYYY-MM-DD (zona horaria Colombia UTC-5)
+ */
+function fechaLocalHoy() {
+    const now = new Date();
+    // Usar toLocaleDateString con zona horaria de Colombia
+    const parts = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).split('-');
+    return parts.join('-'); // YYYY-MM-DD
+}
+
+function fechaLocalOffset(dias) {
+    const now = new Date();
+    now.setDate(now.getDate() + dias);
+    const parts = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).split('-');
+    return parts.join('-');
+}
+
+/**
  * Sanitizar y validar filtros de entrada
  */
 function sanitizarFiltros(query) {
@@ -28,6 +45,9 @@ function sanitizarFiltros(query) {
     if (query.page) filtros.page = query.page;
     if (query.limit) filtros.limit = query.limit;
     
+    // Usuario ID (para filtro de propinas por cajero)
+    if (query.usuario_id) filtros.usuario_id = query.usuario_id;
+    
     return filtros;
 }
 
@@ -38,16 +58,13 @@ router.get('/', async (req, res) => {
         
         // Establecer fechas por defecto (últimos 30 días)
         let filtros = sanitizarFiltros(req.query);
-        const hoy = new Date();
-        const hace30 = new Date();
-        hace30.setDate(hace30.getDate() - 30);
         
         // Asegurar formato YYYY-MM-DD
         if (!filtros.desde) {
-            filtros.desde = hace30.toISOString().split('T')[0];
+            filtros.desde = fechaLocalOffset(-30);
         }
         if (!filtros.hasta) {
-            filtros.hasta = hoy.toISOString().split('T')[0];
+            filtros.hasta = fechaLocalHoy();
         }
         
         console.log('Filtros aplicados:', filtros);
@@ -95,12 +112,8 @@ router.get('/productos', async (req, res) => {
         
         let filtros = sanitizarFiltros(req.query);
         if (!filtros.desde || !filtros.hasta) {
-            const hoy = new Date();
-            const hace30 = new Date();
-            hace30.setDate(hace30.getDate() - 30);
-            
-            filtros.desde = filtros.desde || hace30.toISOString().split('T')[0];
-            filtros.hasta = filtros.hasta || hoy.toISOString().split('T')[0];
+            filtros.desde = filtros.desde || fechaLocalOffset(-30);
+            filtros.hasta = filtros.hasta || fechaLocalHoy();
         }
         
         const topProductos = await reporteService.obtenerTopProductos(filtros, tenantId, 50);
@@ -127,12 +140,8 @@ router.get('/clientes', async (req, res) => {
         
         let filtros = sanitizarFiltros(req.query);
         if (!filtros.desde || !filtros.hasta) {
-            const hoy = new Date();
-            const hace30 = new Date();
-            hace30.setDate(hace30.getDate() - 30);
-            
-            filtros.desde = filtros.desde || hace30.toISOString().split('T')[0];
-            filtros.hasta = filtros.hasta || hoy.toISOString().split('T')[0];
+            filtros.desde = filtros.desde || fechaLocalOffset(-30);
+            filtros.hasta = filtros.hasta || fechaLocalHoy();
         }
         
         const topClientes = await reporteService.obtenerTopClientes(filtros, tenantId, 50);
@@ -152,6 +161,77 @@ router.get('/clientes', async (req, res) => {
     }
 });
 
+// Reporte de propinas
+router.get('/propinas', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        
+        let filtros = sanitizarFiltros(req.query);
+        if (!filtros.desde || !filtros.hasta) {
+            filtros.desde = filtros.desde || fechaLocalOffset(-30);
+            filtros.hasta = filtros.hasta || fechaLocalHoy();
+        }
+        
+        // Obtener datos para el reporte de propinas
+        const [estadisticas, propinasPorCajero, propinasPorDia, usuarios] = await Promise.all([
+            reporteService.obtenerEstadisticasPropinas(filtros, tenantId),
+            reporteService.obtenerPropinasPorCajero(filtros, tenantId),
+            reporteService.obtenerPropinasPorDia(filtros, tenantId, 30),
+            reporteService.obtenerUsuariosConFacturas(tenantId)
+        ]);
+        
+        res.render('reportes/propinas', {
+            estadisticas,
+            propinasPorCajero,
+            propinasPorDia,
+            usuarios,
+            filtros,
+            user: req.user
+        });
+    } catch (error) {
+        console.error('Error al cargar reporte de propinas:', error);
+        res.status(500).render('error', {
+            message: 'Error al cargar el reporte de propinas',
+            error: process.env.NODE_ENV === 'development' ? error : {},
+            user: req.user
+        });
+    }
+});
+
+// Reporte de domicilios (delivery)
+router.get('/domicilios', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        
+        let filtros = sanitizarFiltros(req.query);
+        if (!filtros.desde || !filtros.hasta) {
+            filtros.desde = filtros.desde || fechaLocalOffset(-30);
+            filtros.hasta = filtros.hasta || fechaLocalHoy();
+        }
+        
+        const [estadisticas, topDomiciliarios, topClientes] = await Promise.all([
+            reporteService.obtenerEstadisticasDomicilios(filtros, tenantId),
+            reporteService.obtenerTopDomiciliarios(filtros, tenantId),
+            reporteService.obtenerTopClientesDomicilio(filtros, tenantId)
+        ]);
+        
+        res.render('reportes/domicilios', {
+            estadisticas,
+            topDomiciliarios,
+            topClientes,
+            filtros,
+            user: req.user
+        });
+    } catch (error) {
+        console.error('Error al cargar reporte de domicilios:', error);
+        res.status(500).render('error', {
+            message: 'Error al cargar el reporte de domicilios',
+            error: process.env.NODE_ENV === 'development' ? error : {},
+            user: req.user
+        });
+    }
+});
+
 // Exportar reportes a Excel
 router.get('/exportar', async (req, res) => {
     try {
@@ -160,7 +240,7 @@ router.get('/exportar', async (req, res) => {
         const tipo = req.query.tipo || 'ventas';
         
         // Validar tipo
-        const tiposValidos = ['ventas', 'productos', 'clientes'];
+        const tiposValidos = ['ventas', 'productos', 'clientes', 'propinas'];
         if (!tiposValidos.includes(tipo)) {
             return res.status(400).json({ error: 'Tipo de reporte inválido' });
         }

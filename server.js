@@ -123,6 +123,9 @@ const reportesRoutes = require('./routes/reportes');
 const usuariosRoutes = require('./routes/usuarios');
 const apiRoutes = require('./routes/api');
 const { router: webhooksRouter } = require('./routes/webhooks');
+const menuDigitalRoutes = require('./routes/menu-digital');
+const domiciliosRoutes = require('./routes/domicilios');
+const domiciliarioRoutes = require('./routes/domiciliario');
 
 // Health check endpoint (sin autenticación para Docker healthcheck)
 app.get('/health', async (req, res) => {
@@ -144,6 +147,15 @@ app.get('/health', async (req, res) => {
 
 // Rutas públicas (sin autenticación)
 app.use('/', authRoutes);
+
+// Rutas públicas del menú digital (sin autenticación - para clientes)
+app.use('/menu-digital', menuDigitalRoutes);
+app.use('/api/menu-digital', menuDigitalRoutes);
+
+// Rutas públicas de la tienda online (sin autenticación - para clientes)
+const tiendaRoutes = require('./routes/tienda');
+app.use('/tienda', tiendaRoutes);
+app.use('/api/tienda', tiendaRoutes);
 
 // Rutas de superadmin (requieren autenticación y rol superadmin)
 app.use('/superadmin', requireAuth, superadminRoutes);
@@ -183,6 +195,10 @@ app.use('/mesas', requireAuth, requireTenant, requirePermission('/mesas'), mesas
 app.use('/api/mesas', requireAuth, requireTenant, requirePermission('/mesas'), mesasRoutes);
 app.use('/cocina', requireAuth, requireTenant, requirePermission('/cocina'), cocinaRoutes);
 app.use('/api/cocina', requireAuth, requireTenant, requirePermission('/cocina'), cocinaRoutes);
+app.use('/domicilios', requireAuth, requireTenant, requirePermission('/domicilios'), domiciliosRoutes);
+app.use('/api/domicilios', requireAuth, requireTenant, requirePermission('/domicilios'), domiciliosRoutes);
+app.use('/domiciliario', requireAuth, requireTenant, requirePermission('/domiciliario'), domiciliarioRoutes);
+app.use('/api/domiciliario', requireAuth, requireTenant, requirePermission('/domiciliario'), domiciliarioRoutes);
 app.use('/configuracion', requireAuth, requireTenant, requirePermission('/configuracion'), configuracionRoutes);
 app.use('/categorias', requireAuth, requireTenant, requirePermission('/productos'), categoriasRoutes);
 app.use('/api/categorias', requireAuth, requireTenant, categoriasRoutes); // Sin restricción para facturación
@@ -241,7 +257,12 @@ async function startServer() {
         connection.release();
         console.log('✅ Conexión exitosa a la base de datos');
         
-        // Asegurar esquema adicional
+        // Ejecutar migraciones de base de datos
+        console.log('🔄 Ejecutando migraciones de base de datos...');
+        const { runMigrations } = require('./scripts/migrations/migrate');
+        await runMigrations();
+        
+        // Asegurar esquema adicional (legacy)
         await db.ensureSchema();
         
         // Iniciar el servidor
@@ -255,6 +276,11 @@ async function startServer() {
             console.log('');
             console.log('✨ Sistema listo para recibir peticiones');
         });
+
+        // Inicializar NotificationService con WebSocket
+        const notificationService = require('./services/NotificationService');
+        notificationService.initialize(server);
+        console.log('🔔 Servicio de notificaciones en tiempo real activado');
 
         // Manejar errores del servidor
         server.on('error', (error) => {

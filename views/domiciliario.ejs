@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis Entregas - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; padding-bottom: 2rem; }
+        .top-bar { background: #1e293b; color: white; padding: 1rem 1.25rem; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .top-bar h1 { font-size: 1.2rem; font-weight: 700; margin: 0; }
+        .top-bar .badge { font-size: 0.75rem; }
+        .delivery-card { background: white; border-radius: 16px; margin: 0.75rem; padding: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border-left: 5px solid #6f42c1; }
+        .delivery-card.en_camino { border-left-color: #6f42c1; }
+        .delivery-card.en_preparacion { border-left-color: #fd7e14; }
+        .delivery-card .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .delivery-card .pedido-id { font-weight: 800; font-size: 1.1rem; color: #1e293b; }
+        .delivery-card .tiempo { font-size: 0.8rem; color: #64748b; }
+        .delivery-card .cliente-info { margin-bottom: 0.75rem; }
+        .delivery-card .cliente-nombre { font-weight: 700; font-size: 1rem; }
+        .delivery-card .direccion { color: #475569; font-size: 0.9rem; margin-top: 0.25rem; }
+        .delivery-card .notas { background: #fef3c7; border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.8rem; color: #92400e; margin-top: 0.5rem; }
+        .delivery-card .total-row { display: flex; justify-content: space-between; align-items: center; margin: 0.75rem 0; padding-top: 0.75rem; border-top: 1px solid #e2e8f0; }
+        .delivery-card .total { font-size: 1.3rem; font-weight: 800; color: #1e293b; }
+        .btn-action { width: 100%; padding: 0.9rem; border-radius: 12px; font-weight: 700; font-size: 1rem; border: none; cursor: pointer; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-en-camino { background: #6f42c1; color: white; }
+        .btn-en-camino:active { background: #5a32a3; }
+        .btn-entregado { background: #10b981; color: white; }
+        .btn-entregado:active { background: #059669; }
+        .btn-llamar { background: #3b82f6; color: white; padding: 0.7rem; border-radius: 12px; border: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex: 1; }
+        .empty-state { text-align: center; padding: 4rem 2rem; color: #94a3b8; }
+        .empty-state i { font-size: 4rem; margin-bottom: 1rem; }
+        .refresh-btn { background: none; border: none; color: white; font-size: 1.2rem; padding: 0.5rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div>
+            <h1><i class="bi bi-bicycle me-2"></i>Mis Entregas</h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-dark" id="countPedidos">0</span>
+            <button class="refresh-btn" onclick="cargarPedidos()"><i class="bi bi-arrow-clockwise"></i></button>
+            <a href="/logout" class="refresh-btn"><i class="bi bi-box-arrow-right"></i></a>
+        </div>
+    </div>
+
+    <div id="listaPedidos">
+        <div class="empty-state">
+            <i class="bi bi-truck"></i>
+            <p>Cargando entregas...</p>
+        </div>
+    </div>
+
+    <script>
+    let pedidos = [];
+
+    async function cargarPedidos() {
+        try {
+            const resp = await fetch('/api/domiciliario/pedidos');
+            const data = await resp.json();
+            if (data.success) {
+                pedidos = data.pedidos;
+                renderPedidos();
+            }
+        } catch(e) { console.error('Error:', e); }
+    }
+
+    function renderPedidos() {
+        const el = document.getElementById('listaPedidos');
+        document.getElementById('countPedidos').textContent = pedidos.length;
+
+        if (pedidos.length === 0) {
+            el.innerHTML = '<div class="empty-state"><i class="bi bi-check-circle"></i><p>No tienes entregas pendientes</p><small>Las nuevas entregas aparecerán aquí</small></div>';
+            return;
+        }
+
+        el.innerHTML = pedidos.map(p => {
+            const tel = p.telefono_contacto || p.cliente_telefono || '';
+            const btnEstado = p.estado === 'en_preparacion'
+                ? `<button class="btn-action btn-en-camino" onclick="cambiarEstado(${p.id}, 'en_camino')"><i class="bi bi-bicycle"></i>Salí del restaurante</button>`
+                : `<button class="btn-action btn-entregado" onclick="cambiarEstado(${p.id}, 'entregado')"><i class="bi bi-check-circle"></i>Entregado</button>`;
+
+            return `
+            <div class="delivery-card ${p.estado}">
+                <div class="card-header-row">
+                    <span class="pedido-id">#${p.id}</span>
+                    <span class="tiempo"><i class="bi bi-stopwatch me-1"></i>${p.tiempo}</span>
+                </div>
+                <div class="cliente-info">
+                    <div class="cliente-nombre">${p.cliente_nombre || 'Cliente'}</div>
+                    <div class="direccion"><i class="bi bi-geo-alt me-1"></i>${p.direccion_entrega || 'Sin dirección'}</div>
+                    ${p.notas_entrega ? `<div class="notas"><i class="bi bi-sticky me-1"></i>${p.notas_entrega}</div>` : ''}
+                </div>
+                <div class="total-row">
+                    <span class="total">$${Number(p.total).toLocaleString('es-CO')}</span>
+                    ${tel ? `<a href="tel:${tel}" class="btn-llamar"><i class="bi bi-telephone"></i>Llamar</a>` : ''}
+                </div>
+                ${btnEstado}
+            </div>`;
+        }).join('');
+    }
+
+    async function cambiarEstado(pedidoId, estado) {
+        try {
+            const resp = await fetch('/api/domiciliario/' + pedidoId + '/estado', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                cargarPedidos();
+            } else {
+                alert(data.error || 'Error');
+            }
+        } catch(e) { alert('Error de conexión'); }
+    }
+
+    // Cargar al inicio y auto-refresh cada 15s
+    cargarPedidos();
+    setInterval(cargarPedidos, 15000);
+    </script>
+</body>
+</html>

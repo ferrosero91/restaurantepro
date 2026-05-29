@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domicilios</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <style>
+        html, body { height: 100%; }
+        body { min-height: 100vh; display: flex; flex-direction: column; background-color: #f8f9fa; }
+        .domicilios-toolbar {
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,.06);
+            box-shadow: 0 .25rem .75rem rgba(0,0,0,.04);
+            border-radius: .75rem;
+            padding: .75rem;
+        }
+        .pedido-card {
+            border: 1px solid rgba(0,0,0,.06);
+            border-radius: .9rem;
+            box-shadow: 0 .4rem 1rem rgba(0,0,0,.05);
+            background: #fff;
+            transition: transform .1s;
+        }
+        .pedido-card:hover { transform: translateY(-2px); }
+        .estado-pendiente { border-left: 4px solid #ffc107; }
+        .estado-confirmado { border-left: 4px solid #0d6efd; }
+        .estado-en_preparacion { border-left: 4px solid #fd7e14; }
+        .estado-en_camino { border-left: 4px solid #6f42c1; }
+        .estado-entregado { border-left: 4px solid #198754; }
+        .estado-cancelado { border-left: 4px solid #dc3545; }
+        .badge-pendiente { background-color: #ffc107; color: #000; }
+        .badge-confirmado { background-color: #0d6efd; color: #fff; }
+        .badge-en_preparacion { background-color: #fd7e14; color: #fff; }
+        .badge-en_camino { background-color: #6f42c1; color: #fff; }
+        .badge-entregado { background-color: #198754; color: #fff; }
+        .badge-cancelado { background-color: #dc3545; color: #fff; }
+        .tiempo-alerta { color: #dc3545; font-weight: 700; }
+        .empty-state {
+            border: 1px dashed rgba(0,0,0,.15);
+            border-radius: .9rem;
+            background: #fff;
+            padding: 2rem;
+            color: #6c757d;
+            text-align: center;
+        }
+        .filter-btn.active { font-weight: 600; }
+    </style>
+</head>
+<body>
+    <%- include('partials/navbar') %>
+
+    <main class="flex-grow-1">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h4 class="mb-0"><i class="bi bi-truck me-2"></i>Domicilios</h4>
+                <div class="text-muted small">Gestión de pedidos a domicilio</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="btnNuevoPedido" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>Nuevo Pedido
+                </button>
+                <button id="btnRefresh" class="btn btn-outline-secondary btn-sm" type="button">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                </button>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="toggleAutoRefresh" checked>
+                    <label class="form-check-label small" for="toggleAutoRefresh">Auto</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar: Filtros y KPIs -->
+        <div class="domicilios-toolbar mb-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-8">
+                    <div class="d-flex flex-wrap gap-2" id="filtrosEstado">
+                        <button class="btn btn-sm btn-outline-secondary filter-btn active" data-estado="">
+                            <i class="bi bi-list-ul me-1"></i>Todos
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning filter-btn" data-estado="pendiente">
+                            <i class="bi bi-clock me-1"></i>Pendientes
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary filter-btn" data-estado="confirmado">
+                            <i class="bi bi-check-circle me-1"></i>Confirmados
+                        </button>
+                        <button class="btn btn-sm btn-outline-orange filter-btn" data-estado="en_preparacion" style="border-color:#fd7e14;color:#fd7e14;">
+                            <i class="bi bi-fire me-1"></i>En Preparación
+                        </button>
+                        <button class="btn btn-sm btn-outline-purple filter-btn" data-estado="en_camino" style="border-color:#6f42c1;color:#6f42c1;">
+                            <i class="bi bi-bicycle me-1"></i>En Camino
+                        </button>
+                        <button class="btn btn-sm btn-outline-success filter-btn" data-estado="entregado">
+                            <i class="bi bi-check2-all me-1"></i>Entregados
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger filter-btn" data-estado="cancelado">
+                            <i class="bi bi-x-circle me-1"></i>Cancelados
+                        </button>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex justify-content-md-end gap-2">
+                    <span class="badge text-bg-warning">Pendientes: <span id="countPendientes">0</span></span>
+                    <span class="badge text-bg-primary">En curso: <span id="countEnCurso">0</span></span>
+                    <span class="badge text-bg-success">Entregados: <span id="countEntregados">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de pedidos -->
+        <div id="emptyState" class="empty-state d-none">
+            <i class="bi bi-truck" style="font-size: 3rem;"></i>
+            <p class="mt-2 mb-0">No hay pedidos a domicilio</p>
+            <small class="text-muted">Los pedidos aparecerán aquí cuando se creen</small>
+        </div>
+
+        <!-- Tabla responsive para pantallas grandes -->
+        <div id="tablaPedidos" class="d-none d-lg-block">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Dirección</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th>Tiempo</th>
+                            <th>Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyPedidos"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Cards para móvil -->
+        <div id="cardsPedidos" class="d-lg-none vstack gap-3"></div>
+    </div>
+
+    <!-- Modal Nuevo Pedido (Fullscreen Táctil) -->
+    <div class="modal fade" id="modalNuevoPedido" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h5 class="modal-title"><i class="bi bi-truck me-2"></i>Nuevo Pedido a Domicilio</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row g-0" style="height: calc(100vh - 56px);">
+                        <!-- Panel Izquierdo: Productos -->
+                        <div class="col-12 col-md-7 border-end" style="overflow-y: auto;">
+                            <div class="p-3">
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input id="dlvBuscarProducto" class="form-control" placeholder="Buscar producto..." autocomplete="off">
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap mb-3" id="dlvCategorias">
+                                    <button class="btn btn-sm btn-primary" data-cat="">Todos</button>
+                                </div>
+                                <div class="row g-2" id="dlvGridProductos">
+                                    <div class="col-12 text-center text-muted py-4">Cargando productos...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel Derecho: Cliente + Carrito -->
+                        <div class="col-12 col-md-5 d-flex flex-column bg-light" style="overflow-y: auto;">
+                            <!-- Datos del cliente -->
+                            <div class="p-3 border-bottom bg-white">
+                                <h6 class="fw-bold mb-2"><i class="bi bi-person me-1"></i>Cliente</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control form-control-sm" id="dlvBuscarCliente" placeholder="Buscar por nombre o teléfono..." autocomplete="off">
+                                    <button class="btn btn-outline-success btn-sm" type="button" id="dlvBtnCrearCliente" title="Crear cliente nuevo">
+                                        <i class="bi bi-person-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="dlvClienteResultados" class="list-group mb-2" style="max-height:100px;overflow-y:auto;display:none;"></div>
+                                <div id="dlvClienteInfo" style="display:none;" class="small bg-light rounded p-2">
+                                    <strong id="dlvClienteNombre"></strong>
+                                    <span class="text-muted ms-2" id="dlvClienteTel"></span>
+                                    <input type="hidden" id="dlvClienteId">
+                                </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-12">
+                                        <input type="text" class="form-control form-control-sm" id="dlvDireccion" placeholder="Dirección de entrega *" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="text" class="form-control form-control-sm" id="dlvTelefono" placeholder="Teléfono *" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="text" class="form-control form-control-sm" id="dlvNotas" placeholder="Notas entrega">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Items del pedido -->
+                            <div class="flex-grow-1 p-3 overflow-auto">
+                                <h6 class="fw-bold mb-2"><i class="bi bi-cart3 me-1"></i>Productos</h6>
+                                <div id="dlvItemsList">
+                                    <div class="text-center text-muted py-3"><i class="bi bi-inbox" style="font-size:2rem;"></i><p class="mt-1 small">Agrega productos del menú</p></div>
+                                </div>
+                            </div>
+
+                            <!-- Totales y acciones -->
+                            <div class="p-3 border-top bg-white">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>Subtotal:</span><strong id="dlvSubtotal">$0</strong>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-1 align-items-center">
+                                    <span>Domicilio:</span>
+                                    <input type="number" class="form-control form-control-sm text-end" id="dlvValorDomicilio" value="0" min="0" style="width:100px;">
+                                </div>
+                                <div class="d-flex justify-content-between small mb-2 align-items-center">
+                                    <span>Propina:</span>
+                                    <div class="d-flex gap-1" id="dlvPropinaBtns"></div>
+                                    <strong id="dlvPropinaMonto" class="text-success">$0</strong>
+                                </div>
+                                <div class="d-flex justify-content-between fw-bold fs-5 mb-3 border-top pt-2">
+                                    <span>TOTAL:</span><span id="dlvTotal" class="text-primary">$0</span>
+                                </div>
+                                <button class="btn btn-primary btn-lg w-100" id="dlvBtnCrearPedido">
+                                    <i class="bi bi-check-circle me-2"></i>Crear Pedido
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle Pedido -->
+    <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Detalle del Pedido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detalleBody">
+                    <!-- Se llena dinámicamente -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        // --- Estado ---
+        let pedidos = [];
+        let filtroActual = '';
+        let autoRefreshInterval = null;
+        const REFRESH_INTERVAL = 15000; // 15 segundos
+
+        // --- Mapas de estados ---
+        const ESTADO_LABELS = {
+            'pendiente': 'Pendiente',
+            'confirmado': 'Confirmado',
+            'en_preparacion': 'En Preparación',
+            'en_camino': 'En Camino',
+            'entregado': 'Entregado',
+            'cancelado': 'Cancelado'
+        };
+
+        const ESTADO_ICONS = {
+            'pendiente': 'bi-clock',
+            'confirmado': 'bi-check-circle',
+            'en_preparacion': 'bi-fire',
+            'en_camino': 'bi-bicycle',
+            'entregado': 'bi-check2-all',
+            'cancelado': 'bi-x-circle'
+        };
+
+        // Transiciones válidas para botones de acción
+        const TRANSICIONES = {
+            'pendiente': [{ estado: 'confirmado', label: 'Confirmar', icon: 'bi-check-circle', clase: 'btn-primary' }],
+            'confirmado': [{ estado: 'en_preparacion', label: 'Preparar', icon: 'bi-fire', clase: 'btn-warning' }],
+            'en_preparacion': [{ estado: 'en_camino', label: 'Enviar', icon: 'bi-bicycle', clase: 'btn-purple', style: 'background-color:#6f42c1;border-color:#6f42c1;color:#fff;' }],
+            'en_camino': [{ estado: 'entregado', label: 'Entregado', icon: 'bi-check2-all', clase: 'btn-success' }],
+            'entregado': [],
+            'cancelado': []
+        };
+
+        // --- Cargar pedidos ---
+        async function cargarPedidos() {
+            try {
+                const params = new URLSearchParams();
+                if (filtroActual) params.set('estado', filtroActual);
+
+                const response = await fetch('/domicilios/listar?' + params.toString());
+                const data = await response.json();
+
+                if (data.success) {
+                    pedidos = data.pedidos;
+                    renderPedidos();
+                    actualizarKPIs();
+                }
+            } catch (error) {
+                console.error('Error al cargar pedidos:', error);
+            }
+        }
+
+        // --- Render pedidos ---
+        function renderPedidos() {
+            const tbody = document.getElementById('tbodyPedidos');
+            const cards = document.getElementById('cardsPedidos');
+            const emptyState = document.getElementById('emptyState');
+            const tablaPedidos = document.getElementById('tablaPedidos');
+
+            if (pedidos.length === 0) {
+                emptyState.classList.remove('d-none');
+                tablaPedidos.classList.add('d-none');
+                tablaPedidos.classList.remove('d-lg-block');
+                cards.innerHTML = '';
+                return;
+            }
+
+            emptyState.classList.add('d-none');
+            tablaPedidos.classList.remove('d-none');
+            tablaPedidos.classList.add('d-lg-block');
+
+            // Render tabla (desktop)
+            tbody.innerHTML = pedidos.map(p => renderFilaTabla(p)).join('');
+
+            // Render cards (móvil)
+            cards.innerHTML = pedidos.map(p => renderCard(p)).join('');
+        }
+
+        function renderFilaTabla(p) {
+            const estadoBadge = `<span class="badge badge-${p.estado}"><i class="bi ${ESTADO_ICONS[p.estado]} me-1"></i>${ESTADO_LABELS[p.estado]}</span>`;
+            const tiempoClase = esTiempoAlerta(p.tiempo_transcurrido) ? 'tiempo-alerta' : '';
+            const acciones = renderAcciones(p);
+
+            return `
+                <tr class="estado-${p.estado}">
+                    <td><strong>#${p.id}</strong></td>
+                    <td>${p.cliente_nombre || 'Sin nombre'}</td>
+                    <td><small>${p.direccion_entrega || '-'}</small></td>
+                    <td>${p.telefono_contacto || p.cliente_telefono || '-'}</td>
+                    <td>${estadoBadge}</td>
+                    <td class="${tiempoClase}"><i class="bi bi-stopwatch me-1"></i>${p.tiempo_transcurrido}</td>
+                    <td>$${formatNumber(p.total)}</td>
+                    <td>
+                        <div class="d-flex gap-1 flex-wrap">
+                            ${acciones}
+                            <button class="btn btn-sm btn-outline-secondary" onclick="verDetalle(${p.id})" title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            ${p.estado !== 'entregado' && p.estado !== 'cancelado' ? `
+                            <button class="btn btn-sm btn-outline-danger" onclick="cancelarPedido(${p.id})" title="Cancelar">
+                                <i class="bi bi-x-lg"></i>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderCard(p) {
+            const estadoBadge = `<span class="badge badge-${p.estado}"><i class="bi ${ESTADO_ICONS[p.estado]} me-1"></i>${ESTADO_LABELS[p.estado]}</span>`;
+            const tiempoClase = esTiempoAlerta(p.tiempo_transcurrido) ? 'tiempo-alerta' : '';
+            const acciones = renderAcciones(p);
+
+            return `
+                <div class="pedido-card p-3 estado-${p.estado}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong>#${p.id}</strong> - ${p.cliente_nombre || 'Sin nombre'}
+                        </div>
+                        ${estadoBadge}
+                    </div>
+                    <div class="small text-muted mb-2">
+                        <div><i class="bi bi-geo-alt me-1"></i>${p.direccion_entrega || '-'}</div>
+                        <div><i class="bi bi-telephone me-1"></i>${p.telefono_contacto || p.cliente_telefono || '-'}</div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="${tiempoClase}"><i class="bi bi-stopwatch me-1"></i>${p.tiempo_transcurrido}</span>
+                        <strong>$${formatNumber(p.total)}</strong>
+                    </div>
+                    <div class="d-flex gap-1 mt-2 flex-wrap">
+                        ${acciones}
+                        <button class="btn btn-sm btn-outline-secondary" onclick="verDetalle(${p.id})">
+                            <i class="bi bi-eye me-1"></i>Detalle
+                        </button>
+                        ${p.estado !== 'entregado' && p.estado !== 'cancelado' ? `
+                        <button class="btn btn-sm btn-outline-danger" onclick="cancelarPedido(${p.id})">
+                            <i class="bi bi-x-lg me-1"></i>Cancelar
+                        </button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAcciones(p) {
+            const transiciones = TRANSICIONES[p.estado] || [];
+            let html = transiciones.map(t => `
+                <button class="btn btn-sm ${t.clase}" ${t.style ? `style="${t.style}"` : ''} onclick="cambiarEstado(${p.id}, '${t.estado}')">
+                    <i class="bi ${t.icon} me-1"></i>${t.label}
+                </button>
+            `).join('');
+
+            // Botón Facturar para pedidos entregados (Requirement 9.8)
+            if (p.estado === 'entregado') {
+                html += `
+                <button class="btn btn-sm btn-success" onclick="facturarDomicilio(${p.id})" title="Facturar pedido">
+                    <i class="bi bi-cash-coin me-1"></i>Facturar
+                </button>`;
+            }
+
+            return html;
+        }
+
+        // --- Acciones ---
+        async function cambiarEstado(pedidoId, nuevoEstado) {
+            try {
+                const response = await fetch(`/domicilios/${pedidoId}/estado`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Estado actualizado',
+                        text: `Pedido #${pedidoId} → ${ESTADO_LABELS[nuevoEstado]}`,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    cargarPedidos();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo actualizar el estado', 'error');
+                }
+            } catch (error) {
+                console.error('Error al cambiar estado:', error);
+                Swal.fire('Error', 'Error de conexión', 'error');
+            }
+        }
+
+        async function cancelarPedido(pedidoId) {
+            const result = await Swal.fire({
+                title: '¿Cancelar pedido?',
+                text: `¿Está seguro de cancelar el pedido #${pedidoId}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, cancelar',
+                cancelButtonText: 'No'
+            });
+
+            if (result.isConfirmed) {
+                cambiarEstado(pedidoId, 'cancelado');
+            }
+        }
+
+        async function verDetalle(pedidoId) {
+            try {
+                const response = await fetch(`/domicilios/${pedidoId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const p = data.pedido;
+                    const itemsHtml = (p.items || []).map(item => `
+                        <tr>
+                            <td>${item.producto_nombre}</td>
+                            <td>${item.cantidad} ${item.unidad_medida}</td>
+                            <td>$${formatNumber(item.subtotal)}</td>
+                        </tr>
+                    `).join('');
+
+                    // Construir historial de estados
+                    const historialHtml = renderHistorialEstados(p.historial_estados || [], p);
+
+                    document.getElementById('detalleBody').innerHTML = `
+                        <div class="mb-3">
+                            <span class="badge badge-${p.estado}"><i class="bi ${ESTADO_ICONS[p.estado]} me-1"></i>${ESTADO_LABELS[p.estado]}</span>
+                            <span class="ms-2 text-muted small"><i class="bi bi-stopwatch me-1"></i>${p.tiempo_transcurrido}</span>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6"><strong>Cliente:</strong><br>${p.cliente_nombre || '-'}</div>
+                            <div class="col-6"><strong>Teléfono:</strong><br>${p.telefono_contacto || '-'}</div>
+                            <div class="col-12"><strong>Dirección:</strong><br>${p.direccion_entrega || '-'}</div>
+                            ${p.notas_entrega ? `<div class="col-12"><strong>Notas:</strong><br>${p.notas_entrega}</div>` : ''}
+                            ${p.hora_entrega_estimada ? `<div class="col-6"><strong>Hora estimada:</strong><br>${p.hora_entrega_estimada}</div>` : ''}
+                        </div>
+                        <h6>Items del pedido</h6>
+                        <table class="table table-sm">
+                            <thead><tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+                            <tbody>${itemsHtml || '<tr><td colspan="3" class="text-muted">Sin items</td></tr>'}</tbody>
+                            <tfoot><tr><td colspan="2" class="text-end fw-bold">Total:</td><td class="fw-bold">$${formatNumber(p.total)}</td></tr></tfoot>
+                        </table>
+                        ${historialHtml}
+                    `;
+
+                    new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+                }
+            } catch (error) {
+                console.error('Error al ver detalle:', error);
+                Swal.fire('Error', 'No se pudo cargar el detalle', 'error');
+            }
+        }
+
+        // Renderizar historial de cambios de estado como timeline
+        function renderHistorialEstados(historial, pedido) {
+            if (!historial || historial.length === 0) {
+                // Fallback: mostrar al menos la creación
+                return `
+                    <h6 class="mt-3"><i class="bi bi-clock-history me-1"></i>Historial de Estados</h6>
+                    <div class="small text-muted">
+                        <div class="d-flex align-items-center gap-2 py-1">
+                            <span class="badge badge-pendiente"><i class="bi bi-clock me-1"></i>Pendiente</span>
+                            <span>${formatFechaHora(pedido.created_at)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const items = historial.map((h, idx) => {
+                const esUltimo = idx === historial.length - 1;
+                const estadoLabel = ESTADO_LABELS[h.estado] || h.estado;
+                const estadoIcon = ESTADO_ICONS[h.estado] || 'bi-circle';
+                const badgeClass = `badge-${h.estado}`;
+
+                return `
+                    <div class="d-flex align-items-start gap-2 py-1 ${esUltimo ? 'fw-semibold' : ''}">
+                        <div class="d-flex flex-column align-items-center" style="min-width: 12px;">
+                            <i class="bi ${esUltimo ? 'bi-circle-fill' : 'bi-circle'}" style="font-size: 0.5rem; color: ${getEstadoColor(h.estado)};"></i>
+                            ${idx < historial.length - 1 ? '<div style="width: 1px; height: 16px; background: #dee2e6;"></div>' : ''}
+                        </div>
+                        <div class="flex-grow-1">
+                            <span class="badge ${badgeClass} me-1" style="font-size: 0.7rem;"><i class="bi ${estadoIcon} me-1"></i>${estadoLabel}</span>
+                            <span class="text-muted small">${formatFechaHora(h.fecha)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <h6 class="mt-3"><i class="bi bi-clock-history me-1"></i>Historial de Estados</h6>
+                <div class="small">${items}</div>
+            `;
+        }
+
+        // Obtener color del estado para el timeline
+        function getEstadoColor(estado) {
+            const colores = {
+                'pendiente': '#ffc107',
+                'confirmado': '#0d6efd',
+                'en_preparacion': '#fd7e14',
+                'en_camino': '#6f42c1',
+                'entregado': '#198754',
+                'cancelado': '#dc3545'
+            };
+            return colores[estado] || '#6c757d';
+        }
+
+        // Formatear fecha y hora para el historial
+        function formatFechaHora(fecha) {
+            if (!fecha) return '-';
+            const d = new Date(fecha);
+            if (isNaN(d.getTime())) return '-';
+            return d.toLocaleString('es-CO', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // --- KPIs ---
+        function actualizarKPIs() {
+            // Contar todos los pedidos sin filtro para KPIs
+            const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
+            const enCurso = pedidos.filter(p => ['confirmado', 'en_preparacion', 'en_camino'].includes(p.estado)).length;
+            const entregados = pedidos.filter(p => p.estado === 'entregado').length;
+
+            document.getElementById('countPendientes').textContent = pendientes;
+            document.getElementById('countEnCurso').textContent = enCurso;
+            document.getElementById('countEntregados').textContent = entregados;
+        }
+
+        // --- Utilidades ---
+        function esTiempoAlerta(tiempo) {
+            if (!tiempo) return false;
+            const match = tiempo.match(/(\d+)h/);
+            if (match && parseInt(match[1]) >= 1) return true;
+            const minMatch = tiempo.match(/^(\d+)min$/);
+            if (minMatch && parseInt(minMatch[1]) >= 45) return true;
+            return false;
+        }
+
+        function formatNumber(num) {
+            if (!num) return '0';
+            return parseFloat(num).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        // --- Filtros ---
+        document.getElementById('filtrosEstado').addEventListener('click', function(e) {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+
+            // Actualizar botón activo
+            this.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            filtroActual = btn.dataset.estado;
+            cargarPedidos();
+        });
+
+        // --- Auto-refresh ---
+        function iniciarAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(cargarPedidos, REFRESH_INTERVAL);
+        }
+
+        function detenerAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        document.getElementById('toggleAutoRefresh').addEventListener('change', function() {
+            if (this.checked) {
+                iniciarAutoRefresh();
+            } else {
+                detenerAutoRefresh();
+            }
+        });
+
+        document.getElementById('btnRefresh').addEventListener('click', cargarPedidos);
+
+        // --- Nuevo Pedido (Modal Táctil) ---
+        let dlvItems = [];
+        let dlvProductos = [];
+        let dlvCategorias = [];
+        let dlvClienteSeleccionado = null;
+        let dlvPropina = 0;
+
+        document.getElementById('btnNuevoPedido').addEventListener('click', async function() {
+            dlvItems = [];
+            dlvClienteSeleccionado = null;
+            dlvPropina = 0;
+            document.getElementById('dlvDireccion').value = '';
+            document.getElementById('dlvTelefono').value = '';
+            document.getElementById('dlvNotas').value = '';
+            document.getElementById('dlvBuscarCliente').value = '';
+            document.getElementById('dlvClienteInfo').style.display = 'none';
+            document.getElementById('dlvClienteResultados').style.display = 'none';
+            document.getElementById('dlvValorDomicilio').value = '5000';
+            renderDlvItems();
+            renderDlvTotals();
+            await cargarDlvProductos();
+            cargarDlvPropinas();
+            new bootstrap.Modal(document.getElementById('modalNuevoPedido')).show();
+        });
+
+        async function cargarDlvProductos() {
+            try {
+                const resp = await fetch('/api/productos/buscar?q=');
+                dlvProductos = await resp.json();
+                const cats = [...new Set(dlvProductos.map(p => p.categoria_nombre || 'Sin categoría'))];
+                dlvCategorias = cats;
+                renderDlvCategorias();
+                renderDlvGrid();
+            } catch(e) { console.error('Error cargando productos:', e); }
+        }
+
+        function renderDlvCategorias() {
+            const el = document.getElementById('dlvCategorias');
+            el.innerHTML = '<button class="btn btn-sm btn-primary dlv-cat-btn" data-cat="">Todos</button>';
+            dlvCategorias.forEach(cat => {
+                el.innerHTML += `<button class="btn btn-sm btn-outline-primary dlv-cat-btn" data-cat="${cat}">${cat}</button>`;
+            });
+            el.querySelectorAll('.dlv-cat-btn').forEach(btn => {
+                btn.onclick = function() {
+                    el.querySelectorAll('.dlv-cat-btn').forEach(b => { b.className = 'btn btn-sm btn-outline-primary dlv-cat-btn'; });
+                    this.className = 'btn btn-sm btn-primary dlv-cat-btn';
+                    renderDlvGrid(this.dataset.cat);
+                };
+            });
+        }
+
+        function renderDlvGrid(catFilter = '') {
+            const el = document.getElementById('dlvGridProductos');
+            const busqueda = document.getElementById('dlvBuscarProducto').value.toLowerCase().trim();
+            let prods = dlvProductos.filter(p => p.activo !== 0);
+            if (catFilter) prods = prods.filter(p => (p.categoria_nombre || 'Sin categoría') === catFilter);
+            if (busqueda) prods = prods.filter(p => p.nombre.toLowerCase().includes(busqueda) || (p.codigo || '').toLowerCase().includes(busqueda));
+
+            if (prods.length === 0) {
+                el.innerHTML = '<div class="col-12 text-center text-muted py-4">No hay productos</div>';
+                return;
+            }
+            el.innerHTML = prods.map(p => {
+                const precio = p.precio_unidad || p.precio_kg || p.precio_libra || 0;
+                const img = p.imagen ? `<img src="${p.imagen}" class="card-img-top" style="height:100px;object-fit:cover;">` : `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:100px;"><i class="bi bi-image text-muted" style="font-size:2rem;"></i></div>`;
+                return `<div class="col-6 col-md-4 col-lg-3"><div class="card h-100 shadow-sm" style="cursor:pointer;" onclick="dlvAgregarProducto(${p.id})">${img}<div class="card-body p-2"><div class="small fw-bold text-truncate">${p.nombre}</div><div class="text-primary fw-bold small">$${formatNumber(precio)}</div></div></div></div>`;
+            }).join('');
+        }
+
+        document.getElementById('dlvBuscarProducto').addEventListener('input', function() { renderDlvGrid(document.querySelector('.dlv-cat-btn.btn-primary')?.dataset.cat || ''); });
+
+        window.dlvAgregarProducto = function(productoId) {
+            const p = dlvProductos.find(x => x.id === productoId);
+            if (!p) return;
+            const precio = p.precio_unidad || p.precio_kg || p.precio_libra || 0;
+            const unidad = p.precio_unidad ? 'UND' : p.precio_kg ? 'KG' : 'LB';
+            dlvItems.push({ producto_id: p.id, nombre: p.nombre, cantidad: 1, unidad_medida: unidad, precio, subtotal: precio, nota: '' });
+            renderDlvItems();
+            renderDlvTotals();
+        };
+
+        function renderDlvItems() {
+            const el = document.getElementById('dlvItemsList');
+            if (dlvItems.length === 0) {
+                el.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox" style="font-size:2rem;"></i><p class="mt-1 small">Agrega productos del menú</p></div>';
+                return;
+            }
+            el.innerHTML = dlvItems.map((item, idx) => `
+                <div class="d-flex align-items-center gap-2 p-2 mb-2 border rounded bg-white">
+                    <div class="flex-grow-1">
+                        <div class="small fw-bold">${item.nombre}</div>
+                        <div class="d-flex gap-1 align-items-center mt-1">
+                            <input type="number" class="form-control form-control-sm" style="width:55px;" value="${item.cantidad}" min="1" onchange="dlvUpdateItem(${idx},'cantidad',this.value)">
+                            <span class="text-muted small">${item.unidad_medida}</span>
+                            <span class="text-muted small">×</span>
+                            <input type="number" class="form-control form-control-sm" style="width:80px;" value="${item.precio}" min="0" onchange="dlvUpdateItem(${idx},'precio',this.value)">
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold small">$${formatNumber(item.subtotal)}</div>
+                        <button class="btn btn-sm btn-outline-danger mt-1" onclick="dlvRemoveItem(${idx})"><i class="bi bi-trash3"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.dlvUpdateItem = function(idx, field, val) {
+            if (field === 'cantidad') { dlvItems[idx].cantidad = parseFloat(val) || 1; }
+            if (field === 'precio') { dlvItems[idx].precio = parseFloat(val) || 0; }
+            dlvItems[idx].subtotal = dlvItems[idx].cantidad * dlvItems[idx].precio;
+            renderDlvItems();
+            renderDlvTotals();
+        };
+        window.dlvRemoveItem = function(idx) { dlvItems.splice(idx, 1); renderDlvItems(); renderDlvTotals(); };
+
+        function renderDlvTotals() {
+            const subtotal = dlvItems.reduce((s, i) => s + i.subtotal, 0);
+            const domicilio = parseFloat(document.getElementById('dlvValorDomicilio').value) || 0;
+            const total = subtotal + domicilio + dlvPropina;
+            document.getElementById('dlvSubtotal').textContent = '$' + formatNumber(subtotal);
+            document.getElementById('dlvPropinaMonto').textContent = '$' + formatNumber(dlvPropina);
+            document.getElementById('dlvTotal').textContent = '$' + formatNumber(total);
+        }
+        document.getElementById('dlvValorDomicilio').addEventListener('input', renderDlvTotals);
+
+        async function cargarDlvPropinas() {
+            try {
+                const resp = await fetch('/api/facturas/tip-config');
+                if (!resp.ok) return;
+                const cfg = await resp.json();
+                const el = document.getElementById('dlvPropinaBtns');
+                if (!cfg.enabled) { el.innerHTML = ''; return; }
+                el.innerHTML = (cfg.percentages || []).map(pct => `<button class="btn btn-outline-success btn-sm dlv-tip-btn" onclick="dlvSetPropina(${pct})">${pct}%</button>`).join('') + '<button class="btn btn-outline-secondary btn-sm" onclick="dlvSetPropina(0)">Sin</button>';
+            } catch(e) {}
+        }
+        window.dlvSetPropina = function(pct) {
+            const subtotal = dlvItems.reduce((s, i) => s + i.subtotal, 0);
+            dlvPropina = pct > 0 ? Math.round(subtotal * pct / 100) : 0;
+            document.querySelectorAll('.dlv-tip-btn').forEach(b => b.classList.remove('active'));
+            renderDlvTotals();
+        };
+
+        // --- Búsqueda de cliente ---
+        let dlvClienteTimeout = null;
+        document.getElementById('dlvBuscarCliente').addEventListener('input', function() {
+            clearTimeout(dlvClienteTimeout);
+            const q = this.value.trim();
+            const res = document.getElementById('dlvClienteResultados');
+            if (q.length < 2) { res.style.display = 'none'; return; }
+            dlvClienteTimeout = setTimeout(async () => {
+                try {
+                    const resp = await fetch('/api/clientes/buscar?q=' + encodeURIComponent(q));
+                    const clientes = await resp.json();
+                    if (clientes.length === 0) {
+                        res.innerHTML = '<div class="list-group-item text-muted small">No encontrado</div>';
+                    } else {
+                        res.innerHTML = clientes.slice(0, 5).map(c => `<button type="button" class="list-group-item list-group-item-action py-1" data-id="${c.id}" data-nombre="${c.nombre}" data-tel="${c.telefono||''}" data-dir="${c.direccion||''}"><strong>${c.nombre}</strong> <small class="text-muted">${c.telefono||''}</small></button>`).join('');
+                    }
+                    res.style.display = 'block';
+                } catch(e) { res.style.display = 'none'; }
+            }, 300);
+        });
+        document.getElementById('dlvClienteResultados').addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            dlvClienteSeleccionado = { id: btn.dataset.id, nombre: btn.dataset.nombre };
+            document.getElementById('dlvClienteNombre').textContent = btn.dataset.nombre;
+            document.getElementById('dlvClienteTel').textContent = btn.dataset.tel;
+            document.getElementById('dlvClienteId').value = btn.dataset.id;
+            document.getElementById('dlvClienteInfo').style.display = 'block';
+            if (btn.dataset.dir) document.getElementById('dlvDireccion').value = btn.dataset.dir;
+            if (btn.dataset.tel) document.getElementById('dlvTelefono').value = btn.dataset.tel;
+            document.getElementById('dlvBuscarCliente').value = '';
+            this.style.display = 'none';
+        });
+        document.getElementById('dlvBtnCrearCliente').addEventListener('click', async function() {
+            const { value: formValues } = await Swal.fire({
+                title: 'Crear Cliente',
+                html: '<input id="swal-nombre" class="swal2-input" placeholder="Nombre *"><input id="swal-tel" class="swal2-input" placeholder="Teléfono *"><input id="swal-dir" class="swal2-input" placeholder="Dirección">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Crear',
+                cancelButtonText: 'Cancelar',
+                didOpen: () => {
+                    // Fix: permitir input dentro de modal Bootstrap
+                    const popup = Swal.getPopup();
+                    popup.querySelectorAll('input').forEach(input => {
+                        input.addEventListener('keydown', e => e.stopPropagation());
+                        input.addEventListener('input', e => e.stopPropagation());
+                    });
+                },
+                preConfirm: () => {
+                    const nombre = document.getElementById('swal-nombre').value.trim();
+                    const telefono = document.getElementById('swal-tel').value.trim();
+                    const direccion = document.getElementById('swal-dir').value.trim();
+                    if (!nombre || !telefono) {
+                        Swal.showValidationMessage('Nombre y teléfono son obligatorios');
+                        return false;
+                    }
+                    return { nombre, telefono, direccion };
+                }
+            });
+            if (!formValues || !formValues.nombre || !formValues.telefono) return;
+            try {
+                const resp = await fetch('/api/clientes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(formValues) });
+                const data = await resp.json();
+                if (data.id) {
+                    dlvClienteSeleccionado = { id: data.id, nombre: formValues.nombre };
+                    document.getElementById('dlvClienteNombre').textContent = formValues.nombre;
+                    document.getElementById('dlvClienteTel').textContent = formValues.telefono;
+                    document.getElementById('dlvClienteId').value = data.id;
+                    document.getElementById('dlvClienteInfo').style.display = 'block';
+                    document.getElementById('dlvDireccion').value = formValues.direccion || '';
+                    document.getElementById('dlvTelefono').value = formValues.telefono;
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cliente creado', timer: 1500, showConfirmButton: false });
+                }
+            } catch(e) { Swal.fire('Error', 'No se pudo crear el cliente', 'error'); }
+        });
+
+        // --- Crear pedido ---
+        document.getElementById('dlvBtnCrearPedido').addEventListener('click', async function() {
+            const clienteId = document.getElementById('dlvClienteId').value;
+            const direccion = document.getElementById('dlvDireccion').value.trim();
+            const telefono = document.getElementById('dlvTelefono').value.trim();
+            const notas = document.getElementById('dlvNotas').value.trim();
+            const valorDomicilio = parseFloat(document.getElementById('dlvValorDomicilio').value) || 0;
+
+            if (!clienteId) { Swal.fire('', 'Selecciona o crea un cliente', 'warning'); return; }
+            if (!direccion || !telefono) { Swal.fire('', 'Dirección y teléfono son obligatorios', 'warning'); return; }
+            if (dlvItems.length === 0) { Swal.fire('', 'Agrega al menos un producto', 'warning'); return; }
+
+            try {
+                const response = await fetch('/domicilios/crear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cliente_id: parseInt(clienteId),
+                        direccion_entrega: direccion,
+                        telefono_contacto: telefono,
+                        notas_entrega: notas || undefined,
+                        valor_domicilio: valorDomicilio,
+                        propina: dlvPropina,
+                        items: dlvItems.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad, unidad_medida: i.unidad_medida, nota: i.nota || undefined }))
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalNuevoPedido')).hide();
+                    Swal.fire({ icon: 'success', title: 'Pedido creado', text: `Pedido #${data.pedidoId} creado`, timer: 2000, showConfirmButton: false });
+                    cargarPedidos();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo crear el pedido', 'error');
+                }
+            } catch(e) { Swal.fire('Error', 'Error de conexión', 'error'); }
+        });
+
+        // --- Exponer funciones globales ---
+        window.cambiarEstado = cambiarEstado;
+        window.cancelarPedido = cancelarPedido;
+        window.verDetalle = verDetalle;
+        window.facturarDomicilio = facturarDomicilio;
+
+        // --- Facturar domicilio (Requirement 9.8) ---
+        async function facturarDomicilio(pedidoId) {
+            try {
+                // Obtener detalles del pedido para mostrar total
+                const response = await fetch(`/domicilios/${pedidoId}`);
+                const data = await response.json();
+                if (!data.success) {
+                    Swal.fire('Error', 'No se pudo obtener el pedido', 'error');
+                    return;
+                }
+
+                const pedido = data.pedido;
+                const total = parseFloat(pedido.total) || 0;
+
+                if (total <= 0) {
+                    Swal.fire('Error', 'El pedido no tiene un total válido', 'error');
+                    return;
+                }
+
+                // Usar el cliente del pedido directamente
+                const clienteId = pedido.cliente_id;
+                if (!clienteId) {
+                    Swal.fire('Error', 'El pedido no tiene un cliente asociado', 'error');
+                    return;
+                }
+
+                // Mostrar modal de pago con SweetAlert2
+                const pagos = await pedirPagosDomicilio(total, pedido);
+                if (!pagos) return; // Cancelado
+
+                // Enviar facturación
+                const factResp = await fetch(`/domicilios/${pedidoId}/facturar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cliente_id: clienteId, pagos })
+                });
+                const factData = await factResp.json();
+
+                if (!factResp.ok) {
+                    throw new Error(factData.error || 'Error al facturar');
+                }
+
+                // Redirigir a impresión de factura con retorno a domicilios
+                window.location.href = `/api/facturas/${factData.id}/imprimir?return_to=${encodeURIComponent('/domicilios')}`;
+            } catch (error) {
+                console.error('Error al facturar domicilio:', error);
+                Swal.fire('Error', error.message || 'Error al facturar', 'error');
+            }
+        }
+
+        // Modal de pagos para domicilios (mismo patrón que mesas)
+        function parseMoneyInput(value) {
+            const v = String(value ?? '').trim();
+            if (!v) return 0;
+            let normalized = v.replace(/\s/g, '');
+            const hasComma = normalized.includes(',');
+            const hasDot = normalized.includes('.');
+            if (hasComma && hasDot) {
+                normalized = normalized.replace(/,/g, '');
+            } else if (hasComma && !hasDot) {
+                normalized = normalized.replace(/,/g, '.');
+            }
+            normalized = normalized.replace(/[^\d.-]/g, '');
+            const n = Number(normalized);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function formatMoney(n) {
+            return `$${Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function almostEqualMoney(a, b) {
+            return Math.abs(Number(a) - Number(b)) < 0.01;
+        }
+
+        async function pedirPagosDomicilio(total, pedido) {
+            const result = await Swal.fire({
+                title: 'Facturar Domicilio',
+                html: `
+                    <div class="text-start">
+                        <div class="small text-muted mb-2">
+                            <strong>Pedido #${pedido.id}</strong> - ${pedido.cliente_nombre || 'Cliente'}<br>
+                            <i class="bi bi-geo-alt"></i> ${pedido.direccion_entrega || ''}<br>
+                            Total a pagar: <strong id="pmTotal">${formatMoney(total)}</strong>
+                        </div>
+                        <div id="pmRows" class="vstack gap-2"></div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="pmAddRow">
+                                <i class="bi bi-plus-lg"></i> Agregar medio
+                            </button>
+                            <div class="ms-auto small text-muted align-self-center">
+                                Sumatoria: <strong id="pmSum">${formatMoney(0)}</strong>
+                            </div>
+                        </div>
+                        <div class="mt-2" id="pmDiffWrap">
+                            <span class="badge text-bg-secondary" id="pmDiff">Falta: ${formatMoney(total)}</span>
+                        </div>
+                        <div class="mt-3 p-3 border rounded bg-light">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1 fw-bold">Dinero recibido</label>
+                                    <input type="text" id="pmDineroRecibido" class="form-control" placeholder="0.00">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1 fw-bold">Cambio</label>
+                                    <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #28a745;">$0,00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning py-2 px-3 mt-2 mb-0 small" id="pmWarn" style="display:none"></div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Facturar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#198754',
+                focusConfirm: false,
+                didOpen: () => {
+                    const rows = document.getElementById('pmRows');
+                    const btnAdd = document.getElementById('pmAddRow');
+                    const sumEl = document.getElementById('pmSum');
+                    const diffEl = document.getElementById('pmDiff');
+                    const warnEl = document.getElementById('pmWarn');
+
+                    const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => `
+                        <div class="border rounded p-2 pm-row">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-5">
+                                    <label class="form-label small mb-1">Método</label>
+                                    <select class="form-select form-select-sm pm-metodo">
+                                        <option value="efectivo" ${metodo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                                        <option value="transferencia" ${metodo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                                        <option value="tarjeta" ${metodo === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Monto</label>
+                                    <input type="text" class="form-control form-control-sm pm-monto" placeholder="0.00" value="${String(monto)}">
+                                </div>
+                                <div class="col-3 text-end">
+                                    <button type="button" class="btn btn-outline-danger btn-sm pm-del" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Referencia (opcional)</label>
+                                    <input type="text" class="form-control form-control-sm pm-ref" placeholder="Ej: #transacción" value="${String(referencia)}">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const recalc = () => {
+                        const montoInputs = Array.from(rows.querySelectorAll('.pm-monto'));
+                        const montos = montoInputs.map(i => parseMoneyInput(i.value));
+                        const sum = montos.reduce((a, b) => a + b, 0);
+
+                        const diff = Number(total) - Number(sum);
+                        if (diffEl) {
+                            if (almostEqualMoney(diff, 0)) {
+                                diffEl.className = 'badge text-bg-success';
+                                diffEl.textContent = 'Listo: total completo';
+                            } else if (diff > 0) {
+                                diffEl.className = 'badge text-bg-warning';
+                                diffEl.textContent = `Falta: ${formatMoney(diff)}`;
+                            } else {
+                                diffEl.className = 'badge text-bg-danger';
+                                diffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff))}`;
+                            }
+                        }
+
+                        // Calcular cambio
+                        const dineroRecibidoInput = document.getElementById('pmDineroRecibido');
+                        const cambioEl = document.getElementById('pmCambio');
+                        if (dineroRecibidoInput && cambioEl) {
+                            const dineroRecibido = parseMoneyInput(dineroRecibidoInput.value);
+                            const cambio = dineroRecibido - sum;
+                            if (dineroRecibido > 0) {
+                                cambioEl.textContent = cambio >= 0 ? formatMoney(cambio) : 'Falta: ' + formatMoney(Math.abs(cambio));
+                                cambioEl.style.color = cambio >= 0 ? '#28a745' : '#dc3545';
+                            } else {
+                                cambioEl.textContent = '$0,00';
+                                cambioEl.style.color = '#28a745';
+                            }
+                        }
+
+                        sumEl.textContent = formatMoney(sum);
+                        warnEl.style.display = 'none';
+                    };
+
+                    const addRow = (metodo = 'efectivo', monto = '', referencia = '') => {
+                        const wrap = document.createElement('div');
+                        wrap.innerHTML = rowTemplate(metodo, monto, referencia);
+                        const row = wrap.firstElementChild;
+                        rows.appendChild(row);
+
+                        const montoEl = row.querySelector('.pm-monto');
+                        const sel = row.querySelector('.pm-metodo');
+                        const del = row.querySelector('.pm-del');
+
+                        if (montoEl) {
+                            montoEl.addEventListener('input', () => recalc());
+                            montoEl.addEventListener('focus', () => { try { montoEl.select(); } catch (_) {} });
+                        }
+                        if (sel) sel.addEventListener('change', () => recalc());
+                        if (del) del.addEventListener('click', () => { row.remove(); recalc(); });
+
+                        if (montoEl) setTimeout(() => montoEl.focus(), 0);
+                        recalc();
+                    };
+
+                    btnAdd.addEventListener('click', () => addRow('efectivo', '', ''));
+
+                    // Fila inicial con el total
+                    addRow('efectivo', String(Number(total).toFixed(2)), '');
+
+                    // Event listener para dinero recibido
+                    const dineroRecibidoInput = document.getElementById('pmDineroRecibido');
+                    if (dineroRecibidoInput) {
+                        dineroRecibidoInput.addEventListener('input', () => recalc());
+                        dineroRecibidoInput.addEventListener('focus', () => {
+                            try { dineroRecibidoInput.select(); } catch (_) {}
+                        });
+                    }
+
+                    window.__pm_getRows = () => rows;
+                    window.__pm_setWarn = (msg) => {
+                        warnEl.textContent = msg;
+                        warnEl.style.display = 'block';
+                    };
+                },
+                preConfirm: () => {
+                    const rows = window.__pm_getRows ? window.__pm_getRows() : null;
+                    if (!rows) return false;
+                    const pagos = Array.from(rows.querySelectorAll('.pm-row')).map(r => {
+                        const metodo = (r.querySelector('.pm-metodo')?.value || '').trim();
+                        const monto = parseMoneyInput(r.querySelector('.pm-monto')?.value || 0);
+                        const referencia = (r.querySelector('.pm-ref')?.value || '').trim();
+                        return { metodo, monto, referencia };
+                    }).filter(p => p.metodo && p.monto > 0);
+
+                    if (pagos.length === 0) {
+                        window.__pm_setWarn && window.__pm_setWarn('Agrega al menos un medio de pago con monto.');
+                        return false;
+                    }
+
+                    const sum = pagos.reduce((a, p) => a + Number(p.monto || 0), 0);
+                    if (!almostEqualMoney(sum, total)) {
+                        window.__pm_setWarn && window.__pm_setWarn(`La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(total)}).`);
+                        return false;
+                    }
+
+                    return pagos.map(p => ({
+                        metodo: p.metodo,
+                        monto: Number(p.monto.toFixed(2)),
+                        referencia: p.referencia || ''
+                    }));
+                },
+                willClose: () => {
+                    try { delete window.__pm_getRows; delete window.__pm_setWarn; } catch (_) {}
+                }
+            });
+
+            if (!result.isConfirmed) return null;
+            return result.value;
+        }
+
+        // --- Inicialización ---
+        cargarPedidos();
+        iniciarAutoRefresh();
+
+    })();
+    </script>
+</body>
+</html>

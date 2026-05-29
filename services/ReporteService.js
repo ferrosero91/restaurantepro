@@ -473,10 +473,330 @@ class ReporteService {
     }
 
     /**
+     * Construye cláusula WHERE y params para filtros de propinas
+     * @param {Object} filtros - Objeto con filtros (desde, hasta, usuario_id)
+     * @param {Number} tenantId - ID del restaurante
+     * @returns {Object} { whereSql, params }
+     */
+    buildPropinaWhere(filtros, tenantId) {
+        const where = [];
+        const params = [];
+
+        // Validar y sanitizar tenantId
+        if (tenantId) {
+            const sanitizedTenantId = parseInt(tenantId);
+            if (isNaN(sanitizedTenantId)) {
+                throw new Error('ID de restaurante inválido');
+            }
+            where.push('f.restaurante_id = ?');
+            params.push(sanitizedTenantId);
+        }
+
+        // Solo facturas con propina > 0
+        where.push('f.propina > 0');
+
+        // Filtro de fechas
+        if (filtros.desde && filtros.hasta) {
+            const desdeDate = new Date(filtros.desde);
+            const hastaDate = new Date(filtros.hasta);
+            
+            if (isNaN(desdeDate.getTime()) || isNaN(hastaDate.getTime())) {
+                throw new Error('Formato de fecha inválido');
+            }
+            
+            if (desdeDate > hastaDate) {
+                throw new Error('La fecha "desde" no puede ser mayor que "hasta"');
+            }
+            
+            const desde = filtros.desde.split('T')[0];
+            const hasta = filtros.hasta.split('T')[0];
+            
+            where.push('DATE(f.fecha) >= ? AND DATE(f.fecha) <= ?');
+            params.push(desde, hasta);
+        }
+
+        // Filtro por usuario (cajero)
+        if (filtros.usuario_id) {
+            const usuarioId = parseInt(filtros.usuario_id);
+            if (!isNaN(usuarioId)) {
+                where.push('f.usuario_id = ?');
+                params.push(usuarioId);
+            }
+        }
+
+        const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+        
+        return { whereSql, params };
+    }
+
+    /**
+     * Obtener estadísticas de propinas
+     * @param {Object} filtros - Filtros de búsqueda
+     * @param {Number} tenantId - ID del restaurante
+     * @returns {Promise<Object>} Estadísticas de propinas
+     */
+    async obtenerEstadisticasPropinas(filtros = {}, tenantId = null) {
+        try {
+            // Construir filtros base (sin el filtro de propina > 0 para obtener todas las facturas)
+            const where = [];
+            const params = [];
+
+            // Validar y sanitizar tenantId
+            if (tenantId) {
+                const sanitizedTenantId = parseInt(tenantId);
+                if (isNaN(sanitizedTenantId)) {
+                    throw new Error('ID de restaurante inválido');
+                }
+                where.push('f.restaurante_id = ?');
+                params.push(sanitizedTenantId);
+            }
+
+            // Filtro de fechas
+            if (filtros.desde && filtros.hasta) {
+                const desdeDate = new Date(filtros.desde);
+                const hastaDate = new Date(filtros.hasta);
+                
+                if (isNaN(desdeDate.getTime()) || isNaN(hastaDate.getTime())) {
+                    throw new Error('Formato de fecha inválido');
+                }
+                
+                if (desdeDate > hastaDate) {
+                    throw new Error('La fecha "desde" no puede ser mayor que "hasta"');
+                }
+                
+                const desde = filtros.desde.split('T')[0];
+                const hasta = filtros.hasta.split('T')[0];
+                
+                where.push('DATE(f.fecha) >= ? AND DATE(f.fecha) <= ?');
+                params.push(desde, hasta);
+            }
+
+            // Filtro por usuario (cajero)
+            if (filtros.usuario_id) {
+                const usuarioId = parseInt(filtros.usuario_id);
+                if (!isNaN(usuarioId)) {
+                    where.push('f.usuario_id = ?');
+                    params.push(usuarioId);
+                }
+            }
+
+            const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+            
+            // Obtener estadísticas de propinas (solo facturas con propina > 0)
+            const sqlPropinas = `
+                SELECT 
+                    COUNT(*) as facturas_con_propina,
+                    COALESCE(SUM(f.propina), 0) as total_propinas,
+                    COALESCE(AVG(f.propina), 0) as propina_promedio,
+                    COALESCE(AVG(CASE WHEN f.total > 0 THEN (f.propina / f.total) * 100 ELSE 0 END), 0) as porcentaje_promedio
+                FROM facturas f
+                ${whereSql}
+                ${whereSql ? 'AND' : 'WHERE'} f.propina > 0
+            `;
+
+            const [rows] = await this.db.query(sqlPropinas, params);
+            const stats = rows[0] || {};
+
+            // Obtener total de facturas en el período
+            const sqlTotal = `
+                SELECT COUNT(*) as total_facturas
+                FROM facturas f
+                ${whereSql}
+            `;
+            
+            const [totalRows] = await this.db.query(sqlTotal, params);
+            const totalFacturas = totalRows[0]?.total_facturas || 0;
+
+            return {
+                total_propinas: parseFloat(stats.total_propinas) || 0,
+                facturas_con_propina: parseInt(stats.facturas_con_propina) || 0,
+                total_facturas: parseInt(totalFacturas) || 0,
+                propina_promedio: parseFloat(stats.propina_promedio) || 0,
+                porcentaje_promedio: parseFloat(stats.porcentaje_promedio) || 0
+            };
+        } catch (error) {
+            console.error('Error al obtener estadísticas de propinas:', error);
+            throw new Error(`Error al obtener estadísticas de propinas: ${error.message}`);
+        }
+    }
+
+    /**
+     * Obtener propinas agrupadas por cajero
+     * @param {Object} filtros - Filtros de búsqueda
+     * @param {Number} tenantId - ID del restaurante
+     * @returns {Promise<Array>} Propinas por cajero
+     */
+    async obtenerPropinasPorCajero(filtros = {}, tenantId = null) {
+        try {
+            // Construir filtros base
+            const where = [];
+            const params = [];
+
+            // Validar y sanitizar tenantId
+            if (tenantId) {
+                const sanitizedTenantId = parseInt(tenantId);
+                if (isNaN(sanitizedTenantId)) {
+                    throw new Error('ID de restaurante inválido');
+                }
+                where.push('f.restaurante_id = ?');
+                params.push(sanitizedTenantId);
+            }
+
+            // Filtro de fechas
+            if (filtros.desde && filtros.hasta) {
+                const desdeDate = new Date(filtros.desde);
+                const hastaDate = new Date(filtros.hasta);
+                
+                if (isNaN(desdeDate.getTime()) || isNaN(hastaDate.getTime())) {
+                    throw new Error('Formato de fecha inválido');
+                }
+                
+                if (desdeDate > hastaDate) {
+                    throw new Error('La fecha "desde" no puede ser mayor que "hasta"');
+                }
+                
+                const desde = filtros.desde.split('T')[0];
+                const hasta = filtros.hasta.split('T')[0];
+                
+                where.push('DATE(f.fecha) >= ? AND DATE(f.fecha) <= ?');
+                params.push(desde, hasta);
+            }
+
+            // Filtro por usuario (cajero)
+            if (filtros.usuario_id) {
+                const usuarioId = parseInt(filtros.usuario_id);
+                if (!isNaN(usuarioId)) {
+                    where.push('f.usuario_id = ?');
+                    params.push(usuarioId);
+                }
+            }
+
+            const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+            // Query para obtener propinas por cajero (solo facturas con propina > 0)
+            const sql = `
+                SELECT 
+                    f.usuario_id,
+                    u.nombre,
+                    COUNT(*) as facturas_con_propina,
+                    COALESCE(SUM(f.propina), 0) as total_propinas,
+                    COALESCE(AVG(f.propina), 0) as propina_promedio,
+                    COALESCE(AVG(CASE WHEN f.total > 0 THEN (f.propina / f.total) * 100 ELSE 0 END), 0) as porcentaje_promedio
+                FROM facturas f
+                LEFT JOIN usuarios u ON f.usuario_id = u.id
+                ${whereSql}
+                ${whereSql ? 'AND' : 'WHERE'} f.propina > 0
+                GROUP BY f.usuario_id, u.nombre
+                ORDER BY total_propinas DESC
+            `;
+
+            const [cajeros] = await this.db.query(sql, params);
+            
+            // Obtener total de facturas por usuario (incluyendo las que no tienen propina)
+            const cajerosConTotal = await Promise.all(cajeros.map(async (cajero) => {
+                // Construir filtros para el total de facturas del usuario
+                const whereTotal = [...where];
+                const paramsTotal = [...params];
+                whereTotal.push('f.usuario_id = ?');
+                paramsTotal.push(cajero.usuario_id);
+                
+                const whereTotalSql = `WHERE ${whereTotal.join(' AND ')}`;
+                
+                const sqlTotal = `
+                    SELECT COUNT(*) as total_facturas
+                    FROM facturas f
+                    ${whereTotalSql}
+                `;
+                
+                const [totalRows] = await this.db.query(sqlTotal, paramsTotal);
+                const totalFacturas = totalRows[0]?.total_facturas || 0;
+                
+                return {
+                    usuario_id: cajero.usuario_id,
+                    nombre: cajero.nombre || 'Usuario Desconocido',
+                    facturas_con_propina: parseInt(cajero.facturas_con_propina) || 0,
+                    total_facturas: parseInt(totalFacturas) || 0,
+                    total_propinas: parseFloat(cajero.total_propinas) || 0,
+                    propina_promedio: parseFloat(cajero.propina_promedio) || 0,
+                    porcentaje_promedio: parseFloat(cajero.porcentaje_promedio) || 0
+                };
+            }));
+            
+            return cajerosConTotal;
+        } catch (error) {
+            console.error('Error al obtener propinas por cajero:', error);
+            throw new Error(`Error al obtener propinas por cajero: ${error.message}`);
+        }
+    }
+
+    /**
+     * Obtener propinas por día (para gráficos)
+     * @param {Object} filtros - Filtros de búsqueda
+     * @param {Number} tenantId - ID del restaurante
+     * @param {Number} dias - Número de días a mostrar
+     * @returns {Promise<Array>} Propinas agrupadas por día
+     */
+    async obtenerPropinasPorDia(filtros = {}, tenantId = null, dias = 30) {
+        try {
+            const { whereSql, params } = this.buildPropinaWhere(filtros, tenantId);
+            const sanitizedDias = Math.min(365, Math.max(1, parseInt(dias) || 30));
+
+            const sql = `
+                SELECT 
+                    DATE(f.fecha) as fecha,
+                    COUNT(*) as facturas_con_propina,
+                    COALESCE(SUM(f.propina), 0) as total_propinas,
+                    COALESCE(AVG(f.propina), 0) as propina_promedio,
+                    COALESCE(AVG((f.propina / f.total) * 100), 0) as porcentaje_promedio
+                FROM facturas f
+                ${whereSql}
+                GROUP BY DATE(f.fecha)
+                ORDER BY fecha DESC
+                LIMIT ?
+            `;
+
+            const [propinas] = await this.db.query(sql, [...params, sanitizedDias]);
+            
+            return propinas.reverse().map(propina => ({
+                fecha: propina.fecha,
+                facturas_con_propina: parseInt(propina.facturas_con_propina) || 0,
+                total_propinas: parseFloat(propina.total_propinas) || 0,
+                propina_promedio: parseFloat(propina.propina_promedio) || 0,
+                porcentaje_promedio: parseFloat(propina.porcentaje_promedio) || 0
+            }));
+        } catch (error) {
+            console.error('Error al obtener propinas por día:', error);
+            throw new Error(`Error al obtener propinas por día: ${error.message}`);
+        }
+    }
+
+    /**
+     * Obtener usuarios que han procesado facturas (para filtro de cajeros)
+     * @param {Number} tenantId - ID del restaurante
+     * @returns {Promise<Array>} Lista de usuarios
+     */
+    async obtenerUsuariosConFacturas(tenantId) {
+        try {
+            const [usuarios] = await this.db.query(`
+                SELECT DISTINCT u.id, u.nombre
+                FROM usuarios u
+                INNER JOIN facturas f ON u.id = f.usuario_id
+                WHERE f.restaurante_id = ?
+                ORDER BY u.nombre ASC
+            `, [tenantId]);
+            
+            return usuarios;
+        } catch (error) {
+            console.error('Error al obtener usuarios con facturas:', error);
+            return [];
+        }
+    }
+
+    /**
      * Exportar reportes a Excel
      * @param {Object} filtros - Filtros de búsqueda
      * @param {Number} tenantId - ID del restaurante
-     * @param {String} tipo - Tipo de reporte (ventas, productos, clientes)
+     * @param {String} tipo - Tipo de reporte (ventas, productos, clientes, propinas)
      * @returns {Promise<Buffer>} Buffer del archivo Excel
      */
     async exportarExcel(filtros = {}, tenantId = null, tipo = 'ventas') {
@@ -621,12 +941,161 @@ class ReporteService {
                 
                 sheet.getColumn('ticket_promedio').numFmt = '$#,##0.00';
                 sheet.getColumn('total_gastado').numFmt = '$#,##0.00';
+                
+            } else if (tipo === 'propinas') {
+                const sheet = workbook.addWorksheet('Propinas');
+                
+                sheet.columns = [
+                    { header: 'Cajero', key: 'nombre', width: 30 },
+                    { header: 'Total Facturas', key: 'total_facturas', width: 15 },
+                    { header: 'Facturas con Propina', key: 'facturas_con_propina', width: 20 },
+                    { header: 'Total Propinas', key: 'total_propinas', width: 15 },
+                    { header: 'Propina Promedio', key: 'propina_promedio', width: 18 },
+                    { header: '% Promedio', key: 'porcentaje_promedio', width: 12 }
+                ];
+                
+                sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                sheet.getRow(1).fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF10B981' }
+                };
+                
+                const propinasPorCajero = await this.obtenerPropinasPorCajero(filtros, tenantId);
+                
+                propinasPorCajero.forEach(cajero => {
+                    sheet.addRow({
+                        nombre: cajero.nombre,
+                        total_facturas: parseInt(cajero.total_facturas),
+                        facturas_con_propina: parseInt(cajero.facturas_con_propina),
+                        total_propinas: parseFloat(cajero.total_propinas),
+                        propina_promedio: parseFloat(cajero.propina_promedio),
+                        porcentaje_promedio: parseFloat(cajero.porcentaje_promedio)
+                    });
+                });
+                
+                sheet.getColumn('total_propinas').numFmt = '$#,##0.00';
+                sheet.getColumn('propina_promedio').numFmt = '$#,##0.00';
+                sheet.getColumn('porcentaje_promedio').numFmt = '0.0"%"';
+                
+                // Agregar resumen
+                const estadisticas = await this.obtenerEstadisticasPropinas(filtros, tenantId);
+                
+                sheet.addRow([]);
+                sheet.addRow(['RESUMEN DE PROPINAS']);
+                sheet.addRow(['Total Propinas:', estadisticas.total_propinas]);
+                sheet.addRow(['Facturas con Propina:', estadisticas.facturas_con_propina]);
+                sheet.addRow(['Total Facturas:', estadisticas.total_facturas]);
+                sheet.addRow(['Propina Promedio:', estadisticas.propina_promedio]);
+                sheet.addRow(['% Promedio:', estadisticas.porcentaje_promedio + '%']);
             }
             
             return await workbook.xlsx.writeBuffer();
         } catch (error) {
             console.error('Error al exportar a Excel:', error);
             throw new Error(`Error al exportar a Excel: ${error.message}`);
+        }
+    }
+
+    /**
+     * Obtener estadísticas de domicilios (KPIs)
+     */
+    async obtenerEstadisticasDomicilios(filtros, tenantId) {
+        try {
+            const where = ['p.restaurante_id = ?', "p.tipo_pedido = 'domicilio'"];
+            const params = [tenantId];
+
+            if (filtros.desde) { where.push('DATE(p.created_at) >= ?'); params.push(filtros.desde); }
+            if (filtros.hasta) { where.push('DATE(p.created_at) <= ?'); params.push(filtros.hasta); }
+
+            const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+            const [rows] = await this.db.query(`
+                SELECT 
+                    COUNT(*) as total_pedidos,
+                    COALESCE(SUM(p.total), 0) as ingresos_totales,
+                    COALESCE(AVG(p.total), 0) as ticket_promedio,
+                    COALESCE(SUM(p.valor_domicilio), 0) as ingresos_domicilio,
+                    COALESCE(SUM(p.propina), 0) as propinas_totales,
+                    COUNT(CASE WHEN p.estado = 'cancelado' THEN 1 END) as cancelados
+                FROM pedidos p
+                ${whereSql}
+            `, params);
+
+            return rows[0] || { total_pedidos: 0, ingresos_totales: 0, ticket_promedio: 0, ingresos_domicilio: 0, propinas_totales: 0, cancelados: 0 };
+        } catch (error) {
+            console.error('Error en estadísticas domicilios:', error);
+            return { total_pedidos: 0, ingresos_totales: 0, ticket_promedio: 0, ingresos_domicilio: 0, propinas_totales: 0, cancelados: 0 };
+        }
+    }
+
+    /**
+     * Obtener ranking de domiciliarios
+     */
+    async obtenerTopDomiciliarios(filtros, tenantId) {
+        try {
+            const where = ['p.restaurante_id = ?', "p.tipo_pedido = 'domicilio'", 'p.domiciliario_id IS NOT NULL'];
+            const params = [tenantId];
+
+            if (filtros.desde) { where.push('DATE(p.created_at) >= ?'); params.push(filtros.desde); }
+            if (filtros.hasta) { where.push('DATE(p.created_at) <= ?'); params.push(filtros.hasta); }
+
+            const whereSql = `WHERE ${where.join(' AND ')}`;
+
+            const [rows] = await this.db.query(`
+                SELECT 
+                    u.id,
+                    CONCAT(u.nombres, ' ', COALESCE(u.apellidos, '')) as nombre,
+                    COUNT(*) as entregas,
+                    COALESCE(SUM(p.propina), 0) as propinas,
+                    COALESCE(AVG(p.total), 0) as ticket_promedio
+                FROM pedidos p
+                JOIN usuarios u ON u.id = p.domiciliario_id
+                ${whereSql}
+                GROUP BY u.id, u.nombres, u.apellidos
+                ORDER BY entregas DESC
+                LIMIT 20
+            `, params);
+
+            return rows;
+        } catch (error) {
+            console.error('Error en top domiciliarios:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Obtener ranking de clientes de domicilio
+     */
+    async obtenerTopClientesDomicilio(filtros, tenantId) {
+        try {
+            const where = ['p.restaurante_id = ?', "p.tipo_pedido = 'domicilio'", 'p.cliente_id IS NOT NULL'];
+            const params = [tenantId];
+
+            if (filtros.desde) { where.push('DATE(p.created_at) >= ?'); params.push(filtros.desde); }
+            if (filtros.hasta) { where.push('DATE(p.created_at) <= ?'); params.push(filtros.hasta); }
+
+            const whereSql = `WHERE ${where.join(' AND ')}`;
+
+            const [rows] = await this.db.query(`
+                SELECT 
+                    c.id,
+                    c.nombre,
+                    c.telefono,
+                    COUNT(*) as total_pedidos,
+                    COALESCE(SUM(p.total), 0) as monto_total
+                FROM pedidos p
+                JOIN clientes c ON c.id = p.cliente_id
+                ${whereSql}
+                GROUP BY c.id, c.nombre, c.telefono
+                ORDER BY total_pedidos DESC
+                LIMIT 20
+            `, params);
+
+            return rows;
+        } catch (error) {
+            console.error('Error en top clientes domicilio:', error);
+            return [];
         }
     }
 }

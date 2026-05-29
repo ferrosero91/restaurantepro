@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Domicilios - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/reportes.css?v=2.2">
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+    
+    <main class="py-3">
+        <div class="container-fluid px-3 px-md-4">
+            
+            <!-- Tabs de navegación -->
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes">
+                        <i class="bi bi-speedometer2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/productos">
+                        <i class="bi bi-box-seam"></i>Top Productos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/clientes">
+                        <i class="bi bi-people"></i>Top Clientes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/propinas">
+                        <i class="bi bi-cash-coin"></i>Propinas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/reportes/domicilios">
+                        <i class="bi bi-truck"></i>Domicilios
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Filtros -->
+            <div class="filters-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                        </label>
+                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                        </label>
+                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="row g-3 mb-4 mt-2">
+                <div class="col-6 col-md-3">
+                    <div class="card text-center p-3">
+                        <div class="text-muted small">Total Pedidos</div>
+                        <div class="fs-4 fw-bold text-primary"><%= estadisticas.total_pedidos %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center p-3">
+                        <div class="text-muted small">Ingresos</div>
+                        <div class="fs-4 fw-bold text-success">$<%= Number(estadisticas.ingresos_totales).toLocaleString('es-CO') %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center p-3">
+                        <div class="text-muted small">Ticket Promedio</div>
+                        <div class="fs-4 fw-bold text-info">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center p-3">
+                        <div class="text-muted small">Propinas</div>
+                        <div class="fs-4 fw-bold text-warning">$<%= Number(estadisticas.propinas_totales).toLocaleString('es-CO') %></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Domiciliarios -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Top Domiciliarios</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre</th>
+                                    <th>Entregas</th>
+                                    <th>Propinas</th>
+                                    <th>Ticket Prom.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (topDomiciliarios.length === 0) { %>
+                                <tr><td colspan="5" class="text-center text-muted py-4">Sin datos en este período</td></tr>
+                                <% } else { %>
+                                <% topDomiciliarios.forEach((d, i) => { %>
+                                <tr>
+                                    <td><%= i + 1 %></td>
+                                    <td><%= d.nombre %></td>
+                                    <td><span class="badge bg-primary"><%= d.entregas %></span></td>
+                                    <td>$<%= Number(d.propinas).toLocaleString('es-CO') %></td>
+                                    <td>$<%= Number(d.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></td>
+                                </tr>
+                                <% }) %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Clientes Domicilio -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Top Clientes Domicilio</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre</th>
+                                    <th>Teléfono</th>
+                                    <th>Pedidos</th>
+                                    <th>Monto Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (topClientes.length === 0) { %>
+                                <tr><td colspan="5" class="text-center text-muted py-4">Sin datos en este período</td></tr>
+                                <% } else { %>
+                                <% topClientes.forEach((c, i) => { %>
+                                <tr>
+                                    <td><%= i + 1 %></td>
+                                    <td><%= c.nombre %></td>
+                                    <td><%= c.telefono %></td>
+                                    <td><span class="badge bg-success"><%= c.total_pedidos %></span></td>
+                                    <td>$<%= Number(c.monto_total).toLocaleString('es-CO') %></td>
+                                </tr>
+                                <% }) %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function aplicarFiltros() {
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
+        window.location.href = `/reportes/domicilios?desde=${desde}&hasta=${hasta}`;
+    }
+    </script>
+</body>
+</html>

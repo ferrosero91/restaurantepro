@@ -37,6 +37,16 @@
                         <i class="bi bi-people"></i>Top Clientes
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/propinas">
+                        <i class="bi bi-cash-coin"></i>Propinas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/reportes/domicilios">
+                        <i class="bi bi-truck"></i>Domicilios
+                    </a>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -700,6 +710,14 @@
             });
         }
         
+        // Helper: fecha local en formato YYYY-MM-DD
+        function fechaLocal(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
         // Presets de fechas
         document.querySelectorAll('.preset-link').forEach(link => {
             link.addEventListener('click', function(e) {
@@ -708,42 +726,38 @@
                 const hoy = new Date();
                 let desde, hasta;
                 
-                console.log('Preset seleccionado:', preset);
-                
                 switch(preset) {
                     case 'hoy':
-                        desde = hasta = hoy.toISOString().split('T')[0];
+                        desde = hasta = fechaLocal(hoy);
                         break;
                     case 'ayer':
                         const ayer = new Date(hoy);
                         ayer.setDate(hoy.getDate() - 1);
-                        desde = hasta = ayer.toISOString().split('T')[0];
+                        desde = hasta = fechaLocal(ayer);
                         break;
                     case 'semana':
                         const inicioSemana = new Date(hoy);
                         inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-                        desde = inicioSemana.toISOString().split('T')[0];
-                        hasta = hoy.toISOString().split('T')[0];
+                        desde = fechaLocal(inicioSemana);
+                        hasta = fechaLocal(hoy);
                         break;
                     case 'mes':
-                        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-                        hasta = hoy.toISOString().split('T')[0];
+                        desde = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+                        hasta = fechaLocal(hoy);
                         break;
                     case 'trimestre':
                         const hace90 = new Date(hoy);
                         hace90.setDate(hoy.getDate() - 90);
-                        desde = hace90.toISOString().split('T')[0];
-                        hasta = hoy.toISOString().split('T')[0];
+                        desde = fechaLocal(hace90);
+                        hasta = fechaLocal(hoy);
                         break;
                     case 'limpiar':
                         const hace30 = new Date(hoy);
                         hace30.setDate(hace30.getDate() - 30);
-                        desde = hace30.toISOString().split('T')[0];
-                        hasta = hoy.toISOString().split('T')[0];
+                        desde = fechaLocal(hace30);
+                        hasta = fechaLocal(hoy);
                         break;
                 }
-                
-                console.log('Fechas calculadas:', { desde, hasta });
                 
                 document.getElementById('fechaDesde').value = desde;
                 document.getElementById('fechaHasta').value = hasta;

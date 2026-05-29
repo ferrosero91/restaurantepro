@@ -2,6 +2,7 @@ const FacturaRepository = require('../repositories/FacturaRepository');
 const ProductoRepository = require('../repositories/ProductoRepository');
 const ClienteRepository = require('../repositories/ClienteRepository');
 const { NotFoundError, ValidationError, BusinessError } = require('../utils/errors');
+const db = require('../db');
 
 /**
  * Servicio de Facturas
@@ -33,18 +34,44 @@ class FacturaService {
             throw new ValidationError('El total no coincide con la suma de los productos');
         }
 
-        // 4. Validar y normalizar pagos
-        const pagosNormalizados = this.normalizarPagos(data.pagos, data.forma_pago, totalCalculado);
+        // 4. Validar propina si se incluye
+        let propina = parseFloat(data.propina || 0);
+        if (propina < 0) {
+            throw new ValidationError('La propina no puede ser negativa');
+        }
 
-        // 5. Determinar forma de pago
+        // 5. Validar medios de pago contra los configurados
+        let mediosPermitidos = ['efectivo', 'transferencia', 'tarjeta']; // fallback
+        try {
+            const [mediosDB] = await db.query(
+                'SELECT codigo FROM medios_pago WHERE restaurante_id = ? AND activo = 1',
+                [tenantId]
+            );
+            if (mediosDB.length > 0) {
+                mediosPermitidos = mediosDB.map(m => m.codigo.toLowerCase());
+            }
+        } catch(e) { /* tabla puede no existir, usar fallback */ }
+
+        // 6. Normalizar pagos
+        const totalConPropina = totalCalculado + propina;
+        const pagosNormalizados = this.normalizarPagos(data.pagos, data.forma_pago, totalConPropina, mediosPermitidos);
+
+        // 6b. Auto-detectar propina: si pagos > total y propina = 0, la diferencia es propina
+        const sumaPagosReal = pagosNormalizados.reduce((s, p) => s + p.monto, 0);
+        if (propina === 0 && sumaPagosReal > totalCalculado + 0.01) {
+            propina = Math.round((sumaPagosReal - totalCalculado) * 100) / 100;
+        }
+
+        // 7. Determinar forma de pago
         const formaPago = pagosNormalizados.length > 1 ? 'mixto' : 
                          (pagosNormalizados.length === 1 ? pagosNormalizados[0].metodo : data.forma_pago);
 
-        // 6. Crear factura con transacción
+        // 7. Crear factura con transacción
         const facturaData = {
             cliente_id: data.cliente_id,
             usuario_id: usuarioId,
             total: totalCalculado,
+            propina: propina,
             forma_pago: formaPago
         };
 
@@ -208,7 +235,7 @@ class FacturaService {
     /**
      * Normalizar pagos (pago mixto)
      */
-    normalizarPagos(pagos, formaPago, total) {
+    normalizarPagos(pagos, formaPago, total, mediosPermitidos = null) {
         if (!pagos || pagos.length === 0) {
             // Pago simple (compatibilidad con versión anterior)
             return [{
@@ -218,11 +245,14 @@ class FacturaService {
             }];
         }
 
-        // Validar pagos
+        // Validar pagos contra medios de pago configurados
         const pagosValidos = pagos.filter(p => {
-            return p && 
-                   ['efectivo', 'transferencia', 'tarjeta'].includes(p.metodo) &&
-                   parseFloat(p.monto) > 0;
+            if (!p || !p.metodo || parseFloat(p.monto) <= 0) return false;
+            const metodo = String(p.metodo).toLowerCase().trim();
+            if (mediosPermitidos && mediosPermitidos.length > 0) {
+                return mediosPermitidos.includes(metodo);
+            }
+            return metodo.length > 0;
         });
 
         if (pagosValidos.length === 0) {

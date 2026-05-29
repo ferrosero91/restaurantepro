@@ -306,7 +306,12 @@ $(function(){
   $('#toggleAutoRefresh').on('change', function(){
     const enabled = !!this.checked;
     localStorage.setItem('cocina:autoRefresh', enabled ? '1' : '0');
-    if(enabled) startAutoRefresh(); else stopAutoRefresh();
+    if(enabled){
+      if(wsConnected) { /* WebSocket activo, no necesita polling */ }
+      else startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
   });
 
   // Estado inicial auto-refresh
@@ -323,6 +328,196 @@ $(function(){
   render();
   cargarCola();
   activarTabDesdeQuery();
+
+  // =====================================================
+  // WebSocket: Notificaciones en tiempo real (Tarea 20)
+  // =====================================================
+
+  let wsConnected = false;
+  let cocinaSocket = null;
+  let fallbackPollingTimer = null;
+
+  // --- Sonido de notificación usando Web Audio API ---
+  function playNotificationSound(){
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if(!AudioCtx) return;
+      const ctx = new AudioCtx();
+      // Beep doble corto
+      [0, 0.15].forEach(offset => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.value = 0.3;
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.1);
+      });
+    } catch(e) { /* silenciar errores de audio */ }
+  }
+
+  // --- Notificación visual (toast) ---
+  function showOrderToast(data){
+    const container = document.getElementById('toastContainer');
+    if(!container) return;
+    const mesa = escapeHtml(data.mesa || 'Domicilio');
+    const items = data.items || 0;
+    const pedidoId = data.pedidoId || '?';
+    const id = 'toast-' + Date.now();
+    const html = `
+      <div id="${id}" class="toast toast-new-order show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="8000">
+        <div class="toast-header">
+          <i class="bi bi-bell-fill text-primary me-2"></i>
+          <strong class="me-auto">Nuevo Pedido #${pedidoId}</strong>
+          <small>ahora</small>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+        </div>
+        <div class="toast-body">
+          <i class="bi bi-grid-3x3-gap me-1"></i>${mesa} &mdash; ${items} item${items !== 1 ? 's' : ''}
+        </div>
+      </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    const toastEl = document.getElementById(id);
+    if(toastEl && typeof bootstrap !== 'undefined'){
+      const bsToast = new bootstrap.Toast(toastEl);
+      bsToast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    } else {
+      // Fallback: remover después de 8s
+      setTimeout(() => { if(toastEl) toastEl.remove(); }, 8000);
+    }
+  }
+
+  // --- Indicador de estado WebSocket ---
+  function updateWsIndicator(connected){
+    const el = document.getElementById('wsIndicator');
+    if(!el) return;
+    if(connected){
+      el.className = 'badge bg-success';
+      el.innerHTML = '<i class="bi bi-wifi me-1"></i>Conectado';
+      el.title = 'Conexión en tiempo real activa';
+    } else {
+      el.className = 'badge bg-secondary';
+      el.innerHTML = '<i class="bi bi-wifi-off me-1"></i>Desconectado';
+      el.title = 'Sin conexión en tiempo real - usando polling';
+    }
+  }
+
+  // --- Fallback polling (cada 10s cuando WS falla) ---
+  function startFallbackPolling(){
+    stopFallbackPolling();
+    const autoEnabled = document.getElementById('toggleAutoRefresh')?.checked;
+    if(!autoEnabled) return;
+    fallbackPollingTimer = setInterval(cargarCola, 10000);
+  }
+  function stopFallbackPolling(){
+    if(fallbackPollingTimer) clearInterval(fallbackPollingTimer);
+    fallbackPollingTimer = null;
+  }
+
+  // --- Conexión WebSocket ---
+  async function initWebSocket(){
+    // Si socket.io no está cargado, ir directo a fallback
+    if(typeof io === 'undefined'){
+      console.warn('Socket.io no disponible, usando polling');
+      wsConnected = false;
+      updateWsIndicator(false);
+      startFallbackPolling();
+      return;
+    }
+
+    try {
+      // Obtener token JWT para autenticación
+      const resp = await fetch('/api/cocina/ws-token');
+      if(!resp.ok) throw new Error('No se pudo obtener token WS');
+      const { token } = await resp.json();
+
+      // Conectar con socket.io
+      cocinaSocket = io({
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 5000,
+        reconnectionDelayMax: 10000,
+        reconnectionAttempts: Infinity
+      });
+
+      // Autenticación exitosa
+      cocinaSocket.on('authenticated', function(){
+        console.log('Cocina: WebSocket autenticado');
+        wsConnected = true;
+        updateWsIndicator(true);
+        // Detener polling de fallback y auto-refresh normal
+        stopFallbackPolling();
+        stopAutoRefresh();
+      });
+
+      // Nuevo pedido
+      cocinaSocket.on('new_order', function(data){
+        console.log('Cocina: nuevo pedido recibido', data);
+        playNotificationSound();
+        showOrderToast(data);
+        cargarCola();
+        
+        // Auto-imprimir comanda
+        if (data.pedidoId) {
+            imprimirComanda(data.pedidoId);
+        }
+      });
+
+      // Cambio de estado
+      cocinaSocket.on('status_change', function(){
+        cargarCola();
+      });
+
+      // Pedido modificado
+      cocinaSocket.on('order_modified', function(){
+        cargarCola();
+      });
+
+      // Conexión establecida
+      cocinaSocket.on('connect', function(){
+        console.log('Cocina: socket conectado');
+      });
+
+      // Desconexión
+      cocinaSocket.on('disconnect', function(reason){
+        console.warn('Cocina: socket desconectado -', reason);
+        wsConnected = false;
+        updateWsIndicator(false);
+        // Activar fallback polling
+        const autoEnabled = document.getElementById('toggleAutoRefresh')?.checked;
+        if(autoEnabled) startFallbackPolling();
+      });
+
+      // Error de conexión
+      cocinaSocket.on('connect_error', function(err){
+        console.warn('Cocina: error de conexión WS -', err.message);
+        wsConnected = false;
+        updateWsIndicator(false);
+        const autoEnabled = document.getElementById('toggleAutoRefresh')?.checked;
+        if(autoEnabled) startFallbackPolling();
+      });
+
+    } catch(err){
+      console.warn('Cocina: no se pudo iniciar WebSocket -', err.message);
+      wsConnected = false;
+      updateWsIndicator(false);
+      startFallbackPolling();
+    }
+  }
+
+  // Iniciar conexión WebSocket
+  initWebSocket();
+
+  // --- Función para imprimir comanda ---
+  window.imprimirComanda = function(pedidoId) {
+    const url = '/cocina/comanda/' + pedidoId;
+    const printWindow = window.open(url, '_blank', 'width=400,height=600,scrollbars=yes');
+    if (!printWindow) {
+      console.warn('No se pudo abrir ventana de impresión. Verifica que los popups estén permitidos.');
+    }
+  };
 });
-
-

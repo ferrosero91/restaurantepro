@@ -362,6 +362,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="propinas-tab" data-bs-toggle="tab" data-bs-target="#propinas" type="button">
+                    <i class="bi bi-cash-coin me-2"></i>Propinas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios" type="button">
                     <i class="bi bi-person-badge me-2"></i>Usuarios
                 </button>
@@ -396,6 +401,37 @@
                         <div class="col-md-6">
                             <label class="form-label">Teléfono</label>
                             <input type="text" class="form-control" name="telefono" value="<%= config.telefono || '' %>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">WhatsApp <span class="badge bg-success">Tienda</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-whatsapp"></i></span>
+                                <input type="text" class="form-control" name="whatsapp" value="<%= config.whatsapp || '' %>" placeholder="573001234567">
+                            </div>
+                            <small class="text-muted">Número con código de país (ej: 573001234567). Se muestra en la tienda online.</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Slogan <span class="badge bg-info">Tienda</span></label>
+                            <input type="text" class="form-control" name="slogan" value="<%= config.slogan || '' %>" placeholder="Los mejores sabores de la ciudad" maxlength="255">
+                            <small class="text-muted">Se muestra en la tienda online debajo del nombre.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">URL Tienda Online <span class="badge bg-info">Público</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">/tienda/</span>
+                                <input type="text" class="form-control" id="inputSlug" value="<%= typeof restauranteSlug !== 'undefined' ? restauranteSlug : '' %>" placeholder="mi-restaurante">
+                            </div>
+                            <small class="text-muted">URL pública para pedidos online. Solo letras, números y guiones.</small>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnGuardarSlug">
+                                <i class="bi bi-link-45deg me-1"></i>Guardar URL
+                            </button>
+                            <% if (typeof restauranteSlug !== 'undefined' && restauranteSlug) { %>
+                            <a href="/tienda/<%= restauranteSlug %>" target="_blank" class="btn btn-outline-success btn-sm ms-2">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Ver Tienda
+                            </a>
+                            <% } %>
                         </div>
                     </div>
                     
@@ -458,26 +494,54 @@
             <div class="tab-pane fade" id="impresion" role="tabpanel">
                 <form action="/configuracion" method="POST">
                     <div class="section-title">
-                        <i class="bi bi-printer me-2"></i>Formato de Impresión
+                        <i class="bi bi-printer-fill me-2"></i>Configuración de Impresión
+                    </div>
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Selecciona las impresoras instaladas en este equipo para comandas y facturas. La impresión se realizará directamente sin mostrar diálogo.
                     </div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label">Ancho del Papel (mm)</label>
-                            <input type="number" class="form-control" name="ancho_papel" value="<%= config.ancho_papel || 80 %>" min="58" max="80">
-                            <small class="text-muted">Recomendado: 80mm para facturas estándar</small>
+                            <label class="form-label fw-bold">Impresora de Cocina (Comandas)</label>
+                            <select class="form-control" name="printer_name" id="selectPrinterCocina">
+                                <option value="">Cargando impresoras...</option>
+                            </select>
+                            <small class="text-muted">Se usará para imprimir comandas automáticamente</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Tamaño de Fuente</label>
-                            <select class="form-control" name="font_size">
-                                <option value="1" <%= (config.font_size || 1) == 1 ? 'selected' : '' %>>Normal</option>
-                                <option value="2" <%= (config.font_size || 1) == 2 ? 'selected' : '' %>>Grande</option>
+                            <label class="form-label fw-bold">Impresora de Caja (Facturas)</label>
+                            <select class="form-control" name="printer_ip" id="selectPrinterCaja">
+                                <option value="">Cargando impresoras...</option>
                             </select>
+                            <small class="text-muted">Se usará para imprimir facturas</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ancho de Papel</label>
+                            <select class="form-control" name="ancho_papel">
+                                <option value="58" <%= config.ancho_papel == 58 ? 'selected' : '' %>>58mm (Impresora pequeña)</option>
+                                <option value="80" <%= (config.ancho_papel || 80) == 80 ? 'selected' : '' %>>80mm (Impresora estándar)</option>
+                            </select>
+                            <small class="text-muted">Ancho del papel de las impresoras térmicas</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Impresión automática de comandas</label>
+                            <select class="form-control" name="printer_type">
+                                <option value="thermal" <%= (config.printer_type || 'thermal') === 'thermal' ? 'selected' : '' %>>Activada</option>
+                                <option value="standard" <%= config.printer_type === 'standard' ? 'selected' : '' %>>Desactivada</option>
+                            </select>
+                            <small class="text-muted">Cuando llega un pedido a cocina, se imprime automáticamente</small>
                         </div>
                     </div>
+                    <!-- Campos ocultos para mantener compatibilidad -->
+                    <input type="hidden" name="printer_port" value="<%= config.printer_port || '' %>">
+                    <input type="hidden" name="font_size" value="<%= config.font_size || 1 %>">
                     
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnProbarImpresora">
+                            <i class="bi bi-printer-fill me-2"></i>Probar Impresión
                         </button>
                         <a href="/" class="btn btn-outline-secondary">Cancelar</a>
                     </div>
@@ -570,6 +634,91 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            
+            
+            <!-- TAB: Propinas -->
+            <div class="tab-pane fade" id="propinas" role="tabpanel">
+                <form id="formPropinas">
+                    <div class="section-title">
+                        <i class="bi bi-cash-coin me-2"></i>Configuración de Propinas Voluntarias
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Las propinas voluntarias permiten a los clientes agregar una propina al momento de pagar. Esta funcionalidad aparecerá en la interfaz de facturación cuando esté activada.
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="tipEnabled" name="tip_enabled">
+                                <label class="form-check-label" for="tipEnabled">
+                                    <strong>Activar sistema de propinas voluntarias</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">Cuando esté activado, aparecerán opciones de propina en la interfaz de facturación</small>
+                        </div>
+                    </div>
+                    
+                    <div id="tipConfigSection" style="display: none;">
+                        <div class="section-title">
+                            <i class="bi bi-percent me-2"></i>Porcentajes Predefinidos
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label">Porcentajes de propina sugeridos</label>
+                                <div id="tipPercentagesContainer">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="10">
+                                                <span class="input-group-text">%</span>
+                                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="15">
+                                                <span class="input-group-text">%</span>
+                                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="20">
+                                                <span class="input-group-text">%</span>
+                                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddPercentage">
+                                    <i class="bi bi-plus-circle me-1"></i>Agregar Porcentaje
+                                </button>
+                                <small class="text-muted d-block mt-2">
+                                    Estos porcentajes aparecerán como botones en la interfaz de facturación. Los clientes también podrán ingresar un monto personalizado.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" id="btnGuardarPropinas">
+                            <i class="bi bi-save me-2"></i>Guardar Configuración
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnCancelarPropinas">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
             </div>
             
             <!-- TAB: Usuarios -->
@@ -1645,7 +1794,281 @@
                 cargarUsuarios();
             });
             cargarMediosPago();
+            cargarConfiguracionPropinas();
         });
+        
+        // ===========================
+        // CONFIGURACIÓN DE PROPINAS
+        // ===========================
+        
+        let tipConfigData = {
+            enabled: false,
+            percentages: []
+        };
+        
+        async function cargarConfiguracionPropinas() {
+            try {
+                const response = await fetch('/configuracion/propinas');
+                if (response.ok) {
+                    tipConfigData = await response.json();
+                    renderizarConfiguracionPropinas();
+                } else {
+                    console.error('Error al cargar configuración de propinas');
+                    // Usar valores por defecto
+                    tipConfigData = { enabled: false, percentages: [10, 15, 20] };
+                    renderizarConfiguracionPropinas();
+                }
+            } catch (error) {
+                console.error('Error al cargar configuración de propinas:', error);
+                // Usar valores por defecto
+                tipConfigData = { enabled: false, percentages: [10, 15, 20] };
+                renderizarConfiguracionPropinas();
+            }
+        }
+        
+        function renderizarConfiguracionPropinas() {
+            const tipEnabledCheckbox = document.getElementById('tipEnabled');
+            const tipConfigSection = document.getElementById('tipConfigSection');
+            const container = document.getElementById('tipPercentagesContainer');
+            
+            if (!tipEnabledCheckbox || !tipConfigSection || !container) return;
+            
+            // Configurar checkbox
+            tipEnabledCheckbox.checked = tipConfigData.enabled;
+            tipConfigSection.style.display = tipConfigData.enabled ? 'block' : 'none';
+            
+            // Renderizar porcentajes
+            const percentages = tipConfigData.percentages || [];
+            if (percentages.length === 0) {
+                // Si no hay porcentajes, mostrar campos vacíos por defecto
+                container.innerHTML = `
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="10">
+                                <span class="input-group-text">%</span>
+                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="15">
+                                <span class="input-group-text">%</span>
+                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="20">
+                                <span class="input-group-text">%</span>
+                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Renderizar porcentajes existentes
+                const rows = [];
+                for (let i = 0; i < percentages.length; i += 3) {
+                    const rowPercentages = percentages.slice(i, i + 3);
+                    const rowHtml = `
+                        <div class="row g-2 mb-2">
+                            ${rowPercentages.map(percentage => `
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" value="${percentage}">
+                                        <span class="input-group-text">%</span>
+                                        <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    rows.push(rowHtml);
+                }
+                container.innerHTML = rows.join('');
+            }
+            
+            // Agregar event listeners
+            agregarEventListenersPropinas();
+        }
+        
+        function agregarEventListenersPropinas() {
+            // Toggle de activación
+            const tipEnabledCheckbox = document.getElementById('tipEnabled');
+            const tipConfigSection = document.getElementById('tipConfigSection');
+            
+            if (tipEnabledCheckbox && tipConfigSection) {
+                tipEnabledCheckbox.addEventListener('change', function() {
+                    tipConfigSection.style.display = this.checked ? 'block' : 'none';
+                });
+            }
+            
+            // Botón agregar porcentaje
+            const btnAddPercentage = document.getElementById('btnAddPercentage');
+            if (btnAddPercentage) {
+                btnAddPercentage.addEventListener('click', function() {
+                    const container = document.getElementById('tipPercentagesContainer');
+                    if (!container) return;
+                    
+                    // Buscar la última fila o crear una nueva
+                    let lastRow = container.querySelector('.row:last-child');
+                    let inputsInLastRow = lastRow ? lastRow.querySelectorAll('.tip-percentage').length : 3;
+                    
+                    if (inputsInLastRow >= 3) {
+                        // Crear nueva fila
+                        const newRow = document.createElement('div');
+                        newRow.className = 'row g-2 mb-2';
+                        newRow.innerHTML = `
+                            <div class="col-md-3">
+                                <div class="input-group">
+                                    <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="25">
+                                    <span class="input-group-text">%</span>
+                                    <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(newRow);
+                    } else {
+                        // Agregar a la fila existente
+                        const newCol = document.createElement('div');
+                        newCol.className = 'col-md-3';
+                        newCol.innerHTML = `
+                            <div class="input-group">
+                                <input type="number" class="form-control tip-percentage" min="0" max="100" step="1" placeholder="25">
+                                <span class="input-group-text">%</span>
+                                <button type="button" class="btn btn-outline-danger btn-remove-percentage" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        lastRow.appendChild(newCol);
+                    }
+                    
+                    // Re-agregar event listeners
+                    agregarEventListenersEliminar();
+                });
+            }
+            
+            // Event listeners para eliminar
+            agregarEventListenersEliminar();
+            
+            // Botón guardar
+            const btnGuardar = document.getElementById('btnGuardarPropinas');
+            if (btnGuardar) {
+                btnGuardar.addEventListener('click', guardarConfiguracionPropinas);
+            }
+            
+            // Botón cancelar
+            const btnCancelar = document.getElementById('btnCancelarPropinas');
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function() {
+                    renderizarConfiguracionPropinas(); // Restaurar valores originales
+                });
+            }
+        }
+        
+        function agregarEventListenersEliminar() {
+            const removeButtons = document.querySelectorAll('.btn-remove-percentage');
+            removeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const col = this.closest('.col-md-3');
+                    const row = col.parentElement;
+                    
+                    // Eliminar la columna
+                    col.remove();
+                    
+                    // Si la fila queda vacía, eliminarla
+                    if (row.children.length === 0) {
+                        row.remove();
+                    }
+                });
+            });
+        }
+        
+        async function guardarConfiguracionPropinas() {
+            try {
+                const tipEnabled = document.getElementById('tipEnabled').checked;
+                const percentageInputs = document.querySelectorAll('.tip-percentage');
+                
+                // Recopilar porcentajes válidos
+                const percentages = [];
+                percentageInputs.forEach(input => {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value) && value >= 0 && value <= 100) {
+                        percentages.push(value);
+                    }
+                });
+                
+                // Validar que haya al menos un porcentaje si está activado
+                if (tipEnabled && percentages.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Configuración incompleta',
+                        text: 'Debes configurar al menos un porcentaje de propina o desactivar el sistema de propinas.'
+                    });
+                    return;
+                }
+                
+                const configData = {
+                    enabled: tipEnabled,
+                    percentages: percentages
+                };
+                
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Guardando configuración...',
+                    html: 'Por favor espera',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const response = await fetch('/configuracion/propinas', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                });
+                
+                if (response.ok) {
+                    tipConfigData = configData;
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Configuración guardada!',
+                        text: 'La configuración de propinas se ha actualizado correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    const errorData = await response.json();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al guardar',
+                        text: errorData.error || 'No se pudo guardar la configuración de propinas.'
+                    });
+                }
+            } catch (error) {
+                console.error('Error al guardar configuración de propinas:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al guardar la configuración de propinas.'
+                });
+            }
+        }
         
         // ===========================
         // MEDIOS DE PAGO
@@ -1956,6 +2379,111 @@
                 }
             });
         }
+        
+        // ===========================
+        // PRUEBA DE IMPRESORA
+        // ===========================
+        
+        // Cargar impresoras de Windows en los selects
+        async function cargarImpresoras() {
+            try {
+                const resp = await fetch('/configuracion/printers');
+                const data = await resp.json();
+                const printers = data.printers || [];
+                
+                const selectCocina = document.getElementById('selectPrinterCocina');
+                const selectCaja = document.getElementById('selectPrinterCaja');
+                
+                const currentCocina = '<%= config.printer_name || "" %>';
+                const currentCaja = '<%= config.printer_ip || "" %>';
+                
+                const buildOptions = (select, currentValue) => {
+                    select.innerHTML = '<option value="">(Ninguna - usar diálogo de Windows)</option>';
+                    printers.forEach(p => {
+                        const name = p.name || p.deviceId || p;
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        if (name === currentValue) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                };
+                
+                if (printers.length > 0) {
+                    buildOptions(selectCocina, currentCocina);
+                    buildOptions(selectCaja, currentCaja);
+                } else {
+                    selectCocina.innerHTML = '<option value="">No se detectaron impresoras</option>';
+                    selectCaja.innerHTML = '<option value="">No se detectaron impresoras</option>';
+                    if (data.error) {
+                        console.warn('Error cargando impresoras:', data.error);
+                    }
+                }
+            } catch(e) {
+                console.error('Error cargando impresoras:', e);
+                document.getElementById('selectPrinterCocina').innerHTML = '<option value="">Error al cargar</option>';
+                document.getElementById('selectPrinterCaja').innerHTML = '<option value="">Error al cargar</option>';
+            }
+        }
+        cargarImpresoras();
+
+        // Guardar slug de tienda online
+        document.getElementById('btnGuardarSlug')?.addEventListener('click', async function() {
+            const slug = document.getElementById('inputSlug').value.trim();
+            if (!slug) { Swal.fire('', 'Ingresa una URL para la tienda', 'warning'); return; }
+            try {
+                const resp = await fetch('/configuracion/slug', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slug })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    Swal.fire({ icon: 'success', title: 'URL guardada', html: `Tu tienda está en: <a href="${data.url}" target="_blank">${data.url}</a>`, confirmButtonText: 'OK' });
+                } else {
+                    Swal.fire('Error', data.error, 'error');
+                }
+            } catch(e) { Swal.fire('Error', 'Error de conexión', 'error'); }
+        });
+
+        document.getElementById('btnProbarImpresora')?.addEventListener('click', function() {
+            // Abrir ventana de prueba de impresión
+            const testHtml = `
+                <html><head><title>Prueba de Impresión</title>
+                <style>
+                    @page { size: 80mm auto; margin: 2mm; }
+                    body { font-family: 'Courier New', monospace; font-size: 13px; width: 80mm; padding: 2mm; }
+                    .center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .sep { border-top: 1px dashed #000; margin: 6px 0; }
+                    @media print { .no-print { display: none; } }
+                    .no-print { text-align: center; margin: 20px; }
+                    .no-print button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin: 5px; }
+                    .no-print .close-btn { background: #6c757d; }
+                </style></head><body>
+                <div class="no-print">
+                    <button onclick="window.print()">🖨️ Imprimir</button>
+                    <button class="close-btn" onclick="window.close()">✕ Cerrar</button>
+                </div>
+                <div class="center bold" style="font-size:16px;">PRUEBA DE IMPRESIÓN</div>
+                <div class="sep"></div>
+                <div class="center">RestaurantPro</div>
+                <div class="center">Fecha: ${new Date().toLocaleString('es-CO')}</div>
+                <div class="sep"></div>
+                <div>1 UND  Producto de prueba</div>
+                <div>    Nota: Sin cebolla</div>
+                <div class="sep"></div>
+                <div class="bold">Total Items: 1</div>
+                <div class="sep"></div>
+                <div class="center" style="margin-top:10px;">Si puedes leer esto,</div>
+                <div class="center bold">la impresión funciona correctamente ✓</div>
+                </body></html>
+            `;
+            const win = window.open('', '_blank', 'width=400,height=500');
+            win.document.write(testHtml);
+            win.document.close();
+            setTimeout(() => win.print(), 500);
+        });
     </script>
 </body>
 </html> 

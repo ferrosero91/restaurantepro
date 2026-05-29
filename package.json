@@ -27,6 +27,13 @@
     "build": "pkg . --public --target node18-win-x64",
     "install:db": "node scripts/install.js",
     "create-superadmin": "node scripts/create_superadmin.js",
+    "migrate": "node scripts/migrations/migrate.js up",
+    "migrate:up": "node scripts/migrations/migrate.js up",
+    "migrate:down": "node scripts/migrations/migrate.js down",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:property": "jest --testNamePattern='Property'",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
@@ -52,19 +59,27 @@
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
     "express-validator": "^7.3.1",
+    "fast-check": "^4.6.0",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
     "jquery": "^3.7.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.14.2",
+    "pdf-to-printer": "^5.8.0",
+    "qrcode": "^1.5.4",
     "select2": "^4.1.0-rc.0",
     "select2-bootstrap-5-theme": "^1.3.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "sweetalert2": "^11.15.10",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
     "nodemon": "^2.0.22",
-    "pkg": "^5.8.1"
+    "pkg": "^5.8.1",
+    "supertest": "^7.2.2"
   }
 }

@@ -7,151 +7,249 @@
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            height: 100%;
-            width: 100%;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            background: #f0f2f5;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        .login-container {
+        .login-wrapper {
+            display: flex;
             width: 100%;
-            max-width: 420px;
-            margin: 0 auto;
-        }
-        .login-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 900px;
+            min-height: 500px;
+            border-radius: 20px;
             overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .login-brand {
+            flex: 1;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #0f172a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-brand::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
             width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(233,69,96,0.15) 0%, transparent 70%);
+            border-radius: 50%;
         }
-        .login-header {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            color: white;
-            padding: 2.5rem 2rem;
-            text-align: center;
+        .login-brand::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -30%;
+            width: 80%;
+            height: 80%;
+            background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+            border-radius: 50%;
         }
-        .login-header i {
-            font-size: 3.5rem;
+        .brand-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .brand-title {
+            font-size: 2rem;
+            font-weight: 800;
             margin-bottom: 0.5rem;
+            position: relative;
         }
-        .login-header h3 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 0.5rem 0 0.25rem 0;
-        }
-        .login-header p {
+        .brand-subtitle {
             font-size: 0.95rem;
-            opacity: 0.9;
-            margin: 0;
+            opacity: 0.7;
+            text-align: center;
+            line-height: 1.5;
+            position: relative;
         }
-        .login-body {
-            padding: 2rem;
+        .login-form-side {
+            flex: 1;
+            background: white;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
-        .form-label {
-            font-weight: 500;
-            color: #2c3e50;
+        .login-form-side h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e293b;
             margin-bottom: 0.5rem;
         }
-        .form-control {
-            padding: 0.75rem 1rem;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s;
+        .login-form-side .subtitle {
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
         }
-        .form-control:focus {
-            border-color: #3498db;
-            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
-        }
-        .btn-login {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            border: none;
-            color: white;
-            padding: 0.85rem;
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
             font-weight: 600;
-            font-size: 1.05rem;
-            border-radius: 8px;
-            transition: all 0.3s;
+            color: #475569;
+            margin-bottom: 0.4rem;
+        }
+        .form-group .input-wrap {
+            position: relative;
+        }
+        .form-group .input-wrap i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #e94560;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(233,69,96,0.1);
+        }
+        .form-group input::placeholder { color: #94a3b8; }
+        .btn-login {
+            width: 100%;
+            padding: 0.85rem;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
         }
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-            color: white;
+            background: #d63851;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(233,69,96,0.3);
         }
-        .btn-login:active {
-            transform: translateY(0);
+        .btn-login:active { transform: translateY(0); }
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .text-link {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .text-link:hover {
-            color: #2c3e50;
-            text-decoration: underline;
-        }
-        .alert {
-            border-radius: 8px;
-            border: none;
+        @media (max-width: 768px) {
+            body { 
+                background: #1e293b;
+                padding: 0;
+                align-items: stretch;
+            }
+            .login-wrapper {
+                flex-direction: column;
+                max-width: 100%;
+                min-height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .login-brand {
+                padding: 2.5rem 2rem 2rem;
+                flex: none;
+            }
+            .brand-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+            .brand-title { font-size: 1.6rem; }
+            .brand-subtitle { font-size: 0.85rem; }
+            .login-form-side { 
+                padding: 2rem 1.5rem 3rem;
+                border-radius: 24px 24px 0 0;
+                margin-top: -1rem;
+                flex: 1;
+            }
+            .login-form-side h2 { font-size: 1.4rem; }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
+    <div class="login-wrapper">
+        <!-- Brand Side -->
+        <div class="login-brand">
+            <div class="brand-icon">
                 <i class="bi bi-shop"></i>
-                <h3>RestaurantPro</h3>
-                <p>Inicia sesión para continuar</p>
             </div>
-            <div class="login-body">
-                <% if (error) { %>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <%= error %>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <% } %>
-
-                <form method="POST" action="/login">
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-envelope me-1"></i>
-                            Correo Electrónico
-                        </label>
-                        <input type="email" name="email" class="form-control" placeholder="tu@email.com" required autofocus>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label">
-                            <i class="bi bi-lock me-1"></i>
-                            Contraseña
-                        </label>
-                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                    </div>
-
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-login">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>
-                            Iniciar Sesión
-                        </button>
-                    </div>
-                </form>
+            <div class="brand-title">RestaurantPro</div>
+            <div class="brand-subtitle">
+                Sistema de gestión integral<br>para tu restaurante
             </div>
         </div>
-    </div>
 
-    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <!-- Form Side -->
+        <div class="login-form-side">
+            <h2>Bienvenido</h2>
+            <p class="subtitle">Ingresa tus credenciales para acceder al sistema</p>
+
+            <% if (error) { %>
+            <div class="alert-error">
+                <i class="bi bi-exclamation-circle"></i>
+                <%= error %>
+            </div>
+            <% } %>
+
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label>Correo electrónico</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-envelope"></i>
+                        <input type="email" name="email" placeholder="tu@correo.com" required autofocus>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-lock"></i>
+                        <input type="password" name="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

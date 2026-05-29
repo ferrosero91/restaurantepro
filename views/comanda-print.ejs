@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comanda #<%= pedido.id %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page {
+            size: <%= ancho === 58 ? '58mm' : '80mm' %> auto;
+            margin: 2mm;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: <%= ancho === 58 ? '11px' : '13px' %>;
+            width: <%= ancho === 58 ? '58mm' : '80mm' %>;
+            padding: 2mm;
+            color: #000;
+            background: #fff;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .header h1 {
+            font-size: <%= ancho === 58 ? '14px' : '16px' %>;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .separator {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+        }
+        .modification-label {
+            text-align: center;
+            font-weight: bold;
+            font-size: <%= ancho === 58 ? '13px' : '15px' %>;
+            padding: 4px 0;
+            border: 1px solid #000;
+            margin-bottom: 6px;
+        }
+        .item {
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dotted #ccc;
+        }
+        .item:last-child { border-bottom: none; }
+        .item-main {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: <%= ancho === 58 ? '12px' : '14px' %>;
+        }
+        .item-qty {
+            min-width: 50px;
+        }
+        .item-name {
+            flex: 1;
+        }
+        .item-note {
+            font-size: <%= ancho === 58 ? '10px' : '11px' %>;
+            font-style: italic;
+            padding-left: 10px;
+            margin-top: 2px;
+            color: #333;
+        }
+        .footer {
+            border-top: 2px dashed #000;
+            padding-top: 4px;
+            margin-top: 6px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .total-items {
+            font-size: <%= ancho === 58 ? '12px' : '14px' %>;
+        }
+        @media print {
+            body { width: 100%; }
+            .no-print { display: none !important; }
+        }
+        @media screen {
+            body {
+                margin: 20px auto;
+                border: 1px solid #ddd;
+                padding: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .no-print {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                display: flex;
+                gap: 8px;
+            }
+            .btn-print {
+                padding: 10px 20px;
+                background: #e94560;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .btn-print:hover { background: #d63851; }
+            .btn-close-win {
+                padding: 10px 20px;
+                background: #64748b;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Botones (solo en pantalla, no se imprimen) -->
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn-close-win" onclick="window.close()">✕ Cerrar</button>
+    </div>
+
+    <!-- Comanda -->
+    <div class="header">
+        <h1><%= restaurante %></h1>
+    </div>
+
+    <div class="info-row">
+        <span><strong><%= mesa ? 'Mesa: ' + mesa : 'DOMICILIO' %></strong></span>
+        <span><%= fecha %></span>
+    </div>
+    <div class="info-row">
+        <span>Pedido: #<%= pedido.id %></span>
+        <span><%= hora %></span>
+    </div>
+
+    <div class="separator"></div>
+
+    <% if (isModification) { %>
+    <div class="modification-label">⚠️ MODIFICACIÓN</div>
+    <% } %>
+
+    <% items.forEach(function(item) { %>
+    <div class="item">
+        <div class="item-main">
+            <span class="item-qty"><%= item.cantidad %> <%= item.unidad_medida %></span>
+            <span class="item-name"><%= item.producto_nombre %></span>
+        </div>
+        <% if (item.nota) { %>
+        <div class="item-note">📝 <%= item.nota %></div>
+        <% } %>
+    </div>
+    <% }); %>
+
+    <div class="footer">
+        <div class="total-items">Total Items: <%= items.length %></div>
+    </div>
+
+    <script>
+        // Auto-imprimir al cargar
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    </script>
+</body>
+</html>

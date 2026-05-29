@@ -71,199 +71,187 @@ $(function() {
   }
 
   async function pedirPagosMixtos(total) {
-    // Usar modal de Bootstrap nativo en lugar de SweetAlert2
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       const modalEl = document.getElementById('modalPago');
       const modal = new bootstrap.Modal(modalEl);
-      
       const pagoTotalEl = document.getElementById('pagoTotal');
-      const pagoRowsEl = document.getElementById('pagoRows');
-      const pagoAddBtn = document.getElementById('pagoAddRow');
-      const pagoSumEl = document.getElementById('pagoSum');
-      const pagoDiffEl = document.getElementById('pagoDiff');
-      const pagoWarnEl = document.getElementById('pagoWarn');
       const pagoDineroRecibidoEl = document.getElementById('pagoDineroRecibido');
       const pagoCambioEl = document.getElementById('pagoCambio');
       const btnConfirmar = document.getElementById('btnConfirmarPago');
-      
-      // Establecer total
-      pagoTotalEl.textContent = formatMoney(total);
-      
-      // Limpiar filas anteriores
-      pagoRowsEl.innerHTML = '';
-      pagoDineroRecibidoEl.value = '';
-      pagoCambioEl.textContent = '$0,00';
-      pagoWarnEl.style.display = 'none';
-      
-      const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => {
-        let optionsHTML = '';
-        if (mediosPagoDisponibles.length > 0) {
-          optionsHTML = mediosPagoDisponibles.map(medio => 
-            `<option value="${medio.codigo}" ${metodo === medio.codigo ? 'selected' : ''}>${medio.nombre}</option>`
-          ).join('');
-        } else {
-          optionsHTML = `
-            <option value="efectivo" ${metodo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-            <option value="transferencia" ${metodo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
-            <option value="tarjeta" ${metodo === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
-          `;
+      const pagoMetodoEl = document.getElementById('pagoMetodo');
+      const clienteBuscarEl = document.getElementById('pagoClienteBuscar');
+      const clienteResultadosEl = document.getElementById('pagoClienteResultados');
+      const clienteNombreEl = document.getElementById('pagoClienteNombre');
+      const clienteIdEl = document.getElementById('pagoClienteId');
+      const clienteDefaultBtn = document.getElementById('pagoClienteDefault');
+
+      let propinaAmount = 0;
+      let totalConPropina = total;
+
+      // --- Cliente: buscar "Consumidor final" por defecto ---
+      let clienteDefault = null;
+      try {
+        const cResp = await fetch('/api/clientes/buscar?q=consumidor');
+        if (cResp.ok) {
+          const clientes = await cResp.json();
+          clienteDefault = clientes.find(c => c.nombre.toLowerCase().includes('consumidor')) || clientes[0];
         }
-        
-        return `
-        <div class="border rounded p-2 pago-row">
-          <div class="row g-2 align-items-end">
-            <div class="col-5">
-              <label class="form-label small mb-1">Método</label>
-              <select class="form-select form-select-sm pago-metodo">
-                ${optionsHTML}
-              </select>
-            </div>
-            <div class="col-4">
-              <label class="form-label small mb-1">Monto</label>
-              <input type="text" class="form-control form-control-sm pago-monto" placeholder="0.00" value="${String(monto)}">
-            </div>
-            <div class="col-3 text-end">
-              <button type="button" class="btn btn-outline-danger btn-sm pago-del" title="Eliminar">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-            <div class="col-12">
-              <label class="form-label small mb-1">Referencia (opcional)</label>
-              <input type="text" class="form-control form-control-sm pago-ref" placeholder="Ej: #transacción / últimos 4 dígitos" value="${String(referencia)}">
-            </div>
-          </div>
-        </div>
-      `;
+      } catch(e) {}
+      
+      if (clienteDefault) {
+        clienteIdEl.value = clienteDefault.id;
+        clienteNombreEl.textContent = clienteDefault.nombre;
+      } else {
+        clienteIdEl.value = '';
+        clienteNombreEl.textContent = 'No encontrado';
+      }
+      clienteBuscarEl.value = '';
+      clienteResultadosEl.style.display = 'none';
+
+      // Búsqueda de cliente
+      let searchTimeout = null;
+      clienteBuscarEl.oninput = function() {
+        clearTimeout(searchTimeout);
+        const q = this.value.trim();
+        if (q.length < 2) { clienteResultadosEl.style.display = 'none'; return; }
+        searchTimeout = setTimeout(async () => {
+          try {
+            const resp = await fetch('/api/clientes/buscar?q=' + encodeURIComponent(q));
+            if (!resp.ok) return;
+            const clientes = await resp.json();
+            if (clientes.length === 0) {
+              clienteResultadosEl.innerHTML = '<div class="list-group-item text-muted small">No se encontraron resultados</div>';
+            } else {
+              clienteResultadosEl.innerHTML = clientes.slice(0, 5).map(c => 
+                `<button type="button" class="list-group-item list-group-item-action py-2" data-id="${c.id}" data-nombre="${c.nombre}">
+                  <strong>${c.nombre}</strong> <small class="text-muted">${c.telefono || c.documento || ''}</small>
+                </button>`
+              ).join('');
+            }
+            clienteResultadosEl.style.display = 'block';
+          } catch(e) {}
+        }, 300);
       };
-      
-      const recalc = () => {
-        const montoInputs = Array.from(pagoRowsEl.querySelectorAll('.pago-monto'));
-        const montos = montoInputs.map(i => parseMoneyInput(i.value));
-        const sum = montos.reduce((a, b) => a + b, 0);
-        
-        const diff = Number(total) - Number(sum);
-        if (pagoDiffEl) {
-          if (almostEqualMoney(diff, 0)) {
-            pagoDiffEl.className = 'badge text-bg-success';
-            pagoDiffEl.textContent = 'Listo: total completo';
-          } else if (diff > 0) {
-            pagoDiffEl.className = 'badge text-bg-warning';
-            pagoDiffEl.textContent = `Falta: ${formatMoney(diff)}`;
+
+      // Seleccionar cliente de resultados
+      clienteResultadosEl.onclick = function(e) {
+        const btn = e.target.closest('[data-id]');
+        if (!btn) return;
+        clienteIdEl.value = btn.dataset.id;
+        clienteNombreEl.textContent = btn.dataset.nombre;
+        clienteBuscarEl.value = '';
+        clienteResultadosEl.style.display = 'none';
+      };
+
+      // Botón consumidor final
+      clienteDefaultBtn.onclick = function() {
+        if (clienteDefault) {
+          clienteIdEl.value = clienteDefault.id;
+          clienteNombreEl.textContent = clienteDefault.nombre;
+        }
+        clienteBuscarEl.value = '';
+        clienteResultadosEl.style.display = 'none';
+      };
+
+      // --- Medios de pago ---
+      pagoMetodoEl.innerHTML = '';
+      if (mediosPagoDisponibles.length > 0) {
+        mediosPagoDisponibles.forEach(m => {
+          pagoMetodoEl.innerHTML += `<option value="${m.codigo}">${m.nombre}</option>`;
+        });
+      } else {
+        pagoMetodoEl.innerHTML = '<option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option>';
+      }
+
+      // --- Propinas ---
+      try {
+        const tipResp = await fetch('/api/facturas/tip-config');
+        if (tipResp.ok) {
+          const tipConfig = await tipResp.json();
+          const seccion = document.getElementById('propinaSeccion');
+          if (tipConfig.enabled) {
+            seccion.style.display = 'block';
+            const botones = document.getElementById('propinaBotones');
+            botones.innerHTML = '';
+            (tipConfig.percentages || []).forEach(pct => {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'btn btn-outline-success btn-sm tip-pct-btn';
+              btn.textContent = pct + '%';
+              btn.onclick = function() {
+                document.querySelectorAll('.tip-pct-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('propinaCustom').value = '';
+                propinaAmount = Math.round(total * pct / 100);
+                totalConPropina = total + propinaAmount;
+                document.getElementById('propinaMontoDisplay').textContent = '$' + propinaAmount.toLocaleString('es-CO');
+                updateTotal();
+              };
+              botones.appendChild(btn);
+            });
+            document.getElementById('propinaCustom').oninput = function() {
+              document.querySelectorAll('.tip-pct-btn').forEach(b => b.classList.remove('active'));
+              propinaAmount = Math.round(parseFloat(this.value) || 0);
+              totalConPropina = total + propinaAmount;
+              document.getElementById('propinaMontoDisplay').textContent = '$' + propinaAmount.toLocaleString('es-CO');
+              updateTotal();
+            };
+            document.getElementById('btnSinPropina').onclick = function() {
+              document.querySelectorAll('.tip-pct-btn').forEach(b => b.classList.remove('active'));
+              document.getElementById('propinaCustom').value = '';
+              propinaAmount = 0;
+              totalConPropina = total;
+              document.getElementById('propinaMontoDisplay').textContent = '$0';
+              updateTotal();
+            };
           } else {
-            pagoDiffEl.className = 'badge text-bg-danger';
-            pagoDiffEl.textContent = `Sobra: ${formatMoney(Math.abs(diff))}`;
+            seccion.style.display = 'none';
           }
         }
-        
-        // Calcular cambio
-        const dineroRecibido = parseMoneyInput(pagoDineroRecibidoEl.value);
-        const cambio = dineroRecibido - sum;
-        if (dineroRecibido > 0) {
-          if (cambio >= 0) {
-            pagoCambioEl.textContent = '$' + formatMoney(cambio);
-            pagoCambioEl.style.color = '#28a745';
-          } else {
-            pagoCambioEl.textContent = 'Falta: $' + formatMoney(Math.abs(cambio));
-            pagoCambioEl.style.color = '#dc3545';
-          }
-        } else {
-          pagoCambioEl.textContent = '$0,00';
+      } catch(e) { document.getElementById('propinaSeccion').style.display = 'none'; }
+
+      function updateTotal() {
+        pagoTotalEl.textContent = formatMoney(totalConPropina);
+        pagoDineroRecibidoEl.value = totalConPropina;
+        calcCambio();
+      }
+
+      function calcCambio() {
+        const recibido = parseMoneyInput(pagoDineroRecibidoEl.value);
+        const cambio = recibido - totalConPropina;
+        if (cambio >= 0) {
+          pagoCambioEl.textContent = '$' + formatMoney(cambio);
           pagoCambioEl.style.color = '#28a745';
+        } else {
+          pagoCambioEl.textContent = '-$' + formatMoney(Math.abs(cambio));
+          pagoCambioEl.style.color = '#dc3545';
         }
-        
-        pagoSumEl.textContent = formatMoney(sum);
-        pagoWarnEl.style.display = 'none';
-        
-        const remaining = Number(total) - Number(sum);
-        if (remaining > 0.009) {
-          const candidate = montoInputs
-            .filter(inp => inp.dataset.touched !== 'true')
-            .reverse()[0];
-          if (candidate) {
-            candidate.value = Number(remaining.toFixed(2)).toString();
-            recalc();
-          }
-        }
-      };
-      
-      const addRow = (metodo = 'efectivo', monto = '', referencia = '') => {
-        const wrap = document.createElement('div');
-        wrap.innerHTML = rowTemplate(metodo, monto, referencia);
-        const row = wrap.firstElementChild;
-        pagoRowsEl.appendChild(row);
-        
-        const sel = row.querySelector('.pago-metodo');
-        const montoEl = row.querySelector('.pago-monto');
-        const refEl = row.querySelector('.pago-ref');
-        const del = row.querySelector('.pago-del');
-        
-        if (sel) sel.value = metodo;
-        
-        if (montoEl) {
-          montoEl.dataset.touched = 'false';
-          montoEl.addEventListener('input', () => {
-            montoEl.dataset.touched = 'true';
-            recalc();
-          });
-          montoEl.addEventListener('focus', () => {
-            try { montoEl.select(); } catch (_) {}
-          });
-        }
-        if (sel) sel.addEventListener('change', () => recalc());
-        if (del) del.addEventListener('click', () => { row.remove(); recalc(); });
-        
-        if (montoEl) setTimeout(() => montoEl.focus(), 0);
-        recalc();
-      };
-      
-      pagoAddBtn.onclick = () => addRow('efectivo', '', '');
-      
-      // Fila inicial
-      addRow('efectivo', String(Number(total).toFixed(2)), '');
-      
-      // Event listener para dinero recibido
-      pagoDineroRecibidoEl.addEventListener('input', () => recalc());
-      pagoDineroRecibidoEl.addEventListener('focus', () => {
-        try { pagoDineroRecibidoEl.select(); } catch (_) {}
-      });
-      
-      // Confirmar pago
+      }
+
+      // Init
+      pagoTotalEl.textContent = formatMoney(totalConPropina);
+      pagoDineroRecibidoEl.value = totalConPropina;
+      pagoCambioEl.textContent = '$0';
+      pagoDineroRecibidoEl.oninput = calcCambio;
+      pagoDineroRecibidoEl.onfocus = function() { try { this.select(); } catch(e){} };
+
+      // Confirmar
       btnConfirmar.onclick = () => {
-        const pagos = Array.from(pagoRowsEl.querySelectorAll('.pago-row')).map(r => {
-          const metodo = (r.querySelector('.pago-metodo')?.value || '').trim();
-          const monto = parseMoneyInput(r.querySelector('.pago-monto')?.value || 0);
-          const referencia = (r.querySelector('.pago-ref')?.value || '').trim();
-          return { metodo, monto, referencia };
-        }).filter(p => p.metodo && p.monto > 0);
-        
-        if (pagos.length === 0) {
-          pagoWarnEl.textContent = 'Agrega al menos un medio de pago con monto.';
-          pagoWarnEl.style.display = 'block';
+        const clienteId = clienteIdEl.value;
+        if (!clienteId) {
+          Swal.fire({ icon: 'warning', title: 'Selecciona un cliente' });
           return;
         }
-        
-        const sum = pagos.reduce((a, p) => a + Number(p.monto || 0), 0);
-        if (!almostEqualMoney(sum, total)) {
-          pagoWarnEl.textContent = `La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(total)}).`;
-          pagoWarnEl.style.display = 'block';
-          return;
-        }
-        
-        const result = pagos.map(p => ({
-          metodo: p.metodo,
-          monto: Number(p.monto.toFixed(2)),
-          referencia: p.referencia || ''
-        }));
-        
+        const metodo = pagoMetodoEl.value;
+        const result = [{ metodo, monto: totalConPropina, referencia: '' }];
+        result._propina = propinaAmount;
+        result._clienteId = clienteId;
         modal.hide();
         resolve(result);
       };
-      
+
       // Cancelar
-      modalEl.addEventListener('hidden.bs.modal', () => {
-        resolve(null);
-      }, { once: true });
-      
+      modalEl.addEventListener('hidden.bs.modal', () => resolve(null), { once: true });
       modal.show();
     });
   }
@@ -492,13 +480,47 @@ $(function() {
   $('#btnEnviarCocina').on('click', async function(){
     try{
       const pendientes = items.filter(i => i.estado === 'pendiente');
+      if(pendientes.length === 0){
+        return Swal.fire({icon:'info', title:'No hay items pendientes para enviar'});
+      }
       for(const it of pendientes){
         await fetch(`/api/mesas/items/${it.id}/enviar`, { method:'PUT' });
       }
       await cargarPedido(pedidoActual.id);
-      Swal.fire({icon:'success', title:'Enviado a cocina'});
+      
+      // Abrir ventana de impresión de comanda
+      const url = '/cocina/comanda/' + pedidoActual.id;
+      window.open(url, '_blank', 'width=400,height=600,scrollbars=yes');
+      
+      Swal.fire({icon:'success', title:'Enviado a cocina', timer: 1500, showConfirmButton: false});
     }catch(err){
       Swal.fire({icon:'error', title:'No se pudo enviar a cocina'});
+    }
+  });
+
+  // Reenviar comanda a cocina (reimprimir)
+  $('#btnReenviarCocina').on('click', async function(){
+    try{
+      if(!pedidoActual || !pedidoActual.id){
+        return Swal.fire({icon:'warning', title:'No hay pedido activo'});
+      }
+      
+      const result = await Swal.fire({
+        title: '¿Reimprimir comanda?',
+        text: 'Se abrirá la comanda para imprimir',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, imprimir',
+        cancelButtonText: 'Cancelar'
+      });
+      
+      if(!result.isConfirmed) return;
+      
+      // Abrir ventana de impresión
+      const url = '/cocina/comanda/' + pedidoActual.id;
+      window.open(url, '_blank', 'width=400,height=600,scrollbars=yes');
+    }catch(err){
+      Swal.fire({icon:'error', title: err.message || 'No se pudo imprimir la comanda'});
     }
   });
 
@@ -563,11 +585,7 @@ $(function() {
   // Facturar pedido
   $('#btnFacturarPedido').on('click', async function(){
     try{
-      const cliente = await runWithOffcanvasHidden(() => seleccionarClienteConBusqueda());
-      if(!cliente) return; // cancelado
-      const cliente_id = cliente.id;
-
-      // Total del pedido basado en items actuales (mismo cálculo del render)
+      // Total del pedido basado en items actuales
       const totalPedido = (items || []).reduce((acc, it) => {
         const cantidad = Number(it.cantidad || 0);
         const precio = Number((it.precio_unitario != null ? it.precio_unitario : it.precio) || 0);
@@ -575,20 +593,26 @@ $(function() {
         return acc + subtotal;
       }, 0);
 
-      // Modal de pago mixto (permite 1 o varios medios)
-      // NO usar runWithOffcanvasHidden aquí porque bloquea los inputs del modal
+      // Modal de cobro (incluye cliente, propina, medio de pago)
       const pagos = await pedirPagosMixtos(totalPedido);
       if(!pagos) return;
+
+      const propina = pagos._propina || 0;
+      const cliente_id = pagos._clienteId;
+      delete pagos._propina;
+      delete pagos._clienteId;
+
+      if (!cliente_id) {
+        return Swal.fire({ icon: 'warning', title: 'Selecciona un cliente' });
+      }
 
       const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/facturar`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ cliente_id, pagos })
+        body: JSON.stringify({ cliente_id, pagos, propina })
       });
       const data = await resp.json();
       if(!resp.ok) throw new Error(data.error||'Error al facturar');
-      // En Mesas queremos volver a /mesas (no al index) desde la vista de impresión
-      // Relacionado con: routes/facturas.js (usa return_to seguro) y views/factura.ejs (botón Volver)
       window.location.href = `/api/facturas/${data.id}/imprimir?return_to=${encodeURIComponent('/mesas')}`;
     }catch(err){
       Swal.fire({icon:'error', title: err.message});

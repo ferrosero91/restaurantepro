@@ -56,6 +56,80 @@ async function cargarMediosPagoGlobal() {
 // Ejecutar inmediatamente
 cargarMediosPagoGlobal();
 
+// Propina global
+let tipConfigGlobal = { enabled: false, percentages: [] };
+let propinaActual = 0;
+
+async function cargarConfigPropinas() {
+    try {
+        const resp = await fetch('/api/facturas/tip-config');
+        if (resp.ok) {
+            tipConfigGlobal = await resp.json();
+            if (tipConfigGlobal.enabled) {
+                const seccion = document.getElementById('propinaSectionTactil');
+                const btns = document.getElementById('propinaBtnsTactil');
+                if (seccion) seccion.style.display = 'block';
+                if (btns) {
+                    btns.innerHTML = '';
+                    (tipConfigGlobal.percentages || []).forEach(pct => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-outline-success btn-sm tip-btn-tactil';
+                        btn.dataset.pct = pct;
+                        btn.textContent = pct + '%';
+                        btn.onclick = function() {
+                            document.querySelectorAll('.tip-btn-tactil').forEach(b => b.classList.remove('active'));
+                            this.classList.add('active');
+                            document.getElementById('propinaInputTactil').value = '';
+                            actualizarPropinaTactil(pct);
+                        };
+                        btns.appendChild(btn);
+                    });
+                    // Botón sin propina
+                    const btnNone = document.createElement('button');
+                    btnNone.type = 'button';
+                    btnNone.className = 'btn btn-outline-secondary btn-sm';
+                    btnNone.textContent = 'Sin';
+                    btnNone.onclick = function() {
+                        document.querySelectorAll('.tip-btn-tactil').forEach(b => b.classList.remove('active'));
+                        document.getElementById('propinaInputTactil').value = '';
+                        propinaActual = 0;
+                        document.getElementById('propinaDisplayTactil').textContent = '$0';
+                        actualizarTotalDisplay();
+                    };
+                    btns.appendChild(btnNone);
+                }
+                // Input personalizado
+                const input = document.getElementById('propinaInputTactil');
+                if (input) {
+                    input.oninput = function() {
+                        document.querySelectorAll('.tip-btn-tactil').forEach(b => b.classList.remove('active'));
+                        propinaActual = Math.round(parseFloat(this.value) || 0);
+                        document.getElementById('propinaDisplayTactil').textContent = '$' + propinaActual.toLocaleString('es-CO');
+                        actualizarTotalDisplay();
+                    };
+                }
+            }
+        }
+    } catch(e) { /* propinas no disponibles */ }
+}
+
+function actualizarPropinaTactil(pct) {
+    const subtotal = (window._itemsFactura || []).reduce((s, i) => s + (i.subtotal || 0), 0);
+    propinaActual = Math.round(subtotal * pct / 100);
+    document.getElementById('propinaDisplayTactil').textContent = '$' + propinaActual.toLocaleString('es-CO');
+    actualizarTotalDisplay();
+}
+
+function actualizarTotalDisplay() {
+    const subtotal = (window._itemsFactura || []).reduce((s, i) => s + (i.subtotal || 0), 0);
+    const totalConPropina = subtotal + propinaActual;
+    const el = document.getElementById('totalFactura');
+    if (el) el.textContent = '$' + totalConPropina.toLocaleString('es-CO');
+}
+
+cargarConfigPropinas();
+
 $(function() {
   let todosLosProductos = [];
   let categorias = [];
@@ -403,7 +477,9 @@ $(function() {
 
     // Actualizar total
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-    $('#totalFactura').text(formatear(total));
+    window._itemsFactura = items; // Exponer para propina
+    const totalConPropina = total + (typeof propinaActual !== 'undefined' ? propinaActual : 0);
+    $('#totalFactura').text(formatear(totalConPropina));
 
     // Actualizar badge
     const badge = document.getElementById('badgeCarritoFactura');
@@ -538,10 +614,21 @@ $(function() {
     // Si es pago mixto, usar el flujo existente
     if (formaPago === 'mixto') {
       // El flujo de pago mixto ya tiene su propio modal
-      return generarFacturaDirecta();
+      return generarFacturaDirecta(null, propinaActual || 0);
     }
     
     // Para pagos simples, mostrar modal con dinero recibido y cambio
+    const totalAPagar = total + (propinaActual || 0);
+    const propinaParaEnviar = propinaActual || 0; // Capturar antes del modal
+    const propinaTexto = propinaParaEnviar > 0 ? `
+          <div class="mb-2 d-flex justify-content-between">
+            <span class="text-muted">Subtotal:</span>
+            <span>$${Number(total).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div class="mb-2 d-flex justify-content-between">
+            <span class="text-muted">Propina:</span>
+            <span class="text-success">$${Number(propinaActual).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</span>
+          </div>` : '';
     const result = await Swal.fire({
       title: 'Confirmar pago',
       html: `
@@ -549,8 +636,9 @@ $(function() {
           <div class="mb-3">
             <label class="form-label fw-bold">Total a pagar</label>
             <div class="form-control bg-light" style="font-size: 1.5rem; font-weight: bold; color: #0d6efd;">
-              $${Number(total).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
+              $${Number(totalAPagar).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
             </div>
+            ${propinaTexto}
           </div>
           
           <div class="mb-3">
@@ -561,7 +649,7 @@ $(function() {
           
           <div class="mb-3">
             <label class="form-label fw-bold">Dinero recibido</label>
-            <input type="text" id="swal-dinero-recibido" class="form-control" placeholder="0.00" value="${Number(total).toFixed(2)}">
+            <input type="text" id="swal-dinero-recibido" class="form-control" placeholder="0.00" value="${Number(totalAPagar).toFixed(2)}">
           </div>
           
           <div class="mb-3">
@@ -624,7 +712,7 @@ $(function() {
         
         const calcularCambio = () => {
           const dineroRecibido = parseFloat(dineroInput.value.replace(/,/g, '')) || 0;
-          const cambio = dineroRecibido - total;
+          const cambio = dineroRecibido - totalAPagar;
           
           if (dineroRecibido > 0) {
             if (cambio >= 0) {
@@ -656,13 +744,14 @@ $(function() {
     const medioPagoSeleccionado = document.getElementById('swal-medio-pago')?.value || formaPago;
     
     // Generar factura con el medio de pago seleccionado
-    await generarFacturaDirecta(medioPagoSeleccionado);
+    await generarFacturaDirecta(medioPagoSeleccionado, propinaParaEnviar);
   });
   
   // Función auxiliar para generar la factura
-  async function generarFacturaDirecta(medioPagoSeleccionado = null) {
+  async function generarFacturaDirecta(medioPagoSeleccionado = null, propinaOverride = null) {
     const formaPago = medioPagoSeleccionado || $('#formaPago').val();
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const propina = propinaOverride !== null ? propinaOverride : (propinaActual || 0);
 
     try {
       const body = {
@@ -677,6 +766,7 @@ $(function() {
           enviar_cocina: i.enviar_cocina || false
         })),
         total: total,
+        propina: propina,
         forma_pago: formaPago
       };
 

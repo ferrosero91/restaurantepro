@@ -1,11 +1,60 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const AutoCommandService = require('../services/AutoCommandService');
+const PrintService = require('../services/PrintService');
+const PrintRetryQueue = require('../services/PrintRetryQueue');
+const QRGeneratorService = require('../services/QRGeneratorService');
+
+// Instanciar servicios para comandas automáticas
+const printService = new PrintService();
+const printRetryQueue = new PrintRetryQueue(printService);
+printService.setRetryQueue(printRetryQueue);
+const autoCommandService = new AutoCommandService(printService);
+const qrService = new QRGeneratorService();
 
 // Rutas para gestión de mesas y pedidos de restaurante
 // - Renderiza la vista de mesas (GET /mesas)
 // - Expone endpoints para abrir pedidos por mesa, agregar items y enviarlos a cocina
 // - Se monta en server.js tanto en '/mesas' como en '/api/mesas'
+
+// ==========================================
+// QR Code Generation Endpoints (ANTES de rutas con :mesaId)
+// ==========================================
+
+// POST /mesas/qr/bulk - Generar códigos QR para todas las mesas
+router.post('/qr/bulk', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const qrCodes = await qrService.generateBulkQR(tenantId);
+
+        // Agregar token y URL a cada QR
+        const results = qrCodes.map(qr => {
+            const qrToken = Buffer.from(qr.qrData).toString('base64');
+            return {
+                mesaId: qr.mesaId,
+                mesaNumero: qr.mesaNumero,
+                qrImage: qr.qrImage,
+                qrToken,
+                menuUrl: `/menu-digital/${qrToken}`
+            };
+        });
+
+        res.json({
+            success: true,
+            total: results.length,
+            qrCodes: results
+        });
+    } catch (error) {
+        console.error('Error al generar QR masivo:', error);
+        res.status(500).json({ error: error.message || 'Error al generar códigos QR' });
+    }
+});
 
 // GET /mesas - Página de gestión de mesas
 router.get('/', async (req, res) => {
@@ -234,6 +283,7 @@ router.get('/pedidos/:pedidoId', async (req, res) => {
 });
 
 // POST /mesas/pedidos/:pedidoId/items - API: agregar item al pedido
+// Genera comanda automáticamente si el pedido está en estado 'en_cocina' o 'activo'
 router.post('/pedidos/:pedidoId/items', async (req, res) => {
     try {
         const pedidoId = req.params.pedidoId;
@@ -247,10 +297,89 @@ router.post('/pedidos/:pedidoId/items', async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?)` ,
             [pedidoId, producto_id, cantidad, unidad || 'UND', precio, subtotal, nota || null]
         );
-        res.status(201).json({ id: result.insertId });
+        
+        const itemId = result.insertId;
+        
+        // Verificar si el pedido está en estado que requiere envío automático a cocina
+        const [pedidos] = await db.query(
+            'SELECT estado FROM pedidos WHERE id = ?',
+            [pedidoId]
+        );
+        
+        if (pedidos.length > 0) {
+            const pedidoEstado = pedidos[0].estado;
+            
+            // Si el pedido está en cocina o activo, enviar automáticamente el nuevo item
+            if (pedidoEstado === 'en_cocina' || pedidoEstado === 'activo') {
+                try {
+                    await autoCommandService.onNewItemsAdded(pedidoId, [itemId]);
+                    console.log(`[Mesas] Auto command generated for new item ${itemId} in pedido ${pedidoId}`);
+                } catch (error) {
+                    console.error('[Mesas] Error generating auto command:', error);
+                    // No bloquear la creación del item si falla la impresión
+                }
+            }
+        }
+        
+        res.status(201).json({ id: itemId });
     } catch (error) {
         console.error('Error al agregar item:', error);
         res.status(500).json({ error: 'Error al agregar item' });
+    }
+});
+
+// PUT /mesas/items/:itemId - API: actualizar item del pedido (cantidad, nota, etc.)
+// Si el item ya fue enviado, genera comanda de modificación
+router.put('/items/:itemId', async (req, res) => {
+    try {
+        const itemId = req.params.itemId;
+        const { cantidad, nota } = req.body || {};
+        
+        if (!cantidad || cantidad <= 0) {
+            return res.status(400).json({ error: 'Cantidad debe ser mayor a 0' });
+        }
+        
+        // Obtener item actual para verificar si ya fue enviado
+        const [items] = await db.query(
+            `SELECT id, pedido_id, producto_id, precio_unitario, estado, enviado_at
+             FROM pedido_items 
+             WHERE id = ?`,
+            [itemId]
+        );
+        
+        if (items.length === 0) {
+            return res.status(404).json({ error: 'Item no encontrado' });
+        }
+        
+        const item = items[0];
+        const wasAlreadySent = item.estado === 'enviado' && item.enviado_at !== null;
+        
+        // Calcular nuevo subtotal
+        const subtotal = Number(cantidad) * Number(item.precio_unitario);
+        
+        // Actualizar item
+        await db.query(
+            `UPDATE pedido_items 
+             SET cantidad = ?, nota = ?, subtotal = ?
+             WHERE id = ?`,
+            [cantidad, nota || null, subtotal, itemId]
+        );
+        
+        // Si ya fue enviado, generar comanda de modificación
+        if (wasAlreadySent) {
+            try {
+                await autoCommandService.onItemsModified(item.pedido_id, [itemId]);
+                console.log(`[Mesas] Modification command generated for item ${itemId}`);
+            } catch (error) {
+                console.error('[Mesas] Error generating modification command:', error);
+                // No bloquear la actualización si falla la impresión
+            }
+        }
+        
+        res.json({ message: 'Item actualizado', wasAlreadySent });
+    } catch (error) {
+        console.error('Error al actualizar item:', error);
+        res.status(500).json({ error: 'Error al actualizar item' });
     }
 });
 
@@ -290,6 +419,58 @@ router.put('/items/:itemId/enviar', async (req, res) => {
     }
 });
 
+// POST /mesas/pedidos/:pedidoId/reenviar-cocina - API: reenviar comanda a cocina manualmente
+// Requirement 10.7: Permitir reimprimir comanda manualmente
+router.post('/pedidos/:pedidoId/reenviar-cocina', async (req, res) => {
+    try {
+        const pedidoId = req.params.pedidoId;
+        
+        // Verificar que el pedido existe
+        const [pedidos] = await db.query(
+            'SELECT id, estado FROM pedidos WHERE id = ?',
+            [pedidoId]
+        );
+        
+        if (pedidos.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+        
+        // Obtener todos los items enviados del pedido
+        const [items] = await db.query(
+            `SELECT pi.id, pi.cantidad, pi.unidad_medida, pi.nota,
+                    p.nombre as producto_nombre
+             FROM pedido_items pi
+             INNER JOIN productos p ON pi.producto_id = p.id
+             WHERE pi.pedido_id = ?
+             AND pi.estado = 'enviado'
+             ORDER BY pi.id ASC`,
+            [pedidoId]
+        );
+        
+        if (items.length === 0) {
+            return res.status(400).json({ error: 'No hay items enviados para reimprimir' });
+        }
+        
+        // Generar y enviar comanda
+        const result = await autoCommandService.generateAndPrintCommand(pedidoId, items, false);
+        
+        if (result.printed) {
+            res.json({ 
+                message: 'Comanda reenviada a cocina exitosamente',
+                commandId: result.commandId
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Error al imprimir comanda',
+                commandId: result.commandId
+            });
+        }
+    } catch (error) {
+        console.error('Error al reenviar comanda:', error);
+        res.status(500).json({ error: 'Error al reenviar comanda a cocina' });
+    }
+});
+
 // PUT /mesas/items/:itemId/estado - API: actualizar estado de item (preparando, listo, servido, cancelado)
 router.put('/items/:itemId/estado', async (req, res) => {
     try {
@@ -325,8 +506,9 @@ router.put('/items/:itemId/estado', async (req, res) => {
 // POST /mesas/pedidos/:pedidoId/facturar - API: genera factura desde pedido y cierra mesa
 router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
     const pedidoId = req.params.pedidoId;
-    const { cliente_id, forma_pago, pagos } = req.body || {};
+    const { cliente_id, forma_pago, pagos, propina } = req.body || {};
     if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido para facturar' });
+    const propinaAmount = Number(propina) || 0;
     // forma_pago se mantiene por compatibilidad, pero lo recomendado es enviar pagos[] (pago mixto)
     try {
         const connection = await db.getConnection();
@@ -346,7 +528,6 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
 
             // ===== Pago mixto: validar pagos[] si se envía =====
-            // Relacionado con: public/js/mesas.js (modal de pagos)
             const normalizarPagos = (arr) => {
                 if (!Array.isArray(arr)) return [];
                 return arr
@@ -356,15 +537,31 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
                         monto: Number(p.monto || 0),
                         referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
                     }))
-                    .filter(p => ['efectivo', 'transferencia', 'tarjeta'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
+                    .filter(p => p.metodo && Number.isFinite(p.monto) && p.monto > 0);
             };
-            const pagosNorm = normalizarPagos(pagos);
+
+            // Validar medios de pago contra los configurados
+            let mediosPermitidos = ['efectivo', 'transferencia', 'tarjeta'];
+            try {
+                const [mediosDB] = await connection.query(
+                    'SELECT codigo FROM medios_pago WHERE restaurante_id = ? AND activo = 1',
+                    [tenantId]
+                );
+                if (mediosDB.length > 0) {
+                    mediosPermitidos = mediosDB.map(m => m.codigo.toLowerCase());
+                }
+            } catch(e) { /* tabla puede no existir */ }
+
+            let pagosNorm = normalizarPagos(pagos);
+            // Filtrar solo medios permitidos
+            pagosNorm = pagosNorm.filter(p => mediosPermitidos.includes(p.metodo));
             const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
             const almostEqualMoney = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
 
             let formaPagoDB = String(forma_pago || 'efectivo').toLowerCase();
             if (pagosNorm.length > 0) {
-                if (!almostEqualMoney(sumaPagos, total)) {
+                const totalConPropina = total + propinaAmount;
+                if (!almostEqualMoney(sumaPagos, totalConPropina)) {
                     throw new Error('La suma de pagos no coincide con el total');
                 }
                 formaPagoDB = (pagosNorm.length === 1) ? pagosNorm[0].metodo : 'mixto';
@@ -381,8 +578,8 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             }
             
             const [facturaInsert] = await connection.query(
-                `INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago) VALUES (?, ?, ?, ?, ?)`,
-                [tenantId, cliente_id, usuarioId, total, formaPagoDB]
+                `INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, propina, forma_pago) VALUES (?, ?, ?, ?, ?, ?)`,
+                [tenantId, cliente_id, usuarioId, total, propinaAmount, formaPagoDB]
             );
             const facturaId = facturaInsert.insertId;
 
@@ -418,7 +615,7 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             }
 
             await connection.query(`UPDATE pedidos SET estado = 'cerrado', total = ? WHERE id = ?`, [total, pedidoId]);
-            await connection.query(`UPDATE mesas SET estado = 'libre' WHERE id = ?`, [pedido.mesa_id]);
+            // NO liberar mesa automáticamente - el mesero la libera manualmente cuando los comensales se van
 
             await connection.commit();
             connection.release();
@@ -530,6 +727,85 @@ router.put('/:mesaId/liberar', async (req, res) => {
     } catch (error) {
         console.error('Error interno al liberar mesa:', error);
         res.status(500).json({ error: 'Error interno' });
+    }
+});
+
+// ==========================================
+// QR Code Endpoints (per mesa)
+// ==========================================
+
+// POST /mesas/:mesaId/qr - Generar código QR para una mesa
+router.post('/:mesaId/qr', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const mesaId = req.params.mesaId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const result = await qrService.generateQRForMesa(parseInt(mesaId), tenantId);
+
+        // Generar el token base64 para la URL del menú digital
+        const qrToken = Buffer.from(result.qrData).toString('base64');
+        const menuUrl = `/menu-digital/${qrToken}`;
+
+        res.json({
+            success: true,
+            mesaId: parseInt(mesaId),
+            qrImage: result.qrImage,
+            qrToken,
+            menuUrl
+        });
+    } catch (error) {
+        console.error('Error al generar QR:', error);
+        res.status(500).json({ error: error.message || 'Error al generar código QR' });
+    }
+});
+
+// GET /mesas/:mesaId/qr - Obtener QR existente de una mesa
+router.get('/:mesaId/qr', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const mesaId = req.params.mesaId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        // Buscar QR activo en la base de datos
+        const [qrCodes] = await db.query(
+            'SELECT * FROM qr_codes WHERE restaurante_id = ? AND mesa_id = ? AND is_active = TRUE',
+            [tenantId, mesaId]
+        );
+
+        if (qrCodes.length === 0) {
+            return res.status(404).json({ error: 'No hay código QR generado para esta mesa. Genere uno primero.' });
+        }
+
+        const qr = qrCodes[0];
+        const qrToken = Buffer.from(qr.qr_data).toString('base64');
+
+        // Regenerar imagen QR
+        const QRCode = require('qrcode');
+        const qrImage = await QRCode.toDataURL(qr.qr_data, {
+            errorCorrectionLevel: 'M',
+            type: 'image/png',
+            width: 300,
+            margin: 2
+        });
+
+        res.json({
+            success: true,
+            mesaId: parseInt(mesaId),
+            qrImage,
+            qrToken,
+            menuUrl: `/menu-digital/${qrToken}`,
+            createdAt: qr.created_at
+        });
+    } catch (error) {
+        console.error('Error al obtener QR:', error);
+        res.status(500).json({ error: error.message || 'Error al obtener código QR' });
     }
 });
 

@@ -2,6 +2,69 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
+const path = require('path');
+
+// Printer utilities
+let pdfPrinter = null;
+try {
+    pdfPrinter = require('pdf-to-printer');
+} catch(e) { /* not available */ }
+
+// GET /configuracion/printers - Listar impresoras instaladas en Windows
+router.get('/printers', async (req, res) => {
+    try {
+        if (!pdfPrinter) {
+            return res.json({ printers: [], error: 'Módulo de impresión no disponible' });
+        }
+        const printers = await pdfPrinter.getPrinters();
+        res.json({ printers });
+    } catch (error) {
+        console.error('Error listando impresoras:', error);
+        res.json({ printers: [], error: error.message });
+    }
+});
+
+// PUT /configuracion/slug - Actualizar slug del restaurante (URL tienda online)
+router.put('/slug', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        let { slug } = req.body;
+        if (!slug) return res.status(400).json({ error: 'Slug requerido' });
+        
+        // Sanitizar: solo letras, números, guiones
+        slug = slug.toLowerCase().trim().replace(/[^a-z0-9\-]/g, '').substring(0, 50);
+        if (!slug) return res.status(400).json({ error: 'Slug inválido' });
+
+        // Verificar que no esté en uso por otro restaurante
+        const [existing] = await db.query('SELECT id FROM restaurantes WHERE slug = ? AND id != ?', [slug, tenantId]);
+        if (existing.length > 0) {
+            return res.status(409).json({ error: 'Esta URL ya está en uso por otro restaurante' });
+        }
+
+        await db.query('UPDATE restaurantes SET slug = ? WHERE id = ?', [slug, tenantId]);
+        res.json({ success: true, slug, url: `/tienda/${slug}` });
+    } catch (error) {
+        console.error('Error al actualizar slug:', error);
+        res.status(500).json({ error: 'Error al actualizar URL' });
+    }
+});
+
+// POST /configuracion/print-direct - Imprimir directamente a una impresora
+router.post('/print-direct', async (req, res) => {
+    try {
+        const { printerName, pedidoId, type } = req.body;
+        if (!pdfPrinter) {
+            return res.status(400).json({ error: 'Módulo de impresión no disponible' });
+        }
+        if (!printerName) {
+            return res.status(400).json({ error: 'Nombre de impresora requerido' });
+        }
+        // Por ahora retornar éxito - la impresión real se hace via window.print con la impresora seleccionada
+        res.json({ success: true, message: `Impresora "${printerName}" configurada` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Configuración de multer para memoria
 const upload = multer({
@@ -105,7 +168,14 @@ router.get('/', async (req, res) => {
             delete configData.qr_data;
         }
 
-        res.render('configuracion', { config: configData, user: req.user });
+        // Obtener slug del restaurante
+        let restauranteSlug = '';
+        try {
+            const [rest] = await db.query('SELECT slug FROM restaurantes WHERE id = ?', [tenantId]);
+            if (rest.length > 0) restauranteSlug = rest[0].slug || '';
+        } catch(e) {}
+
+        res.render('configuracion', { config: configData, user: req.user, restauranteSlug });
     } catch (error) {
         console.error('Error al obtener configuración:', error);
         res.status(500).json({ error: 'Error al obtener configuración' });
@@ -130,7 +200,13 @@ router.post('/', upload.fields([
             nit,
             pie_pagina,
             ancho_papel,
-            font_size
+            font_size,
+            printer_name,
+            printer_type,
+            printer_ip,
+            printer_port,
+            whatsapp,
+            slogan
         } = req.body;
 
         const [results] = await db.query('SELECT * FROM configuracion_impresion WHERE restaurante_id = ? LIMIT 1', [tenantId]);
@@ -142,7 +218,13 @@ router.post('/', upload.fields([
             nit || null,
             pie_pagina || null,
             ancho_papel || 80,
-            font_size || 1
+            font_size || 1,
+            printer_name || null,
+            printer_type || 'thermal',
+            printer_ip || null,
+            printer_port || null,
+            whatsapp || null,
+            slogan || null
         ];
 
         // Agregar datos de imágenes si se subieron nuevas
@@ -160,7 +242,7 @@ router.post('/', upload.fields([
             let sql = `
                 INSERT INTO configuracion_impresion 
                 (restaurante_id, nombre_negocio, direccion, telefono, nit, pie_pagina, 
-                 ancho_papel, font_size
+                 ancho_papel, font_size, printer_name, printer_type, printer_ip, printer_port
             `;
             if (req.files?.logo) sql += ', logo_data, logo_tipo';
             if (req.files?.qr) sql += ', qr_data, qr_tipo';
@@ -172,7 +254,9 @@ router.post('/', upload.fields([
             let sql = `
                 UPDATE configuracion_impresion 
                 SET nombre_negocio = ?, direccion = ?, telefono = ?, nit = ?,
-                    pie_pagina = ?, ancho_papel = ?, font_size = ?
+                    pie_pagina = ?, ancho_papel = ?, font_size = ?,
+                    printer_name = ?, printer_type = ?, printer_ip = ?, printer_port = ?,
+                    whatsapp = ?, slogan = ?
             `;
             if (req.files?.logo) sql += ', logo_data = ?, logo_tipo = ?';
             if (req.files?.qr) sql += ', qr_data = ?, qr_tipo = ?';
@@ -280,6 +364,144 @@ router.post('/migrar-productos', async (req, res) => {
             error: 'Error al ejecutar migración', 
             details: error.message 
         });
+    }
+});
+
+// Ruta para probar impresora
+router.post('/test-printer', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        // Importar PrintService
+        const PrintService = require('../services/PrintService');
+        const printService = new PrintService();
+
+        // Ejecutar prueba de impresión
+        const result = await printService.testPrint(tenantId);
+
+        if (result.success) {
+            res.json({ 
+                success: true, 
+                message: 'Comando de prueba enviado exitosamente a la impresora' 
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: result.error || 'Error al enviar comando de prueba',
+                message: 'La impresora no respondió. Verifica la configuración y que la impresora esté conectada.'
+            });
+        }
+    } catch (error) {
+        console.error('Error en test de impresora:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message,
+            message: 'Error al probar la impresora. Verifica la configuración.'
+        });
+    }
+});
+
+// Obtener configuración de propinas
+router.get('/propinas', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const [config] = await db.query(
+            'SELECT tip_enabled, tip_percentages FROM configuracion_impresion WHERE restaurante_id = ?',
+            [tenantId]
+        );
+
+        if (!config || config.length === 0) {
+            return res.status(404).json({ error: 'Configuración no encontrada' });
+        }
+
+        const tipConfig = config[0];
+        let percentages = [];
+        
+        if (tipConfig.tip_percentages) {
+            try {
+                percentages = typeof tipConfig.tip_percentages === 'string' 
+                    ? JSON.parse(tipConfig.tip_percentages)
+                    : tipConfig.tip_percentages;
+            } catch (error) {
+                console.error('Error parsing tip_percentages:', error);
+                percentages = [];
+            }
+        }
+
+        res.json({
+            enabled: Boolean(tipConfig.tip_enabled),
+            percentages: Array.isArray(percentages) ? percentages : []
+        });
+
+    } catch (error) {
+        console.error('Error al obtener configuración de propinas:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Actualizar configuración de propinas
+router.put('/propinas', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const { enabled, percentages } = req.body;
+
+        // Validar datos
+        if (typeof enabled !== 'boolean') {
+            return res.status(400).json({ error: 'El campo enabled debe ser booleano' });
+        }
+
+        if (!Array.isArray(percentages)) {
+            return res.status(400).json({ error: 'Los porcentajes deben ser un array' });
+        }
+
+        // Validar cada porcentaje
+        for (const percentage of percentages) {
+            if (typeof percentage !== 'number' || percentage < 0 || percentage > 100) {
+                return res.status(400).json({ error: 'Cada porcentaje debe estar entre 0 y 100' });
+            }
+        }
+
+        // Verificar que existe la configuración
+        const [existing] = await db.query(
+            'SELECT id FROM configuracion_impresion WHERE restaurante_id = ?',
+            [tenantId]
+        );
+
+        if (!existing || existing.length === 0) {
+            return res.status(404).json({ error: 'Configuración no encontrada' });
+        }
+
+        // Actualizar configuración
+        const [result] = await db.query(
+            'UPDATE configuracion_impresion SET tip_enabled = ?, tip_percentages = ? WHERE restaurante_id = ?',
+            [enabled, JSON.stringify(percentages), tenantId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({ error: 'No se pudo actualizar la configuración' });
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Configuración de propinas actualizada correctamente' 
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar configuración de propinas:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 

@@ -18,8 +18,8 @@ class FacturaRepository extends BaseRepository {
         try {
             // 1. Crear factura
             const [facturaResult] = await connection.query(
-                'INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago) VALUES (?, ?, ?, ?, ?)',
-                [tenantId, facturaData.cliente_id, facturaData.usuario_id, facturaData.total, facturaData.forma_pago]
+                'INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, propina, forma_pago) VALUES (?, ?, ?, ?, ?, ?)',
+                [tenantId, facturaData.cliente_id, facturaData.usuario_id, facturaData.total, facturaData.propina || 0, facturaData.forma_pago]
             );
 
             const facturaId = facturaResult.insertId;

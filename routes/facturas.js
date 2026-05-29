@@ -44,6 +44,39 @@ function almostEqualMoney(a, b) {
     return Math.abs(Number(a) - Number(b)) < 0.01;
 }
 
+// Obtener configuración de propinas (accesible para cualquier usuario autenticado)
+router.get('/tip-config', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        if (!tenantId) return res.json({ enabled: false, percentages: [] });
+
+        const [config] = await db.query(
+            'SELECT tip_enabled, tip_percentages FROM configuracion_impresion WHERE restaurante_id = ?',
+            [tenantId]
+        );
+
+        if (!config || config.length === 0) {
+            return res.json({ enabled: false, percentages: [] });
+        }
+
+        let percentages = [];
+        if (config[0].tip_percentages) {
+            try {
+                percentages = typeof config[0].tip_percentages === 'string'
+                    ? JSON.parse(config[0].tip_percentages)
+                    : config[0].tip_percentages;
+            } catch (e) { percentages = []; }
+        }
+
+        res.json({
+            enabled: Boolean(config[0].tip_enabled),
+            percentages: Array.isArray(percentages) ? percentages : []
+        });
+    } catch (error) {
+        res.json({ enabled: false, percentages: [] });
+    }
+});
+
 // Crear nueva factura
 router.post('/', validateCreateFactura, async (req, res) => {
     if (!req.tenantId) {

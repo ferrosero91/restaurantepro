@@ -63,6 +63,124 @@ $(document).ready(function() {
     let pedidosGuardados = JSON.parse(localStorage.getItem('pedidos') || '[]');
     let pedidoActualId = null; // Para rastrear el ID del pedido cargado
 
+    // Variables para propinas
+    let tipConfig = { enabled: false, percentages: [] };
+    let selectedTipPercentage = 0;
+    let customTipAmount = 0;
+    let currentTipAmount = 0;
+
+    // Cargar configuración de propinas
+    async function cargarConfiguracionPropinas() {
+        try {
+            const resp = await fetch('/api/configuracion/propinas');
+            if (resp.ok) {
+                tipConfig = await resp.json();
+                mostrarSeccionPropinas();
+            }
+        } catch (error) {
+            console.error('Error al cargar configuración de propinas:', error);
+        }
+    }
+
+    // Mostrar sección de propinas
+    function mostrarSeccionPropinas() {
+        const propinaSection = document.getElementById('propinaSection');
+        if (propinaSection && tipConfig.enabled) {
+            propinaSection.style.display = 'block';
+            
+            const container = document.getElementById('porcentajesPropina');
+            if (container && tipConfig.percentages) {
+                container.innerHTML = '';
+                tipConfig.percentages.forEach(percentage => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-outline-primary tip-percentage-btn';
+                    button.dataset.percentage = percentage;
+                    button.textContent = percentage + '%';
+                    button.onclick = () => seleccionarPorcentajePropina(percentage);
+                    container.appendChild(button);
+                });
+            }
+        }
+    }
+
+    // Seleccionar porcentaje de propina
+    function seleccionarPorcentajePropina(percentage) {
+        selectedTipPercentage = percentage;
+        customTipAmount = 0;
+        document.querySelectorAll('.tip-percentage-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.percentage) === percentage);
+        });
+        document.getElementById('propinaPersonalizada').value = '';
+        calcularPropina();
+    }
+
+    // Calcular propina
+    function calcularPropina() {
+        let tipAmount = 0;
+        if (selectedTipPercentage > 0) {
+            tipAmount = totalFactura * (selectedTipPercentage / 100);
+        } else if (customTipAmount > 0) {
+            tipAmount = customTipAmount;
+        }
+        currentTipAmount = Math.round(tipAmount * 100) / 100;
+        
+        const montoPropinaEl = document.getElementById('montoPropina');
+        if (montoPropinaEl) {
+            montoPropinaEl.textContent = '$' + currentTipAmount.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+        }
+        actualizarTotales();
+    }
+
+    // Actualizar totales
+    function actualizarTotales() {
+        const subtotalEl = document.getElementById('subtotalFactura');
+        const propinaEl = document.getElementById('propinaFactura');
+        const totalEl = document.getElementById('totalFactura');
+        const propinaDisplay = document.getElementById('propinaDisplay');
+        
+        if (subtotalEl) {
+            subtotalEl.textContent = totalFactura.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+        }
+        
+        if (propinaEl && propinaDisplay) {
+            if (currentTipAmount > 0) {
+                propinaEl.textContent = currentTipAmount.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+                propinaDisplay.style.display = 'block';
+            } else {
+                propinaDisplay.style.display = 'none';
+            }
+        }
+        
+        if (totalEl) {
+            const totalConPropina = totalFactura + currentTipAmount;
+            totalEl.textContent = totalConPropina.toLocaleString('es-CO', { minimumFractionDigits: 2 });
+        }
+    }
+
+    // Event listeners para propinas
+    $('#propinaPersonalizada').on('input', function() {
+        const value = parseFloat($(this).val()) || 0;
+        if (value >= 0) {
+            customTipAmount = value;
+            selectedTipPercentage = 0;
+            document.querySelectorAll('.tip-percentage-btn').forEach(btn => btn.classList.remove('active'));
+            calcularPropina();
+        }
+    });
+    
+    $('#sinPropina').on('click', function() {
+        selectedTipPercentage = 0;
+        customTipAmount = 0;
+        currentTipAmount = 0;
+        document.querySelectorAll('.tip-percentage-btn').forEach(btn => btn.classList.remove('active'));
+        $('#propinaPersonalizada').val('');
+        actualizarTotales();
+    });
+
+    // Cargar configuración de propinas al iniciar
+    cargarConfiguracionPropinas();
+
     // Función para actualizar localStorage
     function actualizarLocalStorage() {
         localStorage.setItem('pedidos', JSON.stringify(pedidosGuardados));
@@ -576,6 +694,13 @@ $(document).ready(function() {
         });
 
         $('#totalFactura').text(totalFactura.toLocaleString('es-CO'));
+        
+        // Recalcular propina si hay una seleccionada
+        if (typeof calcularPropina === 'function' && (selectedTipPercentage > 0 || customTipAmount > 0)) {
+            calcularPropina();
+        } else if (typeof actualizarTotales === 'function') {
+            actualizarTotales();
+        }
     }
 
     // Función para eliminar producto
@@ -605,6 +730,18 @@ $(document).ready(function() {
         $('#formaPago').val('efectivo');
         pagosFactura = null; // limpiar pago mixto
         limpiarFormularioProducto();
+        
+        // Limpiar propinas
+        if (typeof selectedTipPercentage !== 'undefined') {
+            selectedTipPercentage = 0;
+            customTipAmount = 0;
+            currentTipAmount = 0;
+            document.querySelectorAll('.tip-percentage-btn').forEach(btn => btn.classList.remove('active'));
+            $('#propinaPersonalizada').val('');
+            if (typeof actualizarTotales === 'function') {
+                actualizarTotales();
+            }
+        }
         
         // Solo limpiar el ID si no se indica mantenerlo
         if (!mantenerPedidoId) {
@@ -725,6 +862,7 @@ $(document).ready(function() {
             const factura = {
             cliente_id: cliente_id,
             total: totalFactura,
+            propina: currentTipAmount || 0,
             forma_pago: medioPagoSeleccionado,
             // pagos[] solo se envía si es mixto (o si el usuario lo definió)
             pagos: Array.isArray(pagosSeleccionados) ? pagosSeleccionados : undefined,

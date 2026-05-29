@@ -169,6 +169,16 @@
                         </select>
                     </div>
 
+                    <!-- Propina -->
+                    <div id="propinaSectionTactil" class="mb-3" style="display:none;">
+                        <label class="form-label small fw-bold"><i class="bi bi-heart text-danger me-1"></i>Propina</label>
+                        <div class="d-flex gap-1 flex-wrap mb-1" id="propinaBtnsTactil"></div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="number" class="form-control form-control-sm" id="propinaInputTactil" placeholder="Personalizada" min="0" style="max-width:120px;">
+                            <small class="text-success fw-bold" id="propinaDisplayTactil">$0</small>
+                        </div>
+                    </div>
+
                     <!-- Total -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Total:</h5>
@@ -210,6 +220,6 @@
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
-    <script src="/js/factura-tactil.js?v=2.1"></script>
+    <script src="/js/factura-tactil.js?v=3.0"></script>
 </body>
 </html>

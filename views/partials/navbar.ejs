@@ -57,6 +57,14 @@
         </li>
         <% } %>
         
+        <% if (hasPermission('/domicilios')) { %>
+        <li class="nav-item">
+          <a href="/domicilios" class="nav-link" data-bs-toggle="tooltip" title="Domicilios">
+            <i class="bi bi-truck me-1"></i>Domicilios
+          </a>
+        </li>
+        <% } %>
+        
         <% if (hasPermission('/configuracion')) { %>
         <li class="nav-item">
           <a href="/configuracion" class="nav-link" data-bs-toggle="tooltip" title="Configuración">

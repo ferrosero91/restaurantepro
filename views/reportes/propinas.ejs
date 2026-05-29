@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Propinas - RestaurantPro</title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/vendor/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="/css/reportes.css?v=2.2">
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+    
+    <main class="py-3">
+        <div class="container-fluid px-3 px-md-4">
+            
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-cash-coin text-success me-2"></i>
+                        Reporte de Propinas
+                    </h2>
+                    <p class="text-muted mb-0">Análisis detallado de propinas recibidas</p>
+                </div>
+                <div>
+                    <a href="/reportes" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Volver a Reportes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                        </label>
+                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                        </label>
+                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="bi bi-person me-1"></i>Cajero
+                        </label>
+                        <select id="usuarioId" class="form-select">
+                            <option value="">Todos los cajeros</option>
+                            <% if (typeof usuarios !== 'undefined' && usuarios.length > 0) { %>
+                                <% usuarios.forEach(usuario => { %>
+                                    <option value="<%= usuario.id %>" <%= filtros.usuario_id == usuario.id ? 'selected' : '' %>>
+                                        <%= usuario.nombre %>
+                                    </option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
+                        </button>
+                        <button class="btn btn-success" onclick="exportarExcel()">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estadísticas de Propinas -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card success">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">TOTAL PROPINAS</div>
+                                <div class="stat-value">$<%= Number(estadisticas.total_propinas || 0).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                                <div class="stat-description">Propinas recibidas</div>
+                            </div>
+                            <div class="stat-icon success">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card info">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">FACTURAS CON PROPINA</div>
+                                <div class="stat-value"><%= estadisticas.facturas_con_propina || 0 %></div>
+                                <div class="stat-description">De <%= estadisticas.total_facturas || 0 %> facturas</div>
+                            </div>
+                            <div class="stat-icon info">
+                                <i class="bi bi-receipt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card warning">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">PROPINA PROMEDIO</div>
+                                <div class="stat-value">$<%= Number(estadisticas.propina_promedio || 0).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                                <div class="stat-description">Por factura con propina</div>
+                            </div>
+                            <div class="stat-icon warning">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card primary">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">% PROMEDIO</div>
+                                <div class="stat-value"><%= Number(estadisticas.porcentaje_promedio || 0).toFixed(1) %>%</div>
+                                <div class="stat-description">Sobre total de venta</div>
+                            </div>
+                            <div class="stat-icon primary">
+                                <i class="bi bi-percent"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-xl-8">
+                    <div class="chart-card">
+                        <div class="chart-title">
+                            <i class="bi bi-graph-up text-success"></i>
+                            Evolución de Propinas por Día
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="propinasPorDiaChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-xl-4">
+                    <div class="chart-card">
+                        <div class="chart-title">
+                            <i class="bi bi-pie-chart text-info"></i>
+                            Propinas por Cajero
+                        </div>
+                        <div class="chart-container chart-container-doughnut">
+                            <canvas id="propinasPorCajeroChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Propinas por Cajero -->
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="table-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="chart-title mb-0">
+                                <i class="bi bi-people text-primary"></i>
+                                Propinas por Cajero
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th width="50">#</th>
+                                        <th>Cajero</th>
+                                        <th class="text-end">Facturas</th>
+                                        <th class="text-end">Con Propina</th>
+                                        <th class="text-end">Total Propinas</th>
+                                        <th class="text-end">Propina Promedio</th>
+                                        <th class="text-end">% Promedio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (typeof propinasPorCajero !== 'undefined' && propinasPorCajero.length > 0) { %>
+                                        <% propinasPorCajero.forEach((cajero, index) => { %>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge-rank <%= index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'other' %>">
+                                                        <%= index + 1 %>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong><%= cajero.nombre %></strong>
+                                                    <br><small class="text-muted">ID: <%= cajero.usuario_id %></small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <%= cajero.total_facturas %>
+                                                </td>
+                                                <td class="text-end">
+                                                    <%= cajero.facturas_con_propina %>
+                                                    <small class="text-muted">(<%= ((cajero.facturas_con_propina / cajero.total_facturas) * 100).toFixed(1) %>%)</small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong class="text-success">$<%= Number(cajero.total_propinas).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
+                                                </td>
+                                                <td class="text-end">
+                                                    $<%= Number(cajero.propina_promedio).toLocaleString('es-CO', {minimumFractionDigits:2}) %>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-primary">
+                                                        <%= Number(cajero.porcentaje_promedio).toFixed(1) %>%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <div class="empty-state">
+                                                    <i class="bi bi-inbox"></i>
+                                                    <h5>No hay datos disponibles</h5>
+                                                    <p>No se encontraron propinas en el período seleccionado</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/vendor/chart.js/chart.umd.min.js"></script>
+    <script>
+        // Datos para gráficos
+        const propinasPorDia = JSON.parse('<%- JSON.stringify(propinasPorDia || []) %>');
+        const propinasPorCajero = JSON.parse('<%- JSON.stringify(propinasPorCajero || []) %>');
+        
+        console.log('Propinas por día:', propinasPorDia);
+        console.log('Propinas por cajero:', propinasPorCajero);
+        
+        // Gráfico de evolución de propinas por día
+        if (propinasPorDia && propinasPorDia.length > 0) {
+            const propinasDiaCtx = document.getElementById('propinasPorDiaChart').getContext('2d');
+            new Chart(propinasDiaCtx, {
+                type: 'line',
+                data: {
+                    labels: propinasPorDia.map(p => new Date(p.fecha).toLocaleDateString('es-CO', {month: 'short', day: 'numeric'})),
+                    datasets: [{
+                        label: 'Propinas Diarias',
+                        data: propinasPorDia.map(p => p.total_propinas),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Propinas: $' + context.parsed.y.toLocaleString('es-CO');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            const chartContainer = document.getElementById('propinasPorDiaChart').parentElement;
+            chartContainer.innerHTML = '<div class="empty-state" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><h5 style="margin-top: 1rem;">No hay datos disponibles</h5><p>No se encontraron propinas en el período seleccionado</p></div>';
+        }
+        
+        // Gráfico de propinas por cajero
+        if (propinasPorCajero && propinasPorCajero.length > 0) {
+            const coloresPaleta = [
+                '#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', 
+                '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#6366f1'
+            ];
+            
+            const coloresChart = propinasPorCajero.map((_, index) => 
+                coloresPaleta[index % coloresPaleta.length]
+            );
+            
+            const cajeroCtx = document.getElementById('propinasPorCajeroChart').getContext('2d');
+            new Chart(cajeroCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: propinasPorCajero.map(c => c.nombre),
+                    datasets: [{
+                        data: propinasPorCajero.map(c => parseFloat(c.total_propinas)),
+                        backgroundColor: coloresChart,
+                        borderWidth: 3,
+                        borderColor: '#fff',
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { 
+                                padding: 20, 
+                                font: { size: 13, weight: '500' },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 12,
+                                boxHeight: 12
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': $' + value.toLocaleString('es-CO') + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            const chartContainer = document.getElementById('propinasPorCajeroChart').parentElement;
+            chartContainer.innerHTML = '<div class="empty-state" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><h5 style="margin-top: 1rem;">No hay datos disponibles</h5><p>No se encontraron propinas en el período seleccionado</p></div>';
+        }
+        
+        // Funciones de filtros
+        function aplicarFiltros() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = document.getElementById('fechaHasta').value;
+            const usuarioId = document.getElementById('usuarioId').value;
+            
+            if (!desde || !hasta) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas requeridas',
+                    text: 'Por favor seleccione ambas fechas',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            
+            if (new Date(desde) > new Date(hasta)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Fechas inválidas',
+                    text: 'La fecha "Desde" no puede ser mayor que la fecha "Hasta"',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Cargando reporte...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Construir URL con filtros
+            let url = `/reportes/propinas?desde=${desde}&hasta=${hasta}`;
+            if (usuarioId) {
+                url += `&usuario_id=${usuarioId}`;
+            }
+            
+            window.location.href = url;
+        }
+        
+        // Exportar a Excel
+        function exportarExcel() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = document.getElementById('fechaHasta').value;
+            const usuarioId = document.getElementById('usuarioId').value;
+            
+            if (!desde || !hasta) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas requeridas',
+                    text: 'Por favor seleccione el rango de fechas para exportar',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Generando archivo Excel...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Construir URL de exportación
+            let url = `/reportes/exportar?tipo=propinas&desde=${desde}&hasta=${hasta}`;
+            if (usuarioId) {
+                url += `&usuario_id=${usuarioId}`;
+            }
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al generar el archivo');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Crear enlace de descarga
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `reporte_propinas_${desde}_${hasta}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Archivo generado',
+                        text: 'El archivo Excel se ha descargado correctamente',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al exportar:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al exportar',
+                        text: 'No se pudo generar el archivo Excel. Por favor intente nuevamente.',
+                        confirmButtonText: 'Entendido'
+                    });
+                });
+        }
+        
+        // Validación en tiempo real de fechas
+        document.getElementById('fechaDesde').addEventListener('change', function() {
+            const desde = this.value;
+            const hasta = document.getElementById('fechaHasta').value;
+            
+            if (desde && hasta && new Date(desde) > new Date(hasta)) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+        
+        document.getElementById('fechaHasta').addEventListener('change', function() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = this.value;
+            
+            if (desde && hasta && new Date(desde) > new Date(hasta)) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    </script>
+</body>
+</html>
