@@ -36,6 +36,18 @@ async function up(connection) {
     await addColumnIfNotExists('pedidos', 'valor_domicilio', 'DECIMAL(10,2) DEFAULT 0');
     await addColumnIfNotExists('pedidos', 'tracking_token', 'VARCHAR(64) NULL');
 
+    // Modificar ENUM de estado para incluir estados de domicilio
+    console.log('Verificando ENUM de estado en pedidos...');
+    try {
+        await connection.query(`
+            ALTER TABLE pedidos 
+            MODIFY COLUMN estado ENUM('abierto','activo','en_cocina','preparando','listo','servido','cerrado','cancelado','pendiente','confirmado','en_preparacion','en_camino','entregado') DEFAULT 'abierto'
+        `);
+        console.log('  + pedidos.estado ENUM actualizado');
+    } catch(e) {
+        console.log('  ! Error actualizando ENUM estado:', e.message);
+    }
+
     console.log('Verificando columnas en facturas...');
     await addColumnIfNotExists('facturas', 'propina', 'DECIMAL(10,2) DEFAULT 0');
 
