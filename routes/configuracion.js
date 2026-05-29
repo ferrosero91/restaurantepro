@@ -278,35 +278,48 @@ router.post('/', upload.fields([
             let sql = `
                 INSERT INTO configuracion_impresion 
                 (restaurante_id, nombre_negocio, direccion, telefono, nit, pie_pagina, 
-                 ancho_papel, font_size, printer_name, printer_type, printer_ip, printer_port
+                 ancho_papel, font_size, printer_name, printer_type, printer_ip, printer_port, whatsapp, slogan
             `;
+            let insertValues = [...values, whatsapp || null, slogan || null];
             if (req.files?.logo) sql += ', logo_data, logo_tipo';
             if (req.files?.qr) sql += ', qr_data, qr_tipo';
-            sql += ') VALUES (?, ' + values.map(() => '?').join(',') + ')';
+            sql += ') VALUES (?, ' + insertValues.map(() => '?').join(',');
+            if (req.files?.logo) sql += ', ?, ?';
+            if (req.files?.qr) sql += ', ?, ?';
+            sql += ')';
             
-            await db.query(sql, [tenantId, ...values]);
+            let finalValues = [tenantId, ...insertValues];
+            if (req.files?.logo) {
+                finalValues.push(req.files.logo[0].buffer, req.files.logo[0].mimetype.split('/')[1]);
+            }
+            if (req.files?.qr) {
+                finalValues.push(req.files.qr[0].buffer, req.files.qr[0].mimetype.split('/')[1]);
+            }
+            
+            await db.query(sql, finalValues);
         } else {
             // Actualizar configuración existente
             let sql = `
                 UPDATE configuracion_impresion 
                 SET nombre_negocio = ?, direccion = ?, telefono = ?, nit = ?,
                     pie_pagina = ?, ancho_papel = ?, font_size = ?,
-                    printer_name = ?, printer_type = ?, printer_ip = ?, printer_port = ?
+                    printer_name = ?, printer_type = ?, printer_ip = ?, printer_port = ?,
+                    whatsapp = ?, slogan = ?
             `;
-            // Agregar whatsapp y slogan solo si la columna existe (compatibilidad)
-            try {
-                if (whatsapp !== undefined || slogan !== undefined) {
-                    sql += ', whatsapp = ?, slogan = ?';
-                    values.push(whatsapp || null, slogan || null);
-                }
-            } catch(e) {}
+            let updateValues = [...values, whatsapp || null, slogan || null];
             if (req.files?.logo) sql += ', logo_data = ?, logo_tipo = ?';
             if (req.files?.qr) sql += ', qr_data = ?, qr_tipo = ?';
             sql += ' WHERE restaurante_id = ?';
             
-            values.push(tenantId);
+            if (req.files?.logo) {
+                updateValues.push(req.files.logo[0].buffer, req.files.logo[0].mimetype.split('/')[1]);
+            }
+            if (req.files?.qr) {
+                updateValues.push(req.files.qr[0].buffer, req.files.qr[0].mimetype.split('/')[1]);
+            }
+            updateValues.push(tenantId);
             
-            await db.query(sql, values);
+            await db.query(sql, updateValues);
         }
 
         res.redirect('/configuracion');

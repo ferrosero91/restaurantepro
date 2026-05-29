@@ -136,9 +136,9 @@ router.get('/:id/imprimir', validateGetFactura, async (req, res) => {
 
         // Obtener detalles de la factura
         const [detalles] = await db.query(
-            `SELECT d.*, p.nombre as producto_nombre
+            `SELECT d.*, COALESCE(p.nombre, 'Domicilio') as producto_nombre
              FROM detalle_factura d
-             JOIN productos p ON d.producto_id = p.id
+             LEFT JOIN productos p ON d.producto_id = p.id
              WHERE d.factura_id = ?`,
             [factura_id]
         );

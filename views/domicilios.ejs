@@ -234,7 +234,7 @@
     </div>
 
     <!-- Modal Detalle Pedido -->
-    <div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal fade" id="modalDetalle">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -667,7 +667,18 @@
             document.getElementById('dlvBuscarCliente').value = '';
             document.getElementById('dlvClienteInfo').style.display = 'none';
             document.getElementById('dlvClienteResultados').style.display = 'none';
-            document.getElementById('dlvValorDomicilio').value = '5000';
+            
+            // Cargar valor domicilio desde configuración
+            let costoDomicilio = 5000;
+            try {
+                const resp = await fetch('/configuracion/domicilio-config');
+                if (resp.ok) {
+                    const cfg = await resp.json();
+                    costoDomicilio = Number(cfg.costo_domicilio) || 0;
+                }
+            } catch(e) {}
+            document.getElementById('dlvValorDomicilio').value = costoDomicilio;
+            
             renderDlvItems();
             renderDlvTotals();
             await cargarDlvProductos();
@@ -932,9 +943,8 @@
                 }
 
                 const pedido = data.pedido;
-                const subtotalProductos = parseFloat(pedido.total) || 0;
+                const subtotalProductos = (pedido.items || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
                 const valorDomicilio = parseFloat(pedido.valor_domicilio) || 0;
-                const totalConDomicilio = subtotalProductos + valorDomicilio;
 
                 if (subtotalProductos <= 0) {
                     Swal.fire('Error', 'El pedido no tiene un total válido', 'error');
@@ -947,14 +957,18 @@
                     return;
                 }
 
-                // Mostrar modal de pago con total que incluye domicilio
-                const pagos = await pedirPagosDomicilio(totalConDomicilio, pedido);
-                if (!pagos) return;
+                // Mostrar modal de pago con desglose
+                const resultado = await pedirPagosDomicilio(subtotalProductos, valorDomicilio, pedido);
+                if (!resultado) return;
 
                 const factResp = await fetch(`/domicilios/${pedidoId}/facturar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cliente_id: clienteId, pagos })
+                    body: JSON.stringify({ 
+                        cliente_id: clienteId, 
+                        pagos: resultado.pagos,
+                        propina: resultado.propina
+                    })
                 });
                 const factData = await factResp.json();
 
@@ -969,7 +983,7 @@
             }
         }
 
-        // Modal de pagos para domicilios (mismo patrón que mesas)
+        // Modal de pagos para domicilios (carga medios de pago desde configuración)
         function parseMoneyInput(value) {
             const v = String(value ?? '').trim();
             if (!v) return 0;
@@ -987,44 +1001,100 @@
         }
 
         function formatMoney(n) {
-            return `$${Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            return `$${Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
         }
 
         function almostEqualMoney(a, b) {
             return Math.abs(Number(a) - Number(b)) < 0.01;
         }
 
-        async function pedirPagosDomicilio(total, pedido) {
+        async function pedirPagosDomicilio(subtotalProductos, valorDomicilio, pedido) {
+            // Cargar medios de pago configurados
+            let mediosPago = [
+                { codigo: 'efectivo', nombre: 'Efectivo' },
+                { codigo: 'transferencia', nombre: 'Transferencia' },
+                { codigo: 'tarjeta', nombre: 'Tarjeta' }
+            ];
+            try {
+                const resp = await fetch('/configuracion/medios-pago/activos');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        mediosPago = data;
+                    }
+                }
+            } catch(e) {}
+
+            // Cargar config de propinas
+            let tipConfig = { enabled: false, percentages: [] };
+            try {
+                const resp = await fetch('/api/facturas/tip-config');
+                if (resp.ok) tipConfig = await resp.json();
+            } catch(e) {}
+
+            let propinaMonto = 0;
+            let totalFinal = subtotalProductos + valorDomicilio;
+
+            const mediosOptions = mediosPago.map(m => 
+                `<option value="${m.codigo}">${m.nombre}</option>`
+            ).join('');
+
+            const propinaBtnsHtml = tipConfig.enabled ? 
+                `<div class="d-flex gap-1 flex-wrap mt-2">
+                    <label class="form-label small mb-0 w-100 fw-bold">Propina:</label>
+                    ${(tipConfig.percentages || []).map(pct => 
+                        `<button type="button" class="btn btn-outline-success btn-sm pm-tip-btn" data-pct="${pct}">${pct}%</button>`
+                    ).join('')}
+                    <button type="button" class="btn btn-outline-secondary btn-sm pm-tip-btn" data-pct="0">Sin</button>
+                    <span class="ms-auto align-self-center fw-bold text-success" id="pmPropinaMonto">$0</span>
+                </div>` : '';
+
             const result = await Swal.fire({
                 title: 'Facturar Domicilio',
                 html: `
                     <div class="text-start">
                         <div class="small text-muted mb-2">
                             <strong>Pedido #${pedido.id}</strong> - ${pedido.cliente_nombre || 'Cliente'}<br>
-                            <i class="bi bi-geo-alt"></i> ${pedido.direccion_entrega || ''}<br>
-                            Total a pagar: <strong id="pmTotal">${formatMoney(total)}</strong>
+                            <i class="bi bi-geo-alt"></i> ${pedido.direccion_entrega || ''}
                         </div>
-                        <div id="pmRows" class="vstack gap-2"></div>
+                        <div class="border rounded p-2 mb-3 bg-light">
+                            <div class="d-flex justify-content-between small">
+                                <span>Subtotal productos:</span><strong>${formatMoney(subtotalProductos)}</strong>
+                            </div>
+                            ${valorDomicilio > 0 ? `<div class="d-flex justify-content-between small">
+                                <span>Valor domicilio:</span><strong>${formatMoney(valorDomicilio)}</strong>
+                            </div>` : ''}
+                            <div id="pmPropinaLine" class="d-flex justify-content-between small" style="display:none!important;">
+                                <span>Propina:</span><strong id="pmPropinaLineVal">$0</strong>
+                            </div>
+                            <hr class="my-1">
+                            <div class="d-flex justify-content-between fw-bold">
+                                <span>TOTAL:</span><span id="pmTotalDisplay">${formatMoney(totalFinal)}</span>
+                            </div>
+                        </div>
+                        ${propinaBtnsHtml}
+                        <hr>
+                        <div id="pmRows" class="vstack gap-2 mt-2"></div>
                         <div class="d-flex gap-2 mt-2">
                             <button type="button" class="btn btn-outline-primary btn-sm" id="pmAddRow">
                                 <i class="bi bi-plus-lg"></i> Agregar medio
                             </button>
                             <div class="ms-auto small text-muted align-self-center">
-                                Sumatoria: <strong id="pmSum">${formatMoney(0)}</strong>
+                                Pagos: <strong id="pmSum">${formatMoney(0)}</strong>
                             </div>
                         </div>
                         <div class="mt-2" id="pmDiffWrap">
-                            <span class="badge text-bg-secondary" id="pmDiff">Falta: ${formatMoney(total)}</span>
+                            <span class="badge text-bg-secondary" id="pmDiff">Falta: ${formatMoney(totalFinal)}</span>
                         </div>
                         <div class="mt-3 p-3 border rounded bg-light">
                             <div class="row g-2">
                                 <div class="col-6">
                                     <label class="form-label small mb-1 fw-bold">Dinero recibido</label>
-                                    <input type="text" id="pmDineroRecibido" class="form-control" placeholder="0.00">
+                                    <input type="text" id="pmDineroRecibido" class="form-control" placeholder="0">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-1 fw-bold">Cambio</label>
-                                    <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #28a745;">$0,00</div>
+                                    <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #28a745;">$0</div>
                                 </div>
                             </div>
                         </div>
@@ -1032,10 +1102,11 @@
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: 'Facturar',
+                confirmButtonText: '<i class="bi bi-cash-coin me-1"></i>Facturar',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#198754',
                 focusConfirm: false,
+                width: '500px',
                 didOpen: () => {
                     const rows = document.getElementById('pmRows');
                     const btnAdd = document.getElementById('pmAddRow');
@@ -1043,20 +1114,18 @@
                     const diffEl = document.getElementById('pmDiff');
                     const warnEl = document.getElementById('pmWarn');
 
-                    const rowTemplate = (metodo = 'efectivo', monto = '', referencia = '') => `
+                    const getCurrentTotal = () => subtotalProductos + valorDomicilio + propinaMonto;
+
+                    const rowTemplate = (metodo = 'efectivo', monto = '') => `
                         <div class="border rounded p-2 pm-row">
                             <div class="row g-2 align-items-end">
                                 <div class="col-5">
-                                    <label class="form-label small mb-1">Método</label>
                                     <select class="form-select form-select-sm pm-metodo">
-                                        <option value="efectivo" ${metodo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-                                        <option value="transferencia" ${metodo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
-                                        <option value="tarjeta" ${metodo === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                                        ${mediosOptions.replace(`value="${metodo}"`, `value="${metodo}" selected`)}
                                     </select>
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Monto</label>
-                                    <input type="text" class="form-control form-control-sm pm-monto" placeholder="0.00" value="${String(monto)}">
+                                    <input type="text" class="form-control form-control-sm pm-monto" placeholder="0" value="${String(monto)}">
                                 </div>
                                 <div class="col-3 text-end">
                                     <button type="button" class="btn btn-outline-danger btn-sm pm-del" title="Eliminar">
@@ -1064,23 +1133,23 @@
                                     </button>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label small mb-1">Referencia (opcional)</label>
-                                    <input type="text" class="form-control form-control-sm pm-ref" placeholder="Ej: #transacción" value="${String(referencia)}">
+                                    <input type="text" class="form-control form-control-sm pm-ref" placeholder="Referencia (opcional)">
                                 </div>
                             </div>
                         </div>
                     `;
 
                     const recalc = () => {
+                        const currentTotal = getCurrentTotal();
                         const montoInputs = Array.from(rows.querySelectorAll('.pm-monto'));
                         const montos = montoInputs.map(i => parseMoneyInput(i.value));
                         const sum = montos.reduce((a, b) => a + b, 0);
 
-                        const diff = Number(total) - Number(sum);
+                        const diff = currentTotal - sum;
                         if (diffEl) {
                             if (almostEqualMoney(diff, 0)) {
                                 diffEl.className = 'badge text-bg-success';
-                                diffEl.textContent = 'Listo: total completo';
+                                diffEl.textContent = 'Listo ✓';
                             } else if (diff > 0) {
                                 diffEl.className = 'badge text-bg-warning';
                                 diffEl.textContent = `Falta: ${formatMoney(diff)}`;
@@ -1095,12 +1164,12 @@
                         const cambioEl = document.getElementById('pmCambio');
                         if (dineroRecibidoInput && cambioEl) {
                             const dineroRecibido = parseMoneyInput(dineroRecibidoInput.value);
-                            const cambio = dineroRecibido - sum;
+                            const cambio = dineroRecibido - currentTotal;
                             if (dineroRecibido > 0) {
                                 cambioEl.textContent = cambio >= 0 ? formatMoney(cambio) : 'Falta: ' + formatMoney(Math.abs(cambio));
                                 cambioEl.style.color = cambio >= 0 ? '#28a745' : '#dc3545';
                             } else {
-                                cambioEl.textContent = '$0,00';
+                                cambioEl.textContent = '$0';
                                 cambioEl.style.color = '#28a745';
                             }
                         }
@@ -1109,31 +1178,29 @@
                         warnEl.style.display = 'none';
                     };
 
-                    const addRow = (metodo = 'efectivo', monto = '', referencia = '') => {
+                    const addRow = (metodo = 'efectivo', monto = '') => {
                         const wrap = document.createElement('div');
-                        wrap.innerHTML = rowTemplate(metodo, monto, referencia);
+                        wrap.innerHTML = rowTemplate(metodo, monto);
                         const row = wrap.firstElementChild;
                         rows.appendChild(row);
 
                         const montoEl = row.querySelector('.pm-monto');
-                        const sel = row.querySelector('.pm-metodo');
                         const del = row.querySelector('.pm-del');
 
                         if (montoEl) {
                             montoEl.addEventListener('input', () => recalc());
                             montoEl.addEventListener('focus', () => { try { montoEl.select(); } catch (_) {} });
                         }
-                        if (sel) sel.addEventListener('change', () => recalc());
                         if (del) del.addEventListener('click', () => { row.remove(); recalc(); });
 
                         if (montoEl) setTimeout(() => montoEl.focus(), 0);
                         recalc();
                     };
 
-                    btnAdd.addEventListener('click', () => addRow('efectivo', '', ''));
+                    btnAdd.addEventListener('click', () => addRow('efectivo', ''));
 
                     // Fila inicial con el total
-                    addRow('efectivo', String(Number(total).toFixed(2)), '');
+                    addRow('efectivo', String(Math.round(totalFinal)));
 
                     // Event listener para dinero recibido
                     const dineroRecibidoInput = document.getElementById('pmDineroRecibido');
@@ -1144,14 +1211,47 @@
                         });
                     }
 
+                    // Propina buttons
+                    document.querySelectorAll('.pm-tip-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const pct = parseInt(this.dataset.pct) || 0;
+                            propinaMonto = pct > 0 ? Math.round(subtotalProductos * pct / 100) : 0;
+                            totalFinal = subtotalProductos + valorDomicilio + propinaMonto;
+                            
+                            // Update display
+                            document.querySelectorAll('.pm-tip-btn').forEach(b => b.classList.remove('active'));
+                            if (pct > 0) this.classList.add('active');
+                            
+                            const propinaMontoEl = document.getElementById('pmPropinaMonto');
+                            if (propinaMontoEl) propinaMontoEl.textContent = formatMoney(propinaMonto);
+                            
+                            const propinaLine = document.getElementById('pmPropinaLine');
+                            const propinaLineVal = document.getElementById('pmPropinaLineVal');
+                            if (propinaLine) propinaLine.style.display = propinaMonto > 0 ? 'flex' : 'none';
+                            if (propinaLineVal) propinaLineVal.textContent = formatMoney(propinaMonto);
+                            
+                            const totalDisplay = document.getElementById('pmTotalDisplay');
+                            if (totalDisplay) totalDisplay.textContent = formatMoney(totalFinal);
+
+                            // Update first row monto to new total
+                            const firstMonto = rows.querySelector('.pm-row .pm-monto');
+                            if (firstMonto && rows.querySelectorAll('.pm-row').length === 1) {
+                                firstMonto.value = String(Math.round(totalFinal));
+                            }
+                            recalc();
+                        });
+                    });
+
                     window.__pm_getRows = () => rows;
                     window.__pm_setWarn = (msg) => {
                         warnEl.textContent = msg;
                         warnEl.style.display = 'block';
                     };
+                    window.__pm_getTotal = () => getCurrentTotal();
                 },
                 preConfirm: () => {
                     const rows = window.__pm_getRows ? window.__pm_getRows() : null;
+                    const currentTotal = window.__pm_getTotal ? window.__pm_getTotal() : totalFinal;
                     if (!rows) return false;
                     const pagos = Array.from(rows.querySelectorAll('.pm-row')).map(r => {
                         const metodo = (r.querySelector('.pm-metodo')?.value || '').trim();
@@ -1166,19 +1266,22 @@
                     }
 
                     const sum = pagos.reduce((a, p) => a + Number(p.monto || 0), 0);
-                    if (!almostEqualMoney(sum, total)) {
-                        window.__pm_setWarn && window.__pm_setWarn(`La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(total)}).`);
+                    if (!almostEqualMoney(sum, currentTotal)) {
+                        window.__pm_setWarn && window.__pm_setWarn(`La sumatoria (${formatMoney(sum)}) debe ser igual al total (${formatMoney(currentTotal)}).`);
                         return false;
                     }
 
-                    return pagos.map(p => ({
-                        metodo: p.metodo,
-                        monto: Number(p.monto.toFixed(2)),
-                        referencia: p.referencia || ''
-                    }));
+                    return {
+                        pagos: pagos.map(p => ({
+                            metodo: p.metodo,
+                            monto: Number(p.monto.toFixed(2)),
+                            referencia: p.referencia || ''
+                        })),
+                        propina: propinaMonto
+                    };
                 },
                 willClose: () => {
-                    try { delete window.__pm_getRows; delete window.__pm_setWarn; } catch (_) {}
+                    try { delete window.__pm_getRows; delete window.__pm_setWarn; delete window.__pm_getTotal; } catch (_) {}
                 }
             });
 

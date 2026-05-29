@@ -74,6 +74,24 @@ async function ensureSchema() {
             );
             console.log('✅ Columna imagen migrada a LONGTEXT');
         }
+
+        // Migrar factura_pagos.metodo de ENUM a VARCHAR si es necesario
+        const [fpMetodoCol] = await pool.query(
+            `SELECT DATA_TYPE, COLUMN_TYPE
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'factura_pagos'
+               AND COLUMN_NAME = 'metodo'
+             LIMIT 1`
+        );
+
+        if (fpMetodoCol.length > 0 && fpMetodoCol[0].DATA_TYPE === 'enum') {
+            console.log('🔄 Migrando factura_pagos.metodo a VARCHAR para soportar métodos personalizados...');
+            await pool.query(
+                `ALTER TABLE factura_pagos MODIFY metodo VARCHAR(50) NOT NULL`
+            );
+            console.log('✅ Columna factura_pagos.metodo migrada a VARCHAR');
+        }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err);

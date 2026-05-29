@@ -78,6 +78,17 @@ router.post('/crear', async (req, res) => {
         };
 
         const result = await deliveryService.createDeliveryOrder(orderData, restauranteId);
+
+        // Guardar valor_domicilio y propina en el pedido
+        const valorDomicilio = Number(req.body.valor_domicilio) || 0;
+        const propina = Number(req.body.propina) || 0;
+        if (valorDomicilio > 0 || propina > 0) {
+            await db.query(
+                'UPDATE pedidos SET valor_domicilio = ?, total = total + ? WHERE id = ?',
+                [valorDomicilio, valorDomicilio, result.pedidoId]
+            );
+        }
+
         res.status(201).json({ success: true, pedidoId: result.pedidoId });
     } catch (error) {
         console.error('Error al crear pedido a domicilio:', error);
@@ -250,7 +261,15 @@ router.post('/:id/facturar', async (req, res) => {
                 return res.status(400).json({ error: 'Pedido sin items' });
             }
 
-            const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
+            const subtotalItems = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
+            const valorDomicilio = Number(pedido.valor_domicilio) || 0;
+            const propina = Number(req.body.propina) || 0;
+            
+            // Total factura = subtotal items + valor domicilio (sin propina, igual que mesas)
+            // La propina se guarda aparte en la columna propina
+            const totalFactura = subtotalItems + valorDomicilio;
+            // Total para validar pagos = totalFactura + propina
+            const totalConPropina = totalFactura + propina;
 
             // Normalizar pagos (acepta cualquier medio de pago configurado)
             const normalizarPagos = (arr) => {
@@ -269,29 +288,26 @@ router.post('/:id/facturar', async (req, res) => {
             const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
             const almostEqualMoney = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
 
-            // El total incluye valor_domicilio
-            const totalConDomicilio = total + Number(pedido.valor_domicilio || 0);
-
             let formaPagoDB = 'efectivo';
             if (pagosNorm.length > 0) {
-                if (!almostEqualMoney(sumaPagos, totalConDomicilio)) {
+                if (!almostEqualMoney(sumaPagos, totalConPropina)) {
                     await connection.rollback();
                     connection.release();
-                    return res.status(400).json({ error: 'La suma de pagos no coincide con el total' });
+                    return res.status(400).json({ error: `La suma de pagos ($${sumaPagos}) no coincide con el total ($${totalConPropina})` });
                 }
                 formaPagoDB = (pagosNorm.length === 1) ? pagosNorm[0].metodo : 'mixto';
             }
 
             const usuarioId = req.user?.id || null;
 
-            // Crear factura (mismo flujo que facturación de mesas)
+            // Crear factura (total sin propina, propina aparte - mismo patrón que mesas)
             const [facturaInsert] = await connection.query(
-                `INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago) VALUES (?, ?, ?, ?, ?)`,
-                [restauranteId, cliente_id, usuarioId, total, formaPagoDB]
+                `INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago, propina) VALUES (?, ?, ?, ?, ?, ?)`,
+                [restauranteId, cliente_id, usuarioId, totalFactura, formaPagoDB, propina]
             );
             const facturaId = facturaInsert.insertId;
 
-            // Insertar detalles de factura
+            // Insertar detalles de factura (productos)
             const detallesValues = items.map(i => [
                 facturaId,
                 i.producto_id,
@@ -305,6 +321,18 @@ router.post('/:id/facturar', async (req, res) => {
                 [detallesValues]
             );
 
+            // Si hay valor_domicilio, insertar como línea de detalle con producto_id NULL
+            if (valorDomicilio > 0) {
+                try {
+                    await connection.query(
+                        `INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES (?, NULL, 1, ?, 'UND', ?)`,
+                        [facturaId, valorDomicilio, valorDomicilio]
+                    );
+                } catch(_) {
+                    // Si producto_id no acepta NULL, ignorar - el total ya incluye domicilio
+                }
+            }
+
             // Guardar pagos en factura_pagos
             try {
                 if (pagosNorm.length > 0) {
@@ -316,17 +344,17 @@ router.post('/:id/facturar', async (req, res) => {
                 } else {
                     await connection.query(
                         'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES (?, ?, ?, ?)',
-                        [facturaId, formaPagoDB, total, null]
+                        [facturaId, formaPagoDB, totalConPropina, null]
                     );
                 }
             } catch (_) {
                 // Si la tabla no existe, no rompemos la facturación
             }
 
-            // Cerrar pedido (NO actualizar mesa, ya que domicilios no tienen mesa)
+            // Cerrar pedido
             await connection.query(
                 `UPDATE pedidos SET estado = 'cerrado', total = ? WHERE id = ?`,
-                [total, pedidoId]
+                [totalConPropina, pedidoId]
             );
 
             await connection.commit();
