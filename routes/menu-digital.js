@@ -63,16 +63,16 @@ router.get('/api/menu/:qrToken', menuRateLimiter, validateQRToken, async (req, r
             `SELECT DISTINCT c.id, c.nombre, c.orden
              FROM categorias c
              JOIN productos p ON p.categoria_id = c.id
-             WHERE c.restaurante_id = ? AND p.activo = TRUE
+             WHERE c.restaurante_id = ?
              ORDER BY c.orden ASC`,
             [restauranteId]
         );
         
-        // Obtener productos activos por categoría
+        // Obtener productos por categoría
         const [productos] = await db.query(
             `SELECT p.id, p.nombre, p.descripcion, p.imagen, p.precio_kg, p.precio_unidad, p.precio_libra, p.categoria_id
              FROM productos p
-             WHERE p.restaurante_id = ? AND p.activo = TRUE
+             WHERE p.restaurante_id = ?
              ORDER BY p.nombre ASC`,
             [restauranteId]
         );

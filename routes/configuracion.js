@@ -14,13 +14,12 @@ try {
 router.get('/printers', async (req, res) => {
     try {
         if (!pdfPrinter) {
-            return res.json({ printers: [], error: 'Módulo de impresión no disponible' });
+            return res.json({ printers: [] });
         }
         const printers = await pdfPrinter.getPrinters();
         res.json({ printers });
     } catch (error) {
-        console.error('Error listando impresoras:', error);
-        res.json({ printers: [], error: error.message });
+        res.json({ printers: [] });
     }
 });
 

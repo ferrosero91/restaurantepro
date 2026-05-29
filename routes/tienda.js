@@ -91,7 +91,7 @@ router.get('/:slug/menu', async (req, res) => {
             `SELECT p.id, p.nombre, p.descripcion, p.precio_unidad, p.precio_kg, p.precio_libra, 
                     p.imagen, p.categoria_id
              FROM productos p
-             WHERE p.restaurante_id = ? AND p.activo = 1
+             WHERE p.restaurante_id = ?
              ORDER BY p.nombre`,
             [restaurante.id]
         );
@@ -252,7 +252,7 @@ router.post('/:slug/pedido', async (req, res) => {
         const itemsValidados = [];
         for (const item of items) {
             const [prods] = await db.query(
-                'SELECT id, nombre, precio_unidad, precio_kg, precio_libra FROM productos WHERE id = ? AND restaurante_id = ? AND activo = 1',
+                'SELECT id, nombre, precio_unidad, precio_kg, precio_libra FROM productos WHERE id = ? AND restaurante_id = ?',
                 [item.productoId, restaurante.id]
             );
             if (prods.length === 0) continue;
