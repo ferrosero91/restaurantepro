@@ -16,6 +16,7 @@ services:
       PORT: 3000
       HOST: 0.0.0.0
       SESSION_SECRET: ${SESSION_SECRET}
+      QR_SECRET_KEY: ${QR_SECRET_KEY}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       TZ: America/Bogota
     volumes:
