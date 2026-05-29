@@ -417,8 +417,8 @@
                 </button>
             `).join('');
 
-            // Botón Facturar para pedidos entregados (Requirement 9.8)
-            if (p.estado === 'entregado') {
+            // Botón Facturar para pedidos confirmados o entregados
+            if (['confirmado', 'en_preparacion', 'en_camino', 'entregado'].includes(p.estado)) {
                 html += `
                 <button class="btn btn-sm btn-success" onclick="facturarDomicilio(${p.id})" title="Facturar pedido">
                     <i class="bi bi-cash-coin me-1"></i>Facturar
@@ -924,7 +924,6 @@
         // --- Facturar domicilio (Requirement 9.8) ---
         async function facturarDomicilio(pedidoId) {
             try {
-                // Obtener detalles del pedido para mostrar total
                 const response = await fetch(`/domicilios/${pedidoId}`);
                 const data = await response.json();
                 if (!data.success) {
@@ -933,25 +932,25 @@
                 }
 
                 const pedido = data.pedido;
-                const total = parseFloat(pedido.total) || 0;
+                const subtotalProductos = parseFloat(pedido.total) || 0;
+                const valorDomicilio = parseFloat(pedido.valor_domicilio) || 0;
+                const totalConDomicilio = subtotalProductos + valorDomicilio;
 
-                if (total <= 0) {
+                if (subtotalProductos <= 0) {
                     Swal.fire('Error', 'El pedido no tiene un total válido', 'error');
                     return;
                 }
 
-                // Usar el cliente del pedido directamente
                 const clienteId = pedido.cliente_id;
                 if (!clienteId) {
                     Swal.fire('Error', 'El pedido no tiene un cliente asociado', 'error');
                     return;
                 }
 
-                // Mostrar modal de pago con SweetAlert2
-                const pagos = await pedirPagosDomicilio(total, pedido);
-                if (!pagos) return; // Cancelado
+                // Mostrar modal de pago con total que incluye domicilio
+                const pagos = await pedirPagosDomicilio(totalConDomicilio, pedido);
+                if (!pagos) return;
 
-                // Enviar facturación
                 const factResp = await fetch(`/domicilios/${pedidoId}/facturar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -963,7 +962,6 @@
                     throw new Error(factData.error || 'Error al facturar');
                 }
 
-                // Redirigir a impresión de factura con retorno a domicilios
                 window.location.href = `/api/facturas/${factData.id}/imprimir?return_to=${encodeURIComponent('/domicilios')}`;
             } catch (error) {
                 console.error('Error al facturar domicilio:', error);

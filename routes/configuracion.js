@@ -23,6 +23,45 @@ router.get('/printers', async (req, res) => {
     }
 });
 
+// GET /configuracion/domicilio-config - Obtener configuración de domicilios
+router.get('/domicilio-config', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const [rows] = await db.query(
+            'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ?',
+            [tenantId]
+        );
+        if (rows.length > 0) {
+            res.json({ costo_domicilio: rows[0].costo_domicilio });
+        } else {
+            res.json({ costo_domicilio: 0 });
+        }
+    } catch(e) {
+        res.json({ costo_domicilio: 0 });
+    }
+});
+
+// PUT /configuracion/domicilio-config - Guardar configuración de domicilios
+router.put('/domicilio-config', async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { costo_domicilio } = req.body;
+        const valor = Math.max(0, Number(costo_domicilio) || 0);
+
+        // Upsert
+        await db.query(`
+            INSERT INTO domicilios_config (restaurante_id, costo_domicilio) 
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE costo_domicilio = ?
+        `, [tenantId, valor, valor]);
+
+        res.json({ success: true, costo_domicilio: valor });
+    } catch(e) {
+        console.error('Error guardando domicilio config:', e);
+        res.status(500).json({ error: 'Error al guardar' });
+    }
+});
+
 // PUT /configuracion/slug - Actualizar slug del restaurante (URL tienda online)
 router.put('/slug', async (req, res) => {
     try {

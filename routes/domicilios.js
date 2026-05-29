@@ -252,7 +252,7 @@ router.post('/:id/facturar', async (req, res) => {
 
             const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
 
-            // Normalizar pagos (mismo flujo que mesas)
+            // Normalizar pagos (acepta cualquier medio de pago configurado)
             const normalizarPagos = (arr) => {
                 if (!Array.isArray(arr)) return [];
                 return arr
@@ -262,16 +262,19 @@ router.post('/:id/facturar', async (req, res) => {
                         monto: Number(p.monto || 0),
                         referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
                     }))
-                    .filter(p => ['efectivo', 'transferencia', 'tarjeta'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
+                    .filter(p => p.metodo && Number.isFinite(p.monto) && p.monto > 0);
             };
 
             const pagosNorm = normalizarPagos(pagos);
             const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
             const almostEqualMoney = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
 
+            // El total incluye valor_domicilio
+            const totalConDomicilio = total + Number(pedido.valor_domicilio || 0);
+
             let formaPagoDB = 'efectivo';
             if (pagosNorm.length > 0) {
-                if (!almostEqualMoney(sumaPagos, total)) {
+                if (!almostEqualMoney(sumaPagos, totalConDomicilio)) {
                     await connection.rollback();
                     connection.release();
                     return res.status(400).json({ error: 'La suma de pagos no coincide con el total' });

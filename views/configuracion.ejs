@@ -416,6 +416,19 @@
                             <small class="text-muted">Se muestra en la tienda online debajo del nombre.</small>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Valor Domicilio <span class="badge bg-warning text-dark">Delivery</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="inputCostoDomicilio" value="0" min="0" placeholder="5000">
+                            </div>
+                            <small class="text-muted">Costo de envío que se cobra al cliente en pedidos a domicilio.</small>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-warning btn-sm" id="btnGuardarDomicilio">
+                                <i class="bi bi-truck me-1"></i>Guardar Valor Domicilio
+                            </button>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">URL Tienda Online <span class="badge bg-info">Público</span></label>
                             <div class="input-group">
                                 <span class="input-group-text">/tienda/</span>
@@ -2426,6 +2439,35 @@
             }
         }
         cargarImpresoras();
+
+        // Cargar valor domicilio
+        (async function() {
+            try {
+                const resp = await fetch('/configuracion/domicilio-config');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    document.getElementById('inputCostoDomicilio').value = data.costo_domicilio || 0;
+                }
+            } catch(e) {}
+        })();
+
+        // Guardar valor domicilio
+        document.getElementById('btnGuardarDomicilio')?.addEventListener('click', async function() {
+            const valor = parseFloat(document.getElementById('inputCostoDomicilio').value) || 0;
+            try {
+                const resp = await fetch('/configuracion/domicilio-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ costo_domicilio: valor })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    Swal.fire({ icon: 'success', title: 'Valor domicilio guardado', text: `$${valor.toLocaleString('es-CO')}`, timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire('Error', data.error, 'error');
+                }
+            } catch(e) { Swal.fire('Error', 'Error de conexión', 'error'); }
+        });
 
         // Guardar slug de tienda online
         document.getElementById('btnGuardarSlug')?.addEventListener('click', async function() {
