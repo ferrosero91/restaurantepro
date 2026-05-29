@@ -259,11 +259,19 @@ async function startServer() {
         
         // Ejecutar migraciones de base de datos
         console.log('🔄 Ejecutando migraciones de base de datos...');
-        const { runMigrations } = require('./scripts/migrations/migrate');
-        await runMigrations();
+        try {
+            const { runMigrations } = require('./scripts/migrations/migrate');
+            await runMigrations();
+        } catch (migrationError) {
+            console.error('⚠️ Error en migraciones (el servidor continuará):', migrationError.message);
+        }
         
         // Asegurar esquema adicional (legacy)
-        await db.ensureSchema();
+        try {
+            await db.ensureSchema();
+        } catch (schemaError) {
+            console.error('⚠️ Error en ensureSchema:', schemaError.message);
+        }
         
         // Iniciar el servidor
         const server = app.listen(PORT, config.host, () => {

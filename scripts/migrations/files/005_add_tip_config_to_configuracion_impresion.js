@@ -15,7 +15,7 @@ async function up(connection) {
     await connection.query(`
         ALTER TABLE configuracion_impresion 
         ADD COLUMN tip_enabled BOOLEAN DEFAULT FALSE AFTER font_size,
-        ADD COLUMN tip_percentages JSON DEFAULT '[]' AFTER tip_enabled
+        ADD COLUMN tip_percentages TEXT NULL AFTER tip_enabled
     `);
 }
 
