@@ -4,7 +4,7 @@ const db = require('../db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit');
+const { default: rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const config = require('../config/env');
 const notificationService = require('../services/NotificationService');
 
@@ -77,7 +77,7 @@ const loginRateLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `${req.ip}::${req.params.slug || ''}`,
+    keyGenerator: (req) => `${ipKeyGenerator(req)}::${req.params.slug || ''}`,
     handler: (req, res) => {
         res.status(429).json({
             error: 'Demasiados intentos. Espera 15 minutos e inténtalo de nuevo.'
@@ -91,7 +91,7 @@ const registroRateLimiter = rateLimit({
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `${req.ip}::${req.params.slug || ''}`,
+    keyGenerator: (req) => `${ipKeyGenerator(req)}::${req.params.slug || ''}`,
     handler: (req, res) => {
         res.status(429).json({
             error: 'Has creado demasiadas cuentas. Intenta más tarde.'
@@ -144,9 +144,9 @@ router.get('/:slug/menu', async (req, res) => {
         if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado' });
 
         const [categorias] = await db.query(
-            `SELECT id, nombre, descripcion, imagen, orden
+            `SELECT id, nombre, descripcion, color, icono, orden
              FROM categorias
-             WHERE restaurante_id = ? AND activo = 1
+             WHERE restaurante_id = ? AND estado = 'activo'
              ORDER BY orden ASC, nombre ASC`,
             [restaurante.id]
         );
