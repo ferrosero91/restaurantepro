@@ -6,6 +6,7 @@
     <title>Gestión de Usuarios - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -73,6 +74,7 @@
 </head>
 <body>
     <%- include('../partials/navbar') %>
+    <div class="rp-content">
     
     <main class="py-4">
         <div class="container-fluid px-3 px-md-4">
@@ -157,9 +159,6 @@
 
         </div>
     </main>
-
-    <%- include('../partials/footer') %>
-    
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -186,5 +185,7 @@
             }
         }
     </script>
+    </div>
+<%- include('../partials/toasts') %>
 </body>
 </html>

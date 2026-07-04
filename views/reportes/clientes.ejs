@@ -6,111 +6,68 @@
     <title>Reporte de Clientes - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/reportes.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        main {
-            flex: 1 0 auto;
-        }
-        
-        footer {
-            flex-shrink: 0;
-        }
-        
-        .page-header {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        }
-        
-        .table-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        }
-        
-        .table thead th {
-            background: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.875rem;
-            padding: 1rem 0.75rem;
-            color: #2c3e50;
-        }
-        
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .badge-rank {
+        .cliente-avatar {
             width: 36px;
             height: 36px;
             border-radius: 50%;
+            background: var(--rp-slate-800);
+            color: #fff;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.875rem;
-        }
-        
-        .badge-rank.gold { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; }
-        .badge-rank.silver { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #000; }
-        .badge-rank.bronze { background: linear-gradient(135deg, #cd7f32, #e8a87c); color: #fff; }
-        .badge-rank.other { background: #e9ecef; color: #6c757d; }
-        
-        .cliente-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-        
-        .btn-primary {
-            background-color: #3498db;
-            border-color: #3498db;
-        }
-        
-        .btn-primary:hover {
-            background-color: #2980b9;
-            border-color: #2980b9;
+            font-size: 0.9rem;
+            flex-shrink: 0;
         }
     </style>
 </head>
 <body>
     <%- include('../partials/navbar') %>
-    
-    <main class="py-4">
+    <div class="rp-content">
+
+    <main class="py-2">
         <div class="container-fluid px-3 px-md-4">
-            
-            <div class="page-header">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div>
-                        <h2 class="mb-1" style="font-weight: 700; color: #2c3e50;">
-                            <i class="bi bi-people me-2"></i>Reporte de Clientes
-                        </h2>
-                        <p class="text-muted mb-0">Análisis de mejores clientes</p>
-                    </div>
-                    <a href="/reportes" class="btn btn-outline-primary">
-                        <i class="bi bi-arrow-left me-2"></i>Volver al Dashboard
+
+            <%- include('../partials/breadcrumbs', { items: [
+                { label: 'Reportes', href: '/reportes' },
+                { label: 'Top Clientes' }
+            ] }) %>
+
+            <ul class="nav nav-tabs" role="tablist" aria-label="Secciones de reportes">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes" role="tab">
+                        <i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard
                     </a>
-                </div>
-            </div>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes#historial" role="tab">
+                        <i class="bi bi-receipt" aria-hidden="true"></i>Historial
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/productos" role="tab">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>Top Productos
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" href="/reportes/clientes" role="tab" aria-selected="true">
+                        <i class="bi bi-people" aria-hidden="true"></i>Top Clientes
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/propinas" role="tab">
+                        <i class="bi bi-cash-coin" aria-hidden="true"></i>Propinas
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/domicilios" role="tab">
+                        <i class="bi bi-truck" aria-hidden="true"></i>Domicilios
+                    </a>
+                </li>
+            </ul>
 
             <div class="table-card">
                 <div class="table-responsive">
@@ -130,8 +87,11 @@
                             <% if (clientes.length === 0) { %>
                                 <tr>
                                     <td colspan="7" class="text-center text-muted py-5">
-                                        <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
-                                        <p class="mt-3">No hay datos de clientes en el período seleccionado</p>
+                                        <div class="empty-state">
+                                            <i class="bi bi-inbox"></i>
+                                            <h5>No hay datos disponibles</h5>
+                                            <p>No hay datos de clientes en el período seleccionado</p>
+                                        </div>
                                     </td>
                                 </tr>
                             <% } else { %>
@@ -164,7 +124,7 @@
                                             $<%= Number(cliente.ticket_promedio).toLocaleString('es-CO', {minimumFractionDigits:2}) %>
                                         </td>
                                         <td class="text-end">
-                                            <strong class="text-success">$<%= Number(cliente.total_gastado).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
+                                            <strong>$<%= Number(cliente.total_gastado).toLocaleString('es-CO', {minimumFractionDigits:2}) %></strong>
                                         </td>
                                         <td>
                                             <small class="text-muted">
@@ -181,8 +141,8 @@
 
         </div>
     </main>
-
-    <%- include('../partials/footer') %>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    </div>
+<%- include('../partials/toasts') %>
 </body>
 </html>

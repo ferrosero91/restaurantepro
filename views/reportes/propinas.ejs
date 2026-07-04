@@ -7,67 +7,93 @@
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="/vendor/sweetalert2/sweetalert2.min.css">
-    <link rel="stylesheet" href="/css/reportes.css?v=2.2">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/reportes.css">
 </head>
 <body>
     <%- include('../partials/navbar') %>
+    <div class="rp-content">
     
-    <main class="py-3">
+    <main class="py-2">
         <div class="container-fluid px-3 px-md-4">
-            
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="bi bi-cash-coin text-success me-2"></i>
-                        Reporte de Propinas
-                    </h2>
-                    <p class="text-muted mb-0">Análisis detallado de propinas recibidas</p>
-                </div>
-                <div>
-                    <a href="/reportes" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-2"></i>Volver a Reportes
+
+            <%- include('../partials/breadcrumbs', { items: [
+                { label: 'Reportes', href: '/reportes' },
+                { label: 'Propinas' }
+            ] }) %>
+
+            <ul class="nav nav-tabs" role="tablist" aria-label="Secciones de reportes">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes" role="tab">
+                        <i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard
                     </a>
-                </div>
-            </div>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes#historial" role="tab">
+                        <i class="bi bi-receipt" aria-hidden="true"></i>Historial
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/productos" role="tab">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>Top Productos
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/clientes" role="tab">
+                        <i class="bi bi-people" aria-hidden="true"></i>Top Clientes
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" href="/reportes/propinas" role="tab" aria-selected="true">
+                        <i class="bi bi-cash-coin" aria-hidden="true"></i>Propinas
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/domicilios" role="tab">
+                        <i class="bi bi-truck" aria-hidden="true"></i>Domicilios
+                    </a>
+                </li>
+            </ul>
 
             <!-- Filtros -->
-            <div class="filters-card">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
-                        </label>
-                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
-                        </label>
-                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">
-                            <i class="bi bi-person me-1"></i>Cajero
-                        </label>
-                        <select id="usuarioId" class="form-select">
-                            <option value="">Todos los cajeros</option>
-                            <% if (typeof usuarios !== 'undefined' && usuarios.length > 0) { %>
-                                <% usuarios.forEach(usuario => { %>
-                                    <option value="<%= usuario.id %>" <%= filtros.usuario_id == usuario.id ? 'selected' : '' %>>
-                                        <%= usuario.nombre %>
-                                    </option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
-                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
-                        </button>
-                        <button class="btn btn-success" onclick="exportarExcel()">
-                            <i class="bi bi-file-earmark-excel me-2"></i>Exportar
-                        </button>
+            <div class="rp-card mb-4">
+                <div class="rp-card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="rp-label" for="fechaDesde">
+                                <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                            </label>
+                            <input type="date" id="fechaDesde" class="rp-input" value="<%= filtros.desde %>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="rp-label" for="fechaHasta">
+                                <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                            </label>
+                            <input type="date" id="fechaHasta" class="rp-input" value="<%= filtros.hasta %>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="rp-label" for="usuarioId">
+                                <i class="bi bi-person me-1"></i>Cajero
+                            </label>
+                            <select id="usuarioId" class="rp-input">
+                                <option value="">Todos los cajeros</option>
+                                <% if (typeof usuarios !== 'undefined' && usuarios.length > 0) { %>
+                                    <% usuarios.forEach(usuario => { %>
+                                        <option value="<%= usuario.id %>" <%= filtros.usuario_id == usuario.id ? 'selected' : '' %>>
+                                            <%= usuario.nombre %>
+                                        </option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="rp-btn rp-btn-primary me-2" onclick="aplicarFiltros()">
+                                <i class="bi bi-funnel"></i>Aplicar Filtros
+                            </button>
+                            <button class="rp-btn rp-btn-success" onclick="exportarExcel()">
+                                <i class="bi bi-file-earmark-excel"></i>Exportar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -75,56 +101,56 @@
             <!-- Estadísticas de Propinas -->
             <div class="row g-3 mb-4">
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card success">
+                    <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="stat-label">TOTAL PROPINAS</div>
+                                <div class="stat-label">Total Propinas</div>
                                 <div class="stat-value">$<%= Number(estadisticas.total_propinas || 0).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
                                 <div class="stat-description">Propinas recibidas</div>
                             </div>
-                            <div class="stat-icon success">
+                            <div class="stat-icon">
                                 <i class="bi bi-cash-coin"></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card info">
+                    <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="stat-label">FACTURAS CON PROPINA</div>
+                                <div class="stat-label">Facturas con Propina</div>
                                 <div class="stat-value"><%= estadisticas.facturas_con_propina || 0 %></div>
                                 <div class="stat-description">De <%= estadisticas.total_facturas || 0 %> facturas</div>
                             </div>
-                            <div class="stat-icon info">
+                            <div class="stat-icon">
                                 <i class="bi bi-receipt"></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card warning">
+                    <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="stat-label">PROPINA PROMEDIO</div>
+                                <div class="stat-label">Propina Promedio</div>
                                 <div class="stat-value">$<%= Number(estadisticas.propina_promedio || 0).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
                                 <div class="stat-description">Por factura con propina</div>
                             </div>
-                            <div class="stat-icon warning">
+                            <div class="stat-icon">
                                 <i class="bi bi-graph-up"></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card primary">
+                    <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="stat-label">% PROMEDIO</div>
+                                <div class="stat-label">% Promedio</div>
                                 <div class="stat-value"><%= Number(estadisticas.porcentaje_promedio || 0).toFixed(1) %>%</div>
                                 <div class="stat-description">Sobre total de venta</div>
                             </div>
-                            <div class="stat-icon primary">
+                            <div class="stat-icon">
                                 <i class="bi bi-percent"></i>
                             </div>
                         </div>
@@ -137,7 +163,7 @@
                 <div class="col-12 col-xl-8">
                     <div class="chart-card">
                         <div class="chart-title">
-                            <i class="bi bi-graph-up text-success"></i>
+                            <i class="bi bi-graph-up"></i>
                             Evolución de Propinas por Día
                         </div>
                         <div class="chart-container">
@@ -148,7 +174,7 @@
                 <div class="col-12 col-xl-4">
                     <div class="chart-card">
                         <div class="chart-title">
-                            <i class="bi bi-pie-chart text-info"></i>
+                            <i class="bi bi-pie-chart"></i>
                             Propinas por Cajero
                         </div>
                         <div class="chart-container chart-container-doughnut">
@@ -164,7 +190,7 @@
                     <div class="table-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="chart-title mb-0">
-                                <i class="bi bi-people text-primary"></i>
+                                <i class="bi bi-people"></i>
                                 Propinas por Cajero
                             </div>
                         </div>
@@ -235,9 +261,6 @@
 
         </div>
     </main>
-
-    <%- include('../partials/footer') %>
-
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="/vendor/chart.js/chart.umd.min.js"></script>
@@ -259,16 +282,16 @@
                     datasets: [{
                         label: 'Propinas Diarias',
                         data: propinasPorDia.map(p => p.total_propinas),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: '#e94560',
+                        backgroundColor: 'rgba(233, 69, 96, 0.08)',
                         tension: 0.4,
                         fill: true,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: '#10b981',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#e94560',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
-                        borderWidth: 3
+                        borderWidth: 2
                     }]
                 },
                 options: {
@@ -316,8 +339,8 @@
         // Gráfico de propinas por cajero
         if (propinasPorCajero && propinasPorCajero.length > 0) {
             const coloresPaleta = [
-                '#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', 
-                '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#6366f1'
+                '#e94560', '#334155', '#16a34a', '#f59e0b',
+                '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'
             ];
             
             const coloresChart = propinasPorCajero.map((_, index) => 
@@ -513,5 +536,7 @@
             }
         });
     </script>
+    </div>
+<%- include('../partials/toasts') %>
 </body>
 </html>

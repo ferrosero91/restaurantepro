@@ -1,0 +1,65 @@
+<% /* ============================================================
+    Partial: toasts
+    Uso: include('../partials/toasts')
+    Conectado a window.mostrarToast({ tipo, mensaje, duracion })
+    ============================================================ */ %>
+<div class="rp-toast-container" id="rpToastContainer"
+     role="region"
+     aria-label="Notificaciones"
+     aria-live="polite"
+     aria-atomic="false">
+</div>
+
+<script>
+(function() {
+    // API global para mostrar toasts (compatible con la API previa de Swal)
+    window.mostrarToast = function(opts) {
+        const o = (typeof opts === 'string') ? { mensaje: opts } : (opts || {});
+        const tipo = o.tipo || 'success';
+        const mensaje = o.mensaje || '';
+        const duracion = o.duracion || 3500;
+
+        const container = document.getElementById('rpToastContainer');
+        if (!container) return;
+
+        const iconMap = {
+            success: 'bi-check-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            danger: 'bi-x-circle-fill',
+            error:   'bi-x-circle-fill',
+            info:    'bi-info-circle-fill'
+        };
+        const labels = { success: 'Éxito', warning: 'Atención', danger: 'Error', error: 'Error', info: 'Información' };
+
+        const toast = document.createElement('div');
+        toast.className = 'rp-toast is-' + tipo;
+        toast.setAttribute('role', tipo === 'danger' || tipo === 'error' ? 'alert' : 'status');
+        toast.innerHTML =
+            '<i class="bi ' + (iconMap[tipo] || iconMap.info) + '" aria-hidden="true"></i>' +
+            '<div><strong class="d-block">' + (labels[tipo] || 'Aviso') + '</strong>' + mensaje + '</div>' +
+            '<button class="rp-toast-close" type="button" aria-label="Cerrar notificación"><i class="bi bi-x" aria-hidden="true"></i></button>';
+
+        container.appendChild(toast);
+
+        // Mostrar con animación
+        requestAnimationFrame(() => toast.classList.add('is-visible'));
+
+        const dismiss = () => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 300);
+        };
+
+        toast.querySelector('.rp-toast-close').addEventListener('click', dismiss);
+        setTimeout(dismiss, duracion);
+    };
+
+    // API legacy para compatibilidad (mostrarAlerta previo)
+    if (typeof window.mostrarAlerta === 'function' && !window._mostrarAlertaOverridden) {
+        const orig = window.mostrarAlerta;
+        window.mostrarAlerta = function(mensaje, tipo) {
+            return window.mostrarToast({ tipo: tipo || 'success', mensaje: mensaje });
+        };
+        window._mostrarAlertaOverridden = true;
+    }
+})();
+</script>
