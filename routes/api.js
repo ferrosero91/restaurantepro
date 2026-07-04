@@ -247,6 +247,337 @@ router.post('/clientes', requierePermiso('clientes:write'), async (req, res) => 
 });
 
 // ===========================
+// ===========================
+// DOMICILIOS - API REST v1 (resuelve hallazgo #19)
+// ===========================
+// Permisos esperados: 'domicilios:read', 'domicilios:write'
+// Autenticación: misma X-API-Token que el resto de endpoints
+// Documentación informal:
+//   GET    /api/v1/domicilios                 - Listar pedidos del tenant (paginado)
+//   GET    /api/v1/domicilios/:id            - Detalle de un pedido
+//   POST   /api/v1/domicilios                 - Crear pedido a domicilio
+//   PATCH  /api/v1/domicilios/:id/estado     - Cambiar estado
+//   POST   /api/v1/domicilios/:id/facturar    - Facturar
+//   GET    /api/v1/domicilios/estadisticas    - KPIs
+//   GET    /api/v1/domicilios/domiciliarios   - Listar domiciliarios disponibles
+
+// GET /api/v1/domicilios - Listar pedidos a domicilio
+router.get('/domicilios', requierePermiso('domicilios:read'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { estado, desde, hasta, limit = 50, offset = 0 } = req.query;
+        const limitN = Math.min(parseInt(limit) || 50, 500);
+
+        const where = ['p.restaurante_id = ?', "p.tipo_pedido = 'domicilio'"];
+        const params = [tenantId];
+
+        if (estado) { where.push('p.estado = ?'); params.push(estado); }
+        if (desde)  { where.push('DATE(p.created_at) >= ?'); params.push(desde); }
+        if (hasta)  { where.push('DATE(p.created_at) <= ?'); params.push(hasta); }
+
+        const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+        const [pedidos] = await db.query(
+            `SELECT p.id, p.estado, p.total, p.valor_domicilio, p.propina,
+                    p.direccion_entrega, p.telefono_contacto, p.notas_entrega,
+                    p.domiciliario_id, p.tracking_token, p.created_at, p.updated_at,
+                    c.nombre as cliente_nombre, c.telefono as cliente_telefono,
+                    u.nombre as domiciliario_nombre
+             FROM pedidos p
+             LEFT JOIN clientes c ON c.id = p.cliente_id
+             LEFT JOIN usuarios u ON u.id = p.domiciliario_id
+             ${whereSql}
+             ORDER BY p.created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, limitN, parseInt(offset) || 0]
+        );
+
+        const [[{ total }]] = await db.query(
+            `SELECT COUNT(*) as total FROM pedidos p ${whereSql}`, params
+        );
+
+        res.json({
+            success: true,
+            data: pedidos,
+            pagination: { total, limit: limitN, offset: parseInt(offset) || 0 }
+        });
+    } catch (error) {
+        console.error('Error API listando domicilios:', error);
+        res.status(500).json({ error: 'Error al listar pedidos' });
+    }
+});
+
+// GET /api/v1/domicilios/:id - Detalle de pedido
+router.get('/domicilios/:id(\\d+)', requierePermiso('domicilios:read'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const pedidoId = parseInt(req.params.id);
+
+        const [pedidos] = await db.query(
+            `SELECT p.*, c.nombre as cliente_nombre, c.telefono as cliente_telefono,
+                    c.direccion as cliente_direccion,
+                    u.nombre as domiciliario_nombre, u.telefono as domiciliario_telefono
+             FROM pedidos p
+             LEFT JOIN clientes c ON c.id = p.cliente_id
+             LEFT JOIN usuarios u ON u.id = p.domiciliario_id
+             WHERE p.id = ? AND p.restaurante_id = ? AND p.tipo_pedido = 'domicilio'
+             LIMIT 1`,
+            [pedidoId, tenantId]
+        );
+
+        if (pedidos.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        const [items] = await db.query(
+            `SELECT pi.id, pi.cantidad, pi.unidad_medida, pi.precio_unitario,
+                    pi.subtotal, pi.nota, pi.estado as item_estado,
+                    prod.nombre as producto_nombre, prod.codigo as producto_codigo
+             FROM pedido_items pi
+             INNER JOIN productos prod ON prod.id = pi.producto_id
+             WHERE pi.pedido_id = ?`,
+            [pedidoId]
+        );
+
+        // Historial de cambios de estado desde audit_logs
+        const [historial] = await db.query(
+            `SELECT accion, datos_anteriores, datos_nuevos, created_at
+             FROM audit_logs
+             WHERE tabla_afectada = 'pedidos' AND registro_id = ?
+             ORDER BY created_at ASC`,
+            [pedidoId]
+        );
+
+        res.json({ success: true, data: { ...pedidos[0], items, historial } });
+    } catch (error) {
+        console.error('Error API detalle domicilio:', error);
+        res.status(500).json({ error: 'Error al cargar pedido' });
+    }
+});
+
+// POST /api/v1/domicilios - Crear pedido a domicilio
+// body: { cliente_id, items: [{producto_id, cantidad, unidad_medida?}], direccion_entrega,
+//        telefono_contacto, notas_entrega?, valor_domicilio?, propina?,
+//        hora_entrega_estimada?, domiciliario_id? }
+router.post('/domicilios', requierePermiso('domicilios:write'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const DeliveryService = require('../services/DeliveryService');
+        const deliveryService = new DeliveryService();
+
+        const { cliente_id, items, direccion_entrega, telefono_contacto,
+                notas_entrega, valor_domicilio, propina, hora_entrega_estimada,
+                domiciliario_id } = req.body;
+
+        if (!cliente_id || !Array.isArray(items) || items.length === 0 ||
+            !direccion_entrega || !telefono_contacto) {
+            return res.status(400).json({
+                error: 'Faltan campos requeridos: cliente_id, items, direccion_entrega, telefono_contacto'
+            });
+        }
+
+        const result = await deliveryService.createDeliveryOrder({
+            cliente_id,
+            items: items.map(i => ({
+                producto_id: i.producto_id,
+                cantidad: i.cantidad,
+                unidad_medida: i.unidad_medida || 'UND',
+                nota: i.nota
+            })),
+            direccion_entrega,
+            telefono_contacto,
+            notas_entrega,
+            hora_entrega_estimada,
+            valor_domicilio: valor_domicilio || 0,
+            propina: propina || 0
+        }, tenantId);
+
+        // Asignar domiciliario si se proporciona
+        if (domiciliario_id) {
+            await db.query(
+                'UPDATE pedidos SET domiciliario_id = ? WHERE id = ? AND restaurante_id = ?',
+                [domiciliario_id, result.pedidoId, tenantId]
+            );
+        }
+
+        registrarAuditoria(req, 'pedidos', result.pedidoId, 'CREATE', null,
+            { tipo: 'domicilio', total: result.total, source: 'api_v1' });
+
+        res.status(201).json({ success: true, pedidoId: result.pedidoId });
+    } catch (error) {
+        console.error('Error API creando domicilio:', error);
+        res.status(500).json({ error: 'Error al crear pedido', message: error.message });
+    }
+});
+
+// PATCH /api/v1/domicilios/:id/estado - Cambiar estado
+router.patch('/domicilios/:id(\\d+)/estado', requierePermiso('domicilios:write'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const pedidoId = parseInt(req.params.id);
+        const { estado } = req.body;
+
+        if (!estado) {
+            return res.status(400).json({ error: 'estado es requerido' });
+        }
+
+        const DeliveryService = require('../services/DeliveryService');
+        const notificationService = require('../services/NotificationService');
+        const deliveryService = new DeliveryService(null, null, notificationService);
+
+        await deliveryService.updateDeliveryStatus(pedidoId, estado);
+
+        res.json({ success: true, pedidoId, estado });
+    } catch (error) {
+        const status = error.name === 'ValidationError' ? 400
+            : error.name === 'NotFoundError' ? 404
+            : error.name === 'BusinessError' ? 422
+            : 500;
+        res.status(status).json({ error: error.message });
+    }
+});
+
+// POST /api/v1/domicilios/:id/facturar - Facturar pedido
+// body: { cliente_id, pagos: [{metodo, monto, referencia?}], propina? }
+router.post('/domicilios/:id(\\d+)/facturar', requierePermiso('domicilios:write'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const pedidoId = parseInt(req.params.id);
+        const { cliente_id, pagos, propina } = req.body;
+
+        if (!cliente_id || !Array.isArray(pagos) || pagos.length === 0) {
+            return res.status(400).json({ error: 'cliente_id y pagos son requeridos' });
+        }
+
+        const PagoService = require('../services/PagoService');
+        const FacturaService = require('../services/FacturaService');
+        const notificationService = require('../services/NotificationService');
+        const facturaService = new FacturaService(null, null, notificationService);
+
+        const connection = await db.getConnection();
+        await connection.beginTransaction();
+        try {
+            const [pedidos] = await connection.query(
+                `SELECT id, estado, total, valor_domicilio FROM pedidos
+                 WHERE id = ? AND restaurante_id = ? AND tipo_pedido = 'domicilio'
+                 FOR UPDATE`,
+                [pedidoId, tenantId]
+            );
+            if (pedidos.length === 0) throw new Error('Pedido no encontrado');
+            if (['cerrado', 'cancelado'].includes(pedidos[0].estado)) {
+                throw new Error('El pedido ya está cerrado o cancelado');
+            }
+
+            const [items] = await connection.query(
+                `SELECT id, producto_id, cantidad, precio_unitario, subtotal, estado
+                 FROM pedido_items WHERE pedido_id = ? AND estado <> 'cancelado'`,
+                [pedidoId]
+            );
+            if (items.length === 0) throw new Error('Pedido sin items');
+
+            const subtotalItems = items.reduce((acc, it) => acc + Number(it.subtotal), 0);
+            const valorDom = Number(pedidos[0].valor_domicilio) || 0;
+            const propinaNum = Number(propina) || 0;
+            const totalFactura = subtotalItems + valorDom;
+            const totalConPropina = totalFactura + propinaNum;
+
+            const pagosNorm = PagoService.normalizarPagos(pagos);
+            const sumaPagos = PagoService.sumatoriaPagos(pagosNorm);
+            if (!PagoService.almostEqualMoney(sumaPagos, totalConPropina)) {
+                throw new Error(`La suma de pagos ($${sumaPagos}) no coincide con el total ($${totalConPropina})`);
+            }
+            const formaPagoDB = pagosNorm.length === 1 ? pagosNorm[0].metodo : 'mixto';
+
+            const [facturaInsert] = await connection.query(
+                `INSERT INTO facturas (restaurante_id, cliente_id, usuario_id, total, forma_pago, propina)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [tenantId, cliente_id, req.user?.id || null, totalFactura, formaPagoDB, propinaNum]
+            );
+            const facturaId = facturaInsert.insertId;
+
+            for (const item of items) {
+                await connection.query(
+                    `INSERT INTO detalle_factura (factura_id, producto_id, cantidad, unidad_medida, precio_unitario, subtotal)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [facturaId, item.producto_id, item.cantidad, 'UND', item.precio_unitario, item.subtotal]
+                );
+            }
+            if (valorDom > 0) {
+                try {
+                    await connection.query(
+                        `INSERT INTO detalle_factura (factura_id, producto_id, cantidad, unidad_medida, precio_unitario, subtotal)
+                         VALUES (?, NULL, 1, 'UND', ?, ?)`,
+                        [facturaId, valorDom, valorDom]
+                    );
+                } catch (e) { /* acepta NULL */ }
+            }
+            for (const pago of pagosNorm) {
+                await connection.query(
+                    `INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES (?, ?, ?, ?)`,
+                    [facturaId, pago.metodo, pago.monto, pago.referencia]
+                );
+            }
+
+            await connection.query(
+                'UPDATE pedidos SET estado = ?, total = ? WHERE id = ?',
+                ['cerrado', totalConPropina, pedidoId]
+            );
+
+            await connection.commit();
+
+            registrarAuditoria(req, 'pedidos', pedidoId, 'FACTURAR', null,
+                { facturaId, total: totalConPropina, source: 'api_v1' });
+
+            res.status(201).json({ success: true, facturaId, total: totalConPropina });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error('Error API facturando domicilio:', error);
+        res.status(500).json({ error: 'Error al facturar', message: error.message });
+    }
+});
+
+// GET /api/v1/domicilios/estadisticas - KPIs
+router.get('/domicilios/estadisticas', requierePermiso('domicilios:read'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { desde, hasta } = req.query;
+        const ReporteService = require('../services/ReporteService');
+        const reporteService = new ReporteService();
+        const data = await reporteService.obtenerEstadisticasDomicilios(
+            { desde, hasta }, tenantId
+        );
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Error API estadisticas domicilios:', error);
+        res.status(500).json({ error: 'Error al cargar estadísticas' });
+    }
+});
+
+// GET /api/v1/domicilios/domiciliarios - Listar domiciliarios disponibles
+router.get('/domicilios/domiciliarios', requierePermiso('domicilios:read'), async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const [domis] = await db.query(
+            `SELECT u.id, u.nombre, u.telefono, u.email, u.activo
+             FROM usuarios u
+             INNER JOIN roles r ON r.id = u.rol_id
+             WHERE u.restaurante_id = ? AND r.nombre = 'Domiciliario' AND u.activo = 1
+             ORDER BY u.nombre`,
+            [tenantId]
+        );
+        res.json({ success: true, data: domis });
+    } catch (error) {
+        console.error('Error API listando domiciliarios:', error);
+        res.status(500).json({ error: 'Error al listar domiciliarios' });
+    }
+});
+
+// ===========================
 // ENDPOINT DE INFORMACIÓN
 // ===========================
 
