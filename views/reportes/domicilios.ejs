@@ -74,6 +74,9 @@
                             <button class="rp-btn rp-btn-primary me-2" onclick="aplicarFiltros()">
                                 <i class="bi bi-funnel"></i>Aplicar Filtros
                             </button>
+                            <button class="rp-btn rp-btn-success" onclick="exportarExcel()">
+                                <i class="bi bi-file-earmark-excel"></i>Exportar Excel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -81,7 +84,7 @@
 
             <!-- KPIs -->
             <div class="row g-3 mb-4 mt-2">
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4 col-xl-2">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
@@ -92,18 +95,31 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4 col-xl-2">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
                                 <div class="stat-label">Ingresos</div>
                                 <div class="stat-value">$<%= Number(estadisticas.ingresos_totales).toLocaleString('es-CO') %></div>
+                                <div class="stat-description">Productos + domicilio + propina</div>
                             </div>
                             <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Ingresos Domicilio</div>
+                                <div class="stat-value">$<%= Number(estadisticas.ingresos_domicilio || 0).toLocaleString('es-CO') %></div>
+                                <div class="stat-description">Solo costo de envío</div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-truck"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
@@ -114,7 +130,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4 col-xl-2">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
@@ -122,6 +138,18 @@
                                 <div class="stat-value">$<%= Number(estadisticas.propinas_totales).toLocaleString('es-CO') %></div>
                             </div>
                             <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Cancelados</div>
+                                <div class="stat-value" style="color: var(--rp-danger);"><%= estadisticas.cancelados || 0 %></div>
+                                <div class="stat-description"><%= estadisticas.total_pedidos > 0 ? ((estadisticas.cancelados/estadisticas.total_pedidos)*100).toFixed(1) + '%' : '0%' %> del total</div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-x-circle"></i></div>
                         </div>
                     </div>
                 </div>
@@ -224,6 +252,37 @@
         const desde = document.getElementById('fechaDesde').value;
         const hasta = document.getElementById('fechaHasta').value;
         window.location.href = `/reportes/domicilios?desde=${desde}&hasta=${hasta}`;
+    }
+
+    async function exportarExcel() {
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
+
+        if (!desde || !hasta) {
+            window.mostrarToast && mostrarToast({ tipo: 'warning', mensaje: 'Selecciona un rango de fechas' });
+            return;
+        }
+
+        try {
+            const url = `/reportes/exportar?tipo=domicilios&desde=${desde}&hasta=${hasta}`;
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                throw new Error(data.error || 'Error al generar el archivo');
+            }
+            const blob = await resp.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `reporte_domicilios_${desde}_${hasta}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+            window.mostrarToast && mostrarToast({ tipo: 'success', mensaje: 'Archivo descargado' });
+        } catch (e) {
+            window.mostrarToast && mostrarToast({ tipo: 'danger', mensaje: e.message || 'Error de conexión' });
+        }
     }
     </script>
     </div>

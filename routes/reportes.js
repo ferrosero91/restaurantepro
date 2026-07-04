@@ -240,7 +240,7 @@ router.get('/exportar', async (req, res) => {
         const tipo = req.query.tipo || 'ventas';
         
         // Validar tipo
-        const tiposValidos = ['ventas', 'productos', 'clientes', 'propinas'];
+        const tiposValidos = ['ventas', 'productos', 'clientes', 'propinas', 'domicilios'];
         if (!tiposValidos.includes(tipo)) {
             return res.status(400).json({ error: 'Tipo de reporte inválido' });
         }

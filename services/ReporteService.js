@@ -988,6 +988,151 @@ class ReporteService {
                 sheet.addRow(['Total Facturas:', estadisticas.total_facturas]);
                 sheet.addRow(['Propina Promedio:', estadisticas.propina_promedio]);
                 sheet.addRow(['% Promedio:', estadisticas.porcentaje_promedio + '%']);
+            } else if (tipo === 'domicilios') {
+                // Resuelve hallazgo #21: exportar reporte de domicilios a Excel
+                const sheet = workbook.addWorksheet('Domicilios');
+                sheet.columns = [
+                    { header: 'Pedido #', key: 'id', width: 10 },
+                    { header: 'Fecha', key: 'created_at', width: 20 },
+                    { header: 'Cliente', key: 'cliente_nombre', width: 25 },
+                    { header: 'Teléfono', key: 'telefono', width: 15 },
+                    { header: 'Dirección', key: 'direccion', width: 35 },
+                    { header: 'Estado', key: 'estado', width: 16 },
+                    { header: 'Subtotal', key: 'subtotal', width: 13 },
+                    { header: 'Domicilio', key: 'valor_domicilio', width: 12 },
+                    { header: 'Propina', key: 'propina', width: 12 },
+                    { header: 'Total', key: 'total', width: 15 }
+                ];
+
+                sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                sheet.getRow(1).fill = {
+                    type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE94560' }
+                };
+
+                // Hoja 2: Top domiciliarios
+                const sheetTop = workbook.addWorksheet('Top Domiciliarios');
+                sheetTop.columns = [
+                    { header: '#', key: 'rank', width: 5 },
+                    { header: 'Domiciliario', key: 'nombre', width: 30 },
+                    { header: 'Entregas', key: 'entregas', width: 12 },
+                    { header: 'Propinas', key: 'propinas', width: 15 },
+                    { header: 'Ticket Promedio', key: 'ticket_promedio', width: 16 }
+                ];
+                sheetTop.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                sheetTop.getRow(1).fill = {
+                    type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE94560' }
+                };
+
+                // Hoja 3: Top clientes
+                const sheetClientes = workbook.addWorksheet('Top Clientes');
+                sheetClientes.columns = [
+                    { header: '#', key: 'rank', width: 5 },
+                    { header: 'Cliente', key: 'nombre', width: 30 },
+                    { header: 'Teléfono', key: 'telefono', width: 15 },
+                    { header: 'Pedidos', key: 'total_pedidos', width: 12 },
+                    { header: 'Monto Total', key: 'monto_total', width: 15 }
+                ];
+                sheetClientes.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                sheetClientes.getRow(1).fill = {
+                    type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE94560' }
+                };
+
+                // Obtener datos
+                const where = ['p.restaurante_id = ?', "p.tipo_pedido = 'domicilio'"];
+                const params = [tenantId];
+                if (filtros.desde) { where.push('DATE(p.created_at) >= ?'); params.push(filtros.desde); }
+                if (filtros.hasta) { where.push('DATE(p.created_at) <= ?'); params.push(filtros.hasta); }
+                const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+                const [pedidos] = await this.db.query(
+                    `SELECT p.id, p.estado, p.total, p.created_at, p.valor_domicilio, p.propina,
+                            p.direccion_entrega, p.telefono_contacto,
+                            c.nombre as cliente_nombre
+                     FROM pedidos p
+                     LEFT JOIN clientes c ON c.id = p.cliente_id
+                     ${whereSql}
+                     ORDER BY p.created_at DESC
+                     LIMIT 10000`,
+                    params
+                );
+
+                pedidos.forEach(p => {
+                    const subtotal = Number(p.total) - Number(p.valor_domicilio || 0) - Number(p.propina || 0);
+                    sheet.addRow({
+                        id: p.id,
+                        created_at: new Date(p.created_at),
+                        cliente_nombre: p.cliente_nombre || '-',
+                        telefono: p.telefono_contacto || '-',
+                        direccion: p.direccion_entrega || '-',
+                        estado: p.estado,
+                        subtotal: Math.max(0, subtotal),
+                        valor_domicilio: Number(p.valor_domicilio || 0),
+                        propina: Number(p.propina || 0),
+                        total: Number(p.total)
+                    });
+                });
+
+                sheet.getColumn('created_at').numFmt = 'dd/mm/yyyy hh:mm';
+                ['subtotal', 'valor_domicilio', 'propina', 'total'].forEach(k => {
+                    sheet.getColumn(k).numFmt = '$#,##0.00';
+                });
+
+                // Resumen en la primera hoja
+                sheet.addRow([]);
+                sheet.addRow(['RESUMEN']);
+                const [resumenRows] = await this.db.query(`
+                    SELECT
+                        COUNT(*) as total_pedidos,
+                        COALESCE(SUM(total), 0) as ingresos_totales,
+                        COALESCE(SUM(valor_domicilio), 0) as ingresos_domicilio,
+                        COALESCE(SUM(propina), 0) as propinas_totales,
+                        COALESCE(AVG(total), 0) as ticket_promedio,
+                        COUNT(CASE WHEN estado = 'cancelado' THEN 1 END) as cancelados
+                    FROM pedidos p
+                    ${whereSql}
+                `, params);
+                const r = resumenRows[0];
+                sheet.addRow(['Total Pedidos:', r.total_pedidos]);
+                sheet.addRow(['Ingresos Totales:', parseFloat(r.ingresos_totales)]);
+                sheet.addRow(['Ingresos por Domicilio:', parseFloat(r.ingresos_domicilio)]);
+                sheet.addRow(['Propinas:', parseFloat(r.propinas_totales)]);
+                sheet.addRow(['Ticket Promedio:', parseFloat(r.ticket_promedio)]);
+                sheet.addRow(['Cancelados:', r.cancelados]);
+                ['ingresos_totales', 'ingresos_domicilio', 'propinas_totales', 'ticket_promedio'].forEach(label => {
+                    for (let i = 1; i <= sheet.rowCount; i++) {
+                        const cell = sheet.getCell(`B${i}`);
+                        if (cell.value && typeof cell.value === 'number') {
+                            cell.numFmt = '$#,##0.00';
+                        }
+                    }
+                });
+
+                // Top domiciliarios
+                const topDomis = await this.obtenerTopDomiciliarios(filtros, tenantId, 50);
+                topDomis.forEach((d, i) => {
+                    sheetTop.addRow({
+                        rank: i + 1,
+                        nombre: d.nombre,
+                        entregas: d.entregas,
+                        propinas: parseFloat(d.propinas || 0),
+                        ticket_promedio: parseFloat(d.ticket_promedio || 0)
+                    });
+                });
+                sheetTop.getColumn('propinas').numFmt = '$#,##0.00';
+                sheetTop.getColumn('ticket_promedio').numFmt = '$#,##0.00';
+
+                // Top clientes
+                const topClis = await this.obtenerTopClientesDomicilio(filtros, tenantId, 50);
+                topClis.forEach((c, i) => {
+                    sheetClientes.addRow({
+                        rank: i + 1,
+                        nombre: c.nombre,
+                        telefono: c.telefono || '-',
+                        total_pedidos: c.total_pedidos,
+                        monto_total: parseFloat(c.monto_total || 0)
+                    });
+                });
+                sheetClientes.getColumn('monto_total').numFmt = '$#,##0.00';
             }
             
             return await workbook.xlsx.writeBuffer();
