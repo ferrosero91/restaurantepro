@@ -13,9 +13,18 @@ async function requireAuth(req, res, next) {
             return res.redirect('/login');
         }
 
-        // Obtener datos del usuario
+        // Obtener datos del usuario.
+        // JOIN con roles (para el nombre real del rol desde la nueva tabla)
+        // y con restaurantes (para nombre/slug del tenant).
+        // Si el usuario no tiene rol_id (legacy), se conserva el valor de u.rol.
         const [usuarios] = await db.query(
-            'SELECT u.*, r.nombre as restaurante_nombre, r.slug as restaurante_slug FROM usuarios u LEFT JOIN restaurantes r ON u.restaurante_id = r.id WHERE u.id = ? AND u.estado = "activo"',
+            `SELECT u.*,
+                    rest.nombre as restaurante_nombre, rest.slug as restaurante_slug,
+                    rol.nombre as rol_nombre
+             FROM usuarios u
+             LEFT JOIN restaurantes rest ON u.restaurante_id = rest.id
+             LEFT JOIN roles rol ON u.rol_id = rol.id
+             WHERE u.id = ? AND u.estado = "activo"`,
             [req.session.userId]
         );
 
@@ -28,6 +37,15 @@ async function requireAuth(req, res, next) {
         }
 
         req.user = usuarios[0];
+
+        // Sobrescribir req.user.rol con el nombre real del rol desde la tabla roles.
+        // EXCEPCIÓN: preservar 'superadmin' del legacy (u.rol) aunque tenga
+        // rol_id apuntando a otro rol, para no romper requireSuperAdmin.
+        // Esto asegura que req.user.rol refleje el rol "lógico" del usuario
+        // para todos los roles que no sean superadmin.
+        if (req.user.rol !== 'superadmin' && req.user.rol_nombre) {
+            req.user.rol = req.user.rol_nombre;
+        }
         
         // Cargar permisos del usuario (combinando permisos del rol y permisos individuales)
         const [permisos] = await db.query(`
