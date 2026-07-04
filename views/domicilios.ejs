@@ -6,6 +6,7 @@
     <title>Domicilios</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         html, body { height: 100%; }
         body { min-height: 100vh; display: flex; flex-direction: column; background-color: #f8f9fa; }
@@ -50,6 +51,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
+    <div class="rp-content">
 
     <main class="flex-grow-1">
     <div class="container">
@@ -252,9 +254,6 @@
     </div>
 
     </main>
-
-    <%- include('partials/footer') %>
-
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
@@ -1015,7 +1014,7 @@
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-1 fw-bold">Cambio</label>
-                                    <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #28a745;">$0,00</div>
+                                    <div class="form-control bg-white" id="pmCambio" style="font-weight: bold; color: #e94560;">$0</div>
                                 </div>
                             </div>
                         </div>
@@ -1089,10 +1088,10 @@
                             const cambio = dineroRecibido - sum;
                             if (dineroRecibido > 0) {
                                 cambioEl.textContent = cambio >= 0 ? formatMoney(cambio) : 'Falta: ' + formatMoney(Math.abs(cambio));
-                                cambioEl.style.color = cambio >= 0 ? '#28a745' : '#dc3545';
+                                cambioEl.style.color = cambio >= 0 ? '#e94560' : '#dc3545';
                             } else {
                                 cambioEl.textContent = '$0,00';
-                                cambioEl.style.color = '#28a745';
+                                cambioEl.style.color = '#e94560';
                             }
                         }
 
@@ -1183,5 +1182,7 @@
 
     })();
     </script>
+    </div>
+<%- include('partials/toasts') %>
 </body>
 </html>

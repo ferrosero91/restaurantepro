@@ -6,6 +6,7 @@ const AutoCommandService = require('../services/AutoCommandService');
 const PrintService = require('../services/PrintService');
 const PrintRetryQueue = require('../services/PrintRetryQueue');
 const notificationService = require('../services/NotificationService');
+const PagoService = require('../services/PagoService');
 const { registrarAuditoria } = require('../middleware/audit');
 
 // Instanciar servicios con dependencias (mismo patrón que menu-digital y mesas)
@@ -252,22 +253,13 @@ router.post('/:id/facturar', async (req, res) => {
 
             const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
 
-            // Normalizar pagos (mismo flujo que mesas)
-            const normalizarPagos = (arr) => {
-                if (!Array.isArray(arr)) return [];
-                return arr
-                    .filter(p => p && typeof p === 'object')
-                    .map(p => ({
-                        metodo: String(p.metodo || '').toLowerCase().trim(),
-                        monto: Number(p.monto || 0),
-                        referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
-                    }))
-                    .filter(p => ['efectivo', 'transferencia', 'tarjeta'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
-            };
+            // Normalizar pagos (acepta cualquier medio de pago configurado)
+            // Delegado a services/PagoService.js (compartido con facturas.js y mesas.js).
+            const normalizarPagos = (arr) => PagoService.normalizarPagos(arr);
 
             const pagosNorm = normalizarPagos(pagos);
-            const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
-            const almostEqualMoney = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
+            const sumaPagos = PagoService.sumatoriaPagos(pagosNorm);
+            const almostEqualMoney = (a, b) => PagoService.almostEqualMoney(a, b);
 
             let formaPagoDB = 'efectivo';
             if (pagosNorm.length > 0) {

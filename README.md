@@ -21,7 +21,7 @@ Sistema completo de punto de venta (POS) para restaurantes con arquitectura SaaS
 npm install
 ```
 4. Variables de entorno (opcional):
-   - El sistema usa estos valores por defecto (ver `config/database.js`):
+   - El sistema usa estos valores por defecto (ver `config/env.js`):
      - `DB_HOST=localhost`
      - `DB_USER=root`
      - `DB_PASSWORD=111`

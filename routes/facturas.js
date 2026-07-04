@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const FacturaService = require('../services/FacturaService');
+const PagoService = require('../services/PagoService');
 const { validateCreateFactura, validateGetFactura, validateListFacturas } = require('../validators/facturaValidator');
 
 // Instanciar servicio
@@ -19,29 +20,21 @@ function safeReturnTo(value) {
     return v;
 }
 
-// Helpers de pagos (pago mixto)
+// Helpers de pagos (pago mixto) — delegan a services/PagoService.js para
+// mantener una sola fuente de verdad compartida con routes/mesas.js y
+// routes/domicilios.js.
 // Relacionado con:
 // - public/js/factura.js (envía pagos desde index)
 // - public/js/mesas.js (envía pagos desde mesas)
+const METODOS_FACTURA_LEGACY = ['efectivo', 'transferencia', 'tarjeta'];
 function normalizarPagos(pagos) {
-    if (!Array.isArray(pagos)) return [];
-    return pagos
-        .filter(p => p && typeof p === 'object')
-        .map(p => ({
-            metodo: String(p.metodo || '').toLowerCase().trim(),
-            monto: Number(p.monto || 0),
-            referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
-        }))
-        .filter(p => ['efectivo', 'transferencia', 'tarjeta'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
+    return PagoService.normalizarPagos(pagos, { metodosPermitidos: METODOS_FACTURA_LEGACY });
 }
-
 function sumatoriaPagos(pagos) {
-    return pagos.reduce((acc, p) => acc + Number(p.monto || 0), 0);
+    return PagoService.sumatoriaPagos(pagos);
 }
-
 function almostEqualMoney(a, b) {
-    // Tolerancia de 1 centavo para evitar problemas de flotantes
-    return Math.abs(Number(a) - Number(b)) < 0.01;
+    return PagoService.almostEqualMoney(a, b);
 }
 
 // Obtener configuración de propinas (accesible para cualquier usuario autenticado)

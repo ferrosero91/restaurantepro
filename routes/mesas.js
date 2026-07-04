@@ -5,6 +5,7 @@ const AutoCommandService = require('../services/AutoCommandService');
 const PrintService = require('../services/PrintService');
 const PrintRetryQueue = require('../services/PrintRetryQueue');
 const QRGeneratorService = require('../services/QRGeneratorService');
+const PagoService = require('../services/PagoService');
 
 // Instanciar servicios para comandas automáticas
 const printService = new PrintService();
@@ -528,17 +529,8 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
 
             // ===== Pago mixto: validar pagos[] si se envía =====
-            const normalizarPagos = (arr) => {
-                if (!Array.isArray(arr)) return [];
-                return arr
-                    .filter(p => p && typeof p === 'object')
-                    .map(p => ({
-                        metodo: String(p.metodo || '').toLowerCase().trim(),
-                        monto: Number(p.monto || 0),
-                        referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
-                    }))
-                    .filter(p => p.metodo && Number.isFinite(p.monto) && p.monto > 0);
-            };
+            // Delegado a services/PagoService.js (compartido con facturas.js y domicilios.js).
+            const normalizarPagos = (arr) => PagoService.normalizarPagos(arr);
 
             // Validar medios de pago contra los configurados
             let mediosPermitidos = ['efectivo', 'transferencia', 'tarjeta'];
@@ -555,8 +547,8 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             let pagosNorm = normalizarPagos(pagos);
             // Filtrar solo medios permitidos
             pagosNorm = pagosNorm.filter(p => mediosPermitidos.includes(p.metodo));
-            const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
-            const almostEqualMoney = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
+            const sumaPagos = PagoService.sumatoriaPagos(pagosNorm);
+            const almostEqualMoney = (a, b) => PagoService.almostEqualMoney(a, b);
 
             let formaPagoDB = String(forma_pago || 'efectivo').toLowerCase();
             if (pagosNorm.length > 0) {
