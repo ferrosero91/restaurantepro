@@ -6,62 +6,75 @@
     <title>Reportes Domicilios - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
-    <link rel="stylesheet" href="/css/reportes.css?v=2.2">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/reportes.css">
 </head>
 <body>
     <%- include('../partials/navbar') %>
+    <div class="rp-content">
     
-    <main class="py-3">
+    <main class="py-2">
         <div class="container-fluid px-3 px-md-4">
-            
-            <!-- Tabs de navegación -->
-            <ul class="nav nav-tabs mb-3">
-                <li class="nav-item">
-                    <a class="nav-link" href="/reportes">
-                        <i class="bi bi-speedometer2"></i>Dashboard
+
+            <%- include('../partials/breadcrumbs', { items: [
+                { label: 'Reportes', href: '/reportes' },
+                { label: 'Domicilios' }
+            ] }) %>
+
+            <ul class="nav nav-tabs" role="tablist" aria-label="Secciones de reportes">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes" role="tab">
+                        <i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/reportes/productos">
-                        <i class="bi bi-box-seam"></i>Top Productos
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes#historial" role="tab">
+                        <i class="bi bi-receipt" aria-hidden="true"></i>Historial
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/reportes/clientes">
-                        <i class="bi bi-people"></i>Top Clientes
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/productos" role="tab">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>Top Productos
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/reportes/propinas">
-                        <i class="bi bi-cash-coin"></i>Propinas
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/clientes" role="tab">
+                        <i class="bi bi-people" aria-hidden="true"></i>Top Clientes
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="/reportes/domicilios">
-                        <i class="bi bi-truck"></i>Domicilios
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" href="/reportes/propinas" role="tab">
+                        <i class="bi bi-cash-coin" aria-hidden="true"></i>Propinas
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" href="/reportes/domicilios" role="tab" aria-selected="true">
+                        <i class="bi bi-truck" aria-hidden="true"></i>Domicilios
                     </a>
                 </li>
             </ul>
 
             <!-- Filtros -->
-            <div class="filters-card">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde
-                        </label>
-                        <input type="date" id="fechaDesde" class="form-control" value="<%= filtros.desde %>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
-                        </label>
-                        <input type="date" id="fechaHasta" class="form-control" value="<%= filtros.hasta %>">
-                    </div>
-                    <div class="col-md-6">
-                        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
-                            <i class="bi bi-funnel me-2"></i>Aplicar Filtros
-                        </button>
+            <div class="rp-card mb-4">
+                <div class="rp-card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="rp-label" for="fechaDesde">
+                                <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                            </label>
+                            <input type="date" id="fechaDesde" class="rp-input" value="<%= filtros.desde %>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="rp-label" for="fechaHasta">
+                                <i class="bi bi-calendar-check me-1"></i>Fecha Hasta
+                            </label>
+                            <input type="date" id="fechaHasta" class="rp-input" value="<%= filtros.hasta %>">
+                        </div>
+                        <div class="col-md-6">
+                            <button class="rp-btn rp-btn-primary me-2" onclick="aplicarFiltros()">
+                                <i class="bi bi-funnel"></i>Aplicar Filtros
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,102 +82,136 @@
             <!-- KPIs -->
             <div class="row g-3 mb-4 mt-2">
                 <div class="col-6 col-md-3">
-                    <div class="card text-center p-3">
-                        <div class="text-muted small">Total Pedidos</div>
-                        <div class="fs-4 fw-bold text-primary"><%= estadisticas.total_pedidos %></div>
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Total Pedidos</div>
+                                <div class="stat-value"><%= estadisticas.total_pedidos %></div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-truck"></i></div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card text-center p-3">
-                        <div class="text-muted small">Ingresos</div>
-                        <div class="fs-4 fw-bold text-success">$<%= Number(estadisticas.ingresos_totales).toLocaleString('es-CO') %></div>
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Ingresos</div>
+                                <div class="stat-value">$<%= Number(estadisticas.ingresos_totales).toLocaleString('es-CO') %></div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card text-center p-3">
-                        <div class="text-muted small">Ticket Promedio</div>
-                        <div class="fs-4 fw-bold text-info">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Ticket Promedio</div>
+                                <div class="stat-value">$<%= Number(estadisticas.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-graph-up"></i></div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card text-center p-3">
-                        <div class="text-muted small">Propinas</div>
-                        <div class="fs-4 fw-bold text-warning">$<%= Number(estadisticas.propinas_totales).toLocaleString('es-CO') %></div>
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="stat-label">Propinas</div>
+                                <div class="stat-value">$<%= Number(estadisticas.propinas_totales).toLocaleString('es-CO') %></div>
+                            </div>
+                            <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Top Domiciliarios -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Top Domiciliarios</h5>
+            <div class="table-card">
+                <div class="chart-title">
+                    <i class="bi bi-person-badge"></i>Top Domiciliarios
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Nombre</th>
-                                    <th>Entregas</th>
-                                    <th>Propinas</th>
-                                    <th>Ticket Prom.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% if (topDomiciliarios.length === 0) { %>
-                                <tr><td colspan="5" class="text-center text-muted py-4">Sin datos en este período</td></tr>
-                                <% } else { %>
-                                <% topDomiciliarios.forEach((d, i) => { %>
-                                <tr>
-                                    <td><%= i + 1 %></td>
-                                    <td><%= d.nombre %></td>
-                                    <td><span class="badge bg-primary"><%= d.entregas %></span></td>
-                                    <td>$<%= Number(d.propinas).toLocaleString('es-CO') %></td>
-                                    <td>$<%= Number(d.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></td>
-                                </tr>
-                                <% }) %>
-                                <% } %>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th width="50">#</th>
+                                <th>Nombre</th>
+                                <th class="text-end">Entregas</th>
+                                <th class="text-end">Propinas</th>
+                                <th class="text-end">Ticket Prom.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (topDomiciliarios.length === 0) { %>
+                            <tr><td colspan="5">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox"></i>
+                                    <h5>Sin datos en este período</h5>
+                                </div>
+                            </td></tr>
+                            <% } else { %>
+                            <% topDomiciliarios.forEach((d, i) => { %>
+                            <tr>
+                                <td>
+                                    <span class="badge-rank <%= i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'other' %>">
+                                        <%= i + 1 %>
+                                    </span>
+                                </td>
+                                <td><strong><%= d.nombre %></strong></td>
+                                <td class="text-end"><span class="badge bg-primary"><%= d.entregas %></span></td>
+                                <td class="text-end">$<%= Number(d.propinas).toLocaleString('es-CO') %></td>
+                                <td class="text-end">$<%= Number(d.ticket_promedio).toLocaleString('es-CO', {maximumFractionDigits:0}) %></td>
+                            </tr>
+                            <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- Top Clientes Domicilio -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Top Clientes Domicilio</h5>
+            <div class="table-card">
+                <div class="chart-title">
+                    <i class="bi bi-people"></i>Top Clientes Domicilio
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Nombre</th>
-                                    <th>Teléfono</th>
-                                    <th>Pedidos</th>
-                                    <th>Monto Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% if (topClientes.length === 0) { %>
-                                <tr><td colspan="5" class="text-center text-muted py-4">Sin datos en este período</td></tr>
-                                <% } else { %>
-                                <% topClientes.forEach((c, i) => { %>
-                                <tr>
-                                    <td><%= i + 1 %></td>
-                                    <td><%= c.nombre %></td>
-                                    <td><%= c.telefono %></td>
-                                    <td><span class="badge bg-success"><%= c.total_pedidos %></span></td>
-                                    <td>$<%= Number(c.monto_total).toLocaleString('es-CO') %></td>
-                                </tr>
-                                <% }) %>
-                                <% } %>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th width="50">#</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th class="text-end">Pedidos</th>
+                                <th class="text-end">Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (topClientes.length === 0) { %>
+                            <tr><td colspan="5">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox"></i>
+                                    <h5>Sin datos en este período</h5>
+                                </div>
+                            </td></tr>
+                            <% } else { %>
+                            <% topClientes.forEach((c, i) => { %>
+                            <tr>
+                                <td>
+                                    <span class="badge-rank <%= i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'other' %>">
+                                        <%= i + 1 %>
+                                    </span>
+                                </td>
+                                <td><strong><%= c.nombre %></strong></td>
+                                <td><%= c.telefono || '-' %></td>
+                                <td class="text-end"><span class="badge bg-primary"><%= c.total_pedidos %></span></td>
+                                <td class="text-end"><strong>$<%= Number(c.monto_total).toLocaleString('es-CO') %></strong></td>
+                            </tr>
+                            <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -179,5 +226,7 @@
         window.location.href = `/reportes/domicilios?desde=${desde}&hasta=${hasta}`;
     }
     </script>
+    </div>
+<%- include('../partials/toasts') %>
 </body>
 </html>

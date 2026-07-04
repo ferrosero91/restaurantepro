@@ -6,10 +6,12 @@
     <title>Logs de Auditoría - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
 </head>
 <body style="background-color: #f8f9fa;">
     <%- include('../partials/navbar_superadmin') %>
 
+    <div class="rp-content">
     <div class="container mt-4">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-bottom">
@@ -50,5 +52,7 @@
 
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    </div>
+<%- include('../partials/toasts') %>
 </body>
 </html>

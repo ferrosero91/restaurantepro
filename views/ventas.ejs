@@ -6,6 +6,7 @@
     <title>Reportes de Ventas - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         html, body { 
             height: 100%; 
@@ -112,17 +113,7 @@
             background: #2980b9;
             border-color: #2980b9;
         }
-        
-        .btn-success {
-            background: #2ecc71;
-            border-color: #2ecc71;
-        }
-        
-        .btn-success:hover {
-            background: #27ae60;
-            border-color: #27ae60;
-        }
-        
+
         /* Tabla */
         .table-card {
             background: white;
@@ -315,7 +306,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
-
+    <div class="rp-content">
 
     <main class="flex-grow-1 py-4">
         <div class="container-fluid px-3 px-md-4">
@@ -637,10 +628,6 @@
             </div>
         </div>
     </div>
-
-    <%- include('partials/footer') %>
-
-
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -906,5 +893,7 @@
             });
         });
     </script>
+    </div>
+<%- include('partials/toasts') %>
 </body>
 </html>

@@ -100,6 +100,12 @@ app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_mod
 // CORS seguro con orígenes permitidos
 app.use(corsMiddleware(config.cors.allowedOrigins));
 
+// Exponer ruta actual a todas las vistas (para sidebar activo)
+app.use((req, res, next) => {
+    res.locals.currentPath = req.path;
+    next();
+});
+
 // Headers de seguridad adicionales
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
