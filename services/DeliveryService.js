@@ -138,6 +138,29 @@ class DeliveryService {
 
             await connection.commit();
 
+            // Notificar al cliente de tracking que su pedido fue recibido
+            // (estado inicial 'pendiente'). Es seguro incluso si nadie escucha.
+            if (this.notificationService) {
+                try {
+                    const [tokenRows] = await db.query(
+                        'SELECT tracking_token FROM pedidos WHERE id = ?',
+                        [pedidoId]
+                    );
+                    if (tokenRows.length && tokenRows[0].tracking_token) {
+                        this.notificationService.notifyTrackingUpdate(
+                            tokenRows[0].tracking_token,
+                            {
+                                pedidoId,
+                                estado: 'pendiente',
+                                message: 'Pedido recibido, esperando confirmación'
+                            }
+                        );
+                    }
+                } catch (err) {
+                    console.warn('No se pudo emitir tracking inicial:', err.message);
+                }
+            }
+
             return { pedidoId };
 
         } catch (error) {
@@ -168,20 +191,22 @@ class DeliveryService {
      * Actualiza el estado de un pedido a domicilio
      * Requirement 8.4: Valida transiciones de estado
      * Requirements 8.9, 9.7: Integra con cocina al cambiar a 'en_preparacion'
-     * 
+     *
      * @param {number} pedidoId - ID del pedido
      * @param {string} nuevoEstado - Nuevo estado
+     * @param {Object} [opts] - Opciones
+     * @param {number} [opts.domiciliarioId] - Si se pasa, verifica que el pedido pertenezca a este domiciliario
      * @returns {Promise<void>}
      */
-    async updateDeliveryStatus(pedidoId, nuevoEstado) {
+    async updateDeliveryStatus(pedidoId, nuevoEstado, opts = {}) {
         // Validar que el estado sea válido
         if (!DeliveryService.ESTADOS.includes(nuevoEstado)) {
             throw new ValidationError(`Estado '${nuevoEstado}' no es válido. Estados permitidos: ${DeliveryService.ESTADOS.join(', ')}`);
         }
 
-        // Obtener pedido actual
+        // Obtener pedido actual (incluye tracking_token para notificar al cliente)
         const [pedidos] = await db.query(
-            'SELECT id, estado, tipo_pedido, restaurante_id FROM pedidos WHERE id = ?',
+            'SELECT id, estado, tipo_pedido, restaurante_id, tracking_token, domiciliario_id FROM pedidos WHERE id = ?',
             [pedidoId]
         );
 
@@ -194,6 +219,11 @@ class DeliveryService {
         // Verificar que sea un pedido a domicilio
         if (pedido.tipo_pedido !== 'domicilio') {
             throw new BusinessError('Solo se puede actualizar el estado de pedidos a domicilio');
+        }
+
+        // Verificar asignación a domiciliario (si se proporciona)
+        if (opts.domiciliarioId && pedido.domiciliario_id !== opts.domiciliarioId) {
+            throw new BusinessError('Este pedido no está asignado a este domiciliario');
         }
 
         // Validar transición de estado
@@ -221,6 +251,35 @@ class DeliveryService {
         if (nuevoEstado === 'en_preparacion') {
             await this._sendToKitchen(pedidoId, pedido.restaurante_id);
         }
+
+        // Tracking en tiempo real para el cliente público: emitir al room tracking_<token>
+        // No bloquea la operación si la notificación falla (puede que el cliente no esté conectado).
+        if (this.notificationService && pedido.tracking_token) {
+            try {
+                this.notificationService.notifyTrackingUpdate(pedido.tracking_token, {
+                    pedidoId: pedido.id,
+                    estado: nuevoEstado,
+                    message: this._humanStatusMessage(nuevoEstado)
+                });
+            } catch (err) {
+                console.warn('No se pudo notificar al tracking público:', err.message);
+            }
+        }
+    }
+
+    /**
+     * Devuelve un mensaje legible para el cliente según el estado.
+     */
+    _humanStatusMessage(estado) {
+        const messages = {
+            'pendiente':      'Pedido recibido, esperando confirmación',
+            'confirmado':     '¡Tu pedido fue confirmado!',
+            'en_preparacion': 'Tu pedido se está preparando',
+            'en_camino':      '¡Tu pedido va en camino!',
+            'entregado':      '¡Pedido entregado! Gracias por tu compra',
+            'cancelado':      'Tu pedido fue cancelado'
+        };
+        return messages[estado] || null;
     }
 
     /**

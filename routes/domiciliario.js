@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const notificationService = require('../services/NotificationService');
+const DeliveryService = require('../services/DeliveryService');
+
+// Instanciar servicio con notificationService (para tracking público)
+const deliveryService = new DeliveryService(null, null, notificationService);
 
 // GET /domiciliario - Vista del domiciliario (mobile-first)
 router.get('/', async (req, res) => {
@@ -44,36 +48,51 @@ router.get('/pedidos', async (req, res) => {
 });
 
 // PUT /api/domiciliario/:id/estado - Cambiar estado del pedido
+// Delega en DeliveryService para reusar la state machine, la validación de
+// transición y las notificaciones (admin + tracking público).
 router.put('/:id/estado', async (req, res) => {
     try {
         const pedidoId = req.params.id;
         const userId = req.user.id;
         const { estado } = req.body;
 
-        // Solo permitir: en_camino, entregado
+        // Solo permitir: en_camino, entregado (es lo que el domiciliario puede hacer)
         if (!['en_camino', 'entregado'].includes(estado)) {
             return res.status(400).json({ error: 'Estado no permitido para domiciliario' });
         }
 
-        // Verificar que el pedido está asignado a este domiciliario
-        const [pedidos] = await db.query(
-            'SELECT id, estado FROM pedidos WHERE id = ? AND domiciliario_id = ?',
-            [pedidoId, userId]
+        // Verificar que el pedido está asignado a este domiciliario (defensa rápida)
+        // y obtener su restaurante_id para notificar al room del tenant.
+        const [pedidoRows] = await db.query(
+            'SELECT id, estado, domiciliario_id, restaurante_id FROM pedidos WHERE id = ?',
+            [pedidoId]
         );
-
-        if (pedidos.length === 0) {
-            return res.status(403).json({ error: 'Pedido no asignado a este domiciliario' });
+        if (pedidoRows.length === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+        if (pedidoRows[0].domiciliario_id !== userId) {
+            return res.status(403).json({ error: 'Este pedido no está asignado a ti' });
         }
 
-        await db.query('UPDATE pedidos SET estado = ? WHERE id = ?', [estado, pedidoId]);
-
-        // Notificar cambio de estado via WebSocket
-        const tenantId = req.tenantId;
-        notificationService.notifyDeliveryStatusChange(tenantId, { pedidoId, estado });
+        // Delegar: valida transición, actualiza, notifica admin (room tenant)
+        // y notifica al tracking público del cliente.
+        await deliveryService.updateDeliveryStatus(pedidoId, estado, {
+            domiciliarioId: userId
+        });
 
         res.json({ success: true, message: `Pedido #${pedidoId} → ${estado}` });
     } catch (error) {
-        console.error('Error actualizando estado:', error);
+        // Errores tipados del service
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ error: error.message });
+        }
+        if (error.name === 'NotFoundError') {
+            return res.status(404).json({ error: error.message });
+        }
+        if (error.name === 'BusinessError') {
+            return res.status(422).json({ error: error.message });
+        }
+        console.error('Error actualizando estado domiciliario:', error);
         res.status(500).json({ error: 'Error al actualizar estado' });
     }
 });

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><%= restaurante.nombre_negocio || restaurante.nombre %> - Pide Online</title>
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root{--primary:#ff4757;--primary-dark:#e84040;--secondary:#2f3542;--bg:#fafafa;--card:#ffffff;--text:#2f3542;--text-light:#747d8c;--text-muted:#a4b0be;--shadow:0 2px 16px rgba(0,0,0,0.08);--shadow-lg:0 8px 30px rgba(0,0,0,0.12);--radius:14px;--radius-sm:10px}
@@ -247,7 +248,7 @@
     function closeCheckout(){document.getElementById('checkoutOverlay').classList.remove('show')}
     async function confirmOrder(){const dir=document.getElementById('chkDir').value.trim();const notas=document.getElementById('chkNotas').value.trim();if(!dir){alert('Ingresa la dirección');return}const subtotal=cart.reduce((s,i)=>s+i.precio*i.qty,0);const propina=Math.round(subtotal*tipPercent/100);const items=cart.map(i=>({productoId:i.id,cantidad:i.qty,precio:i.precio,unidad:i.unidad}));try{const res=await fetch('/api/tienda/'+slug+'/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,direccion:dir,notas,propina})});const data=await res.json();if(!res.ok){if(res.status===401){closeCheckout();showAuth('checkout');return}alert(data.error||'Error');return}cart=[];updateCartBar();closeCheckout();loadTracking(data.trackingToken)}catch(e){alert('Error de conexión')}}
     async function loadTracking(token){document.getElementById('menuView').classList.add('hidden');document.getElementById('cartBar').classList.remove('visible');const view=document.getElementById('trackingView');view.classList.remove('hidden');view.innerHTML='<div class="tracking-wrap"><div class="tracking-status"><div class="spinner" style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem"></div><p>Cargando...</p></div></div>';try{const res=await fetch('/api/tienda/'+slug+'/track/'+token);const data=await res.json();if(!res.ok){view.innerHTML='<div class="tracking-wrap"><div class="tracking-status"><p style="color:var(--primary)">Pedido no encontrado</p></div></div>';return}renderTracking(data.pedido,token)}catch(e){view.innerHTML='<div class="tracking-wrap"><div class="tracking-status"><p style="color:var(--primary)">Error</p></div></div>'}}
-    function renderTracking(pedido,token){const view=document.getElementById('trackingView');const estados=['pendiente','confirmado','en_preparacion','en_camino','entregado'];const labels=['Recibido','Confirmado','En Preparación','En Camino','Entregado'];const icons=['bi-clock','bi-check-circle','bi-fire','bi-truck','bi-house-check'];const idx=estados.indexOf(pedido.estado);const stepsHtml=estados.map((e,i)=>{let cls='step-dot';if(i<idx)cls+=' done';else if(i===idx)cls+=' active';return`<div class="step"><div class="${cls}"><i class="bi ${icons[i]}"></i></div><div><h4>${labels[i]}</h4></div></div>`}).join('');let itemsHtml='';if(pedido.items&&pedido.items.length){itemsHtml=pedido.items.map(i=>`<div class="cart-item"><div class="ci-info"><div class="ci-name">${i.producto_nombre}</div><div class="ci-qty">x${i.cantidad}</div></div><div class="ci-price">$${fmt(i.subtotal)}</div></div>`).join('')}view.innerHTML=`<div class="tracking-wrap"><div class="tracking-status"><i class="bi ${icons[idx]||'bi-clock'}"></i><h2>${labels[idx]||pedido.estado}</h2><p>Pedido #${pedido.id}</p></div><div class="tracking-steps">${stepsHtml}</div>${itemsHtml?`<div style="margin-top:1.5rem">${itemsHtml}</div>`:''}<div style="margin-top:1rem"><div class="summary-row total"><span>Total</span><span>$${fmt(pedido.total)}</span></div></div><button class="btn-outline" onclick="backToMenu()" style="margin-top:1.5rem"><i class="bi bi-arrow-left me-2"></i>Volver al menú</button></div>`;if(pedido.estado!=='entregado'&&pedido.estado!=='cancelado'){setTimeout(()=>loadTracking(token),10000)}}
+    function renderTracking(pedido,token){const view=document.getElementById('trackingView');const estados=['pendiente','confirmado','en_preparacion','en_camino','entregado'];const labels=['Recibido','Confirmado','En Preparación','En Camino','Entregado'];const icons=['bi-clock','bi-check-circle','bi-fire','bi-truck','bi-house-check'];const idx=estados.indexOf(pedido.estado);const stepsHtml=estados.map((e,i)=>{let cls='step-dot';if(i<idx)cls+=' done';else if(i===idx)cls+=' active';return`<div class="step"><div class="${cls}"><i class="bi ${icons[i]}"></i></div><div><h4>${labels[i]}</h4></div></div>`}).join('');let itemsHtml='';if(pedido.items&&pedido.items.length){itemsHtml=pedido.items.map(i=>`<div class="cart-item"><div class="ci-info"><div class="ci-name">${i.producto_nombre}</div><div class="ci-qty">x${i.cantidad}</div></div><div class="ci-price">$${fmt(i.subtotal)}</div></div>`).join('')}view.innerHTML=`<div class="tracking-wrap"><div class="tracking-status"><i class="bi ${icons[idx]||'bi-clock'}"></i><h2>${labels[idx]||pedido.estado}</h2><p>Pedido #${pedido.id}</p></div><div class="tracking-steps">${stepsHtml}</div>${itemsHtml?`<div style="margin-top:1.5rem">${itemsHtml}</div>`:''}<div style="margin-top:1rem"><div class="summary-row total"><span>Total</span><span>$${fmt(pedido.total)}</span></div></div><button class="btn-outline" onclick="backToMenu()" style="margin-top:1.5rem"><i class="bi bi-arrow-left me-2"></i>Volver al menú</button></div>`;}
     function backToMenu(){document.getElementById('trackingView').classList.add('hidden');document.getElementById('menuView').classList.remove('hidden');updateCartBar()}
     
     // Mis Pedidos
@@ -277,6 +278,138 @@
     }
 
     function fmt(n){return Number(n||0).toLocaleString('es-CO')}
+
+    // ============================================================
+    // Tracking en tiempo real vía WebSocket
+    // - Conexión al room tracking_<token> usando auth.trackingToken
+    // - Si WebSocket falla, fallback a polling cada 10s
+    // - Se desconecta al volver al menú o cerrar la página
+    // ============================================================
+    let trackingSocket = null;
+    let trackingFallbackInterval = null;
+    const TRACKING_POLL_MS = 10000;
+
+    function startTrackingSocket(token) {
+        stopTrackingSocket();
+        try {
+            if (typeof io === 'undefined') return; // socket.io client no cargado
+            trackingSocket = io({ auth: { trackingToken: token }, transports: ['websocket','polling'] });
+
+            trackingSocket.on('tracking_authenticated', (data) => {
+                // Confirmado por el servidor. La primera vista viene del loadTracking inicial.
+                setTrackingStatus('live');
+            });
+
+            trackingSocket.on('tracking_update', (data) => {
+                // El servidor notifica un cambio de estado. Refetch + re-render.
+                clearInterval(trackingFallbackInterval);
+                trackingFallbackInterval = null;
+                loadTracking(token);
+                if (data.message) {
+                    showTrackingToast(data.message);
+                }
+            });
+
+            trackingSocket.on('disconnect', () => {
+                setTrackingStatus('offline');
+                startTrackingFallback(token);
+            });
+
+            trackingSocket.on('connect_error', () => {
+                setTrackingStatus('offline');
+                startTrackingFallback(token);
+            });
+        } catch (e) {
+            startTrackingFallback(token);
+        }
+    }
+
+    function stopTrackingSocket() {
+        if (trackingSocket) {
+            try { trackingSocket.disconnect(); } catch(e) {}
+            trackingSocket = null;
+        }
+        if (trackingFallbackInterval) {
+            clearInterval(trackingFallbackInterval);
+            trackingFallbackInterval = null;
+        }
+    }
+
+    function startTrackingFallback(token) {
+        if (trackingFallbackInterval) return; // ya hay un polling activo
+        trackingFallbackInterval = setInterval(() => loadTracking(token), TRACKING_POLL_MS);
+    }
+
+    function setTrackingStatus(state) {
+        // state: 'live' | 'offline' | 'connecting'
+        const indicator = document.getElementById('trackingStatus');
+        if (!indicator) return;
+        indicator.dataset.state = state;
+        if (state === 'live') {
+            indicator.innerHTML = '<i class="bi bi-broadcast"></i> <span>En vivo</span>';
+            indicator.title = 'Conectado en tiempo real';
+        } else if (state === 'connecting') {
+            indicator.innerHTML = '<i class="bi bi-broadcast"></i> <span>Conectando…</span>';
+        } else {
+            indicator.innerHTML = '<i class="bi bi-broadcast"></i> <span>Reconectando…</span>';
+            indicator.title = 'Sin conexión en vivo (usando polling)';
+        }
+    }
+
+    function showTrackingToast(message) {
+        if (!message) return;
+        // Toast ligero nativo (no usamos SweetAlert para mantener la página pública ligera)
+        let toast = document.getElementById('trackingToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'trackingToast';
+            toast.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%) translateY(-150%);background:var(--secondary,#2f3542);color:#fff;padding:0.7rem 1.1rem;border-radius:10px;font-size:0.92rem;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.25);transition:transform 0.3s ease;max-width:90vw;text-align:center;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; });
+        setTimeout(() => { toast.style.transform = 'translateX(-50%) translateY(-150%)'; }, 3500);
+    }
+
+    // Llamar al iniciar/cerrar tracking
+    // (interceptamos renderTracking para arrancar el socket justo después de pintar)
+    const _origRenderTracking = renderTracking;
+    renderTracking = function(pedido, token) {
+        _origRenderTracking(pedido, token);
+        // Inyectar el indicador de estado en la vista de tracking
+        const view = document.getElementById('trackingView');
+        let indicator = document.getElementById('trackingStatus');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'trackingStatus';
+            indicator.style.cssText = 'position:absolute;top:0.75rem;right:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.55rem;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(255,255,255,0.85);color:var(--text-light,#747d8c);backdrop-filter:blur(4px);';
+            indicator.dataset.state = 'connecting';
+            if (view && view.firstChild) {
+                const wrap = view.querySelector('.tracking-wrap');
+                if (wrap) {
+                    wrap.style.position = 'relative';
+                    wrap.appendChild(indicator);
+                }
+            }
+        }
+        setTrackingStatus('connecting');
+        startTrackingSocket(token);
+        // Si el pedido ya está terminal, no abrimos socket (no hay nada que recibir)
+        if (pedido.estado === 'entregado' || pedido.estado === 'cancelado') {
+            stopTrackingSocket();
+            setTrackingStatus('offline');
+        }
+    };
+
+    // Override backToMenu para desconectar el socket
+    const _origBackToMenu = backToMenu;
+    backToMenu = function() {
+        stopTrackingSocket();
+        _origBackToMenu();
+    };
+
+    // Limpiar al cerrar la pestaña
+    window.addEventListener('beforeunload', stopTrackingSocket);
     </script>
 </body>
 </html>
