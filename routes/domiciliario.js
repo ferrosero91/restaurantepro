@@ -47,6 +47,68 @@ router.get('/pedidos', async (req, res) => {
     }
 });
 
+// GET /api/domiciliario/historial - Pedidos completados/cancelados del domiciliario
+// Filtros: desde (YYYY-MM-DD), hasta (YYYY-MM-DD), estado, limit (default 50, max 200)
+router.get('/historial', async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const tenantId = req.tenantId;
+        const { desde, hasta, estado, limit } = req.query;
+        const limitN = Math.min(parseInt(limit) || 50, 200);
+
+        // Whitelist de estados permitidos en historial
+        const estadosValidos = ['entregado', 'cancelado', 'en_camino', 'en_preparacion'];
+        const estadoFiltro = estadosValidos.includes(estado) ? estado : null;
+
+        const where = [
+            'p.restaurante_id = ?',
+            "p.tipo_pedido = 'domicilio'",
+            'p.domiciliario_id = ?',
+            "p.estado IN ('entregado', 'cancelado', 'en_camino', 'en_preparacion')"
+        ];
+        const params = [tenantId, userId];
+
+        if (desde) {
+            where.push('p.created_at >= ?');
+            params.push(`${desde} 00:00:00`);
+        }
+        if (hasta) {
+            where.push('p.created_at <= ?');
+            params.push(`${hasta} 23:59:59`);
+        }
+        if (estadoFiltro) {
+            where.push('p.estado = ?');
+            params.push(estadoFiltro);
+        }
+
+        const [pedidos] = await db.query(
+            `SELECT p.id, p.estado, p.total, p.direccion_entrega, p.telefono_contacto,
+                    p.notas_entrega, p.valor_domicilio, p.created_at, p.updated_at,
+                    c.nombre as cliente_nombre, c.telefono as cliente_telefono
+             FROM pedidos p
+             LEFT JOIN clientes c ON p.cliente_id = c.id
+             WHERE ${where.join(' AND ')}
+             ORDER BY COALESCE(p.updated_at, p.created_at) DESC
+             LIMIT ${limitN}`,
+            params
+        );
+
+        // Duración total del pedido + fecha formateada
+        pedidos.forEach(p => {
+            const created = new Date(p.created_at);
+            const mins = Math.floor((Date.now() - created.getTime()) / 60000);
+            p.duracion = mins < 60 ? `${mins} min` : `${Math.floor(mins/60)}h ${mins%60}m`;
+            const d = new Date(p.updated_at || p.created_at);
+            p.fechaTexto = d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+        });
+
+        res.json({ success: true, pedidos });
+    } catch (error) {
+        console.error('Error listando historial domiciliario:', error);
+        res.status(500).json({ error: 'Error al cargar historial' });
+    }
+});
+
 // PUT /api/domiciliario/:id/estado - Cambiar estado del pedido
 // Delega en DeliveryService para reusar la state machine, la validación de
 // transición y las notificaciones (admin + tracking público).
