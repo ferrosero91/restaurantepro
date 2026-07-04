@@ -173,19 +173,51 @@ app.use('/api/v1', apiRoutes);
 app.use('/webhooks', requireAuth, requireTenant, webhooksRouter);
 
 // Ruta principal (requiere autenticación)
-app.get('/', requireAuth, (req, res) => {
-    // Si es superadmin, redirigir a su dashboard
+// Maneja la redirección según el rol del usuario:
+//   - superadmin: /superadmin
+//   - Domiciliario: /domiciliario (vista mobile de entregas)
+//   - Cajero/Mesero/Cocina/Admin: /index-tactil (POS) si tiene permiso
+//   - Sin permisos relevantes: vista "sin permisos" o redirige a la primera página
+app.get('/', requireAuth, async (req, res) => {
+    // 1. Superadmin siempre va a su panel
     if (req.user.rol === 'superadmin') {
         return res.redirect('/superadmin');
     }
-    
-    // Para otros usuarios, verificar tenant y mostrar index
+
+    // 2. Domiciliarios van directo a su vista mobile de entregas
+    if (req.user.rol === 'Domiciliario') {
+        return res.redirect('/domiciliario');
+    }
+
+    // 3. Validar que el usuario pertenezca a un restaurante
     if (!req.user.restaurante_id) {
         return res.status(403).render('error', {
             error: { message: 'Usuario sin restaurante asignado' }
         });
     }
-    
+
+    // 4. Verificar si tiene permiso para acceder al POS (Facturación = ruta '/')
+    const tienePermisoPOS = req.user.permisosRutas && req.user.permisosRutas.includes('/');
+
+    if (!tienePermisoPOS) {
+        // Si tiene algún permiso, redirigir a la primera página disponible
+        const permisos = req.user.permisosRutas || [];
+        const paginasPermitidas = ['/mesas', '/cocina', '/reportes', '/productos', '/domicilios',
+                                    '/clientes', '/configuracion', '/usuarios', '/domiciliario'];
+        const primeraDisponible = permisos.find(p => paginasPermitidas.includes(p));
+
+        if (primeraDisponible) {
+            return res.redirect(primeraDisponible);
+        }
+
+        // Sin permisos relevantes: mostrar vista de sin permisos
+        return res.status(403).render('error', {
+            error: {
+                message: 'Tu usuario no tiene permisos asignados. Contacta al administrador del restaurante.'
+            }
+        });
+    }
+
     res.render('index-tactil', { user: req.user });
 });
 
