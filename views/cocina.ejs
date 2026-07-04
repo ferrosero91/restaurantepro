@@ -6,6 +6,7 @@
     <title>Cocina</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         html, body { height: 100%; }
         body { min-height: 100vh; display: flex; flex-direction: column; }
@@ -57,6 +58,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
+    <div class="rp-content">
 
     <main class="flex-grow-1">
     <div class="container">
@@ -132,9 +134,6 @@
         </div>
     </div>
     </main>
-
-    <%- include('partials/footer') %>
-
     <!-- Contenedor de notificaciones toast -->
     <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1090"></div>
 
@@ -153,5 +152,7 @@
       window.__COCINA_ITEMS__ = <%- JSON.stringify(items || []) %>;
     </script>
     <script src="/js/cocina.js"></script>
+    </div>
+<%- include('partials/toasts') %>
 </body>
 </html>

@@ -3,19 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %></title>
+    <meta name="theme-color" content="#1e293b">
+    <title><%= typeof title !== 'undefined' ? title : 'RestaurantPro' %></title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
-    <%- stylesheets %>
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/alerts.css">
+    <% if (typeof extraStyles !== 'undefined') { %><%- extraStyles %><% } %>
 </head>
 <body>
+    <a class="rp-skip-link" href="#mainContent">Saltar al contenido principal</a>
+    <main id="mainContent" tabindex="-1">
     <%- body %>
+    </main>
+
+    <%- include('partials/toasts') %>
 
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script>
-        // Configuración global de SweetAlert2
+        // Configuración global de SweetAlert2 alineada con la paleta del sistema de diseño.
         const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',
@@ -28,39 +36,30 @@
             }
         });
 
-        // Función global para mostrar alertas
         function mostrarAlerta(mensaje, tipo = 'success') {
             Toast.fire({
                 icon: tipo,
                 title: mensaje,
-                customClass: {
-                    popup: 'animate__animated animate__fadeInDown'
-                }
+                customClass: { popup: 'animate__animated animate__fadeInDown' }
             });
         }
 
-        // Función global para confirmaciones
         function confirmarAccion(titulo, mensaje) {
             return Swal.fire({
                 title: titulo,
                 text: mensaje,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
+                confirmButtonColor: '#e94560',
+                cancelButtonColor: '#64748b',
                 confirmButtonText: 'Confirmar',
                 cancelButtonText: 'Cancelar',
-                customClass: {
-                    popup: 'animate__animated animate__fadeInDown'
-                }
+                customClass: { popup: 'animate__animated animate__fadeInDown' }
             });
         }
 
-        // Reemplazar el alert nativo
-        window.alert = function(mensaje) {
-            mostrarAlerta(mensaje, 'warning');
-        };
+        window.alert = function(mensaje) { mostrarAlerta(mensaje, 'warning'); };
     </script>
-    <%- scripts %>
+    <% if (typeof extraScripts !== 'undefined') { %><%- extraScripts %><% } %>
 </body>
-</html> 
+</html>

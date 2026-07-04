@@ -8,6 +8,7 @@
     <link href="/vendor/select2/css/select2.min.css" rel="stylesheet" />
     <link href="/vendor/select2-bootstrap-5-theme/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         html, body { height: 100%; }
         body { min-height: 100vh; display: flex; flex-direction: column; }
@@ -33,16 +34,7 @@
         .search-container {
             position: relative;
         }
-        .navbar {
-            background-color: #2c3e50;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
-            font-size: 1.1rem;
-        }
-        .navbar-brand {
-            color: white !important;
-            font-weight: bold;
-            font-size: 1.4rem;
-        }
+        /* Navbar: estilos gestionados por theme.css + partial/navbar.ejs */
         .card {
             border: none;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
@@ -61,14 +53,6 @@
         .btn-primary:hover {
             background-color: #2980b9;
             border-color: #2980b9;
-        }
-        .btn-success {
-            background-color: #2ecc71;
-            border-color: #2ecc71;
-        }
-        .btn-success:hover {
-            background-color: #27ae60;
-            border-color: #27ae60;
         }
         .select2-container--bootstrap-5 .select2-selection {
             border: 1px solid #dee2e6;
@@ -120,6 +104,7 @@
 <body>
     <%- include('partials/navbar') %>
 
+    <div class="rp-content">
     <main class="flex-grow-1">
     <div class="container">
         <!-- Información del Cliente -->
@@ -309,9 +294,6 @@
         </div>
     </div>
     </main>
-
-    <%- include('partials/footer') %>
-
     <!-- Modal Nuevo Cliente -->
     <div class="modal fade" id="nuevoClienteModal" tabindex="-1">
         <div class="modal-dialog">
@@ -400,10 +382,13 @@
         </div>
     </div>
 
+    </div> <!-- /rp-content -->
+
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/select2/js/select2.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="/js/factura.js"></script>
+<%- include('partials/toasts') %>
 </body>
 </html> 

@@ -3,177 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RestaurantPro - Sistema de gestión integral para restaurantes. Inicia sesión para acceder al sistema.">
+    <meta name="theme-color" content="#1e293b">
     <title>Iniciar Sesión - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; }
+        /* Layout splits específicos del login — usan tokens de theme.css */
         body {
-            background: #f0f2f5;
+            background: var(--rp-slate-100);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .login-page {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 1.5rem;
         }
         .login-wrapper {
             display: flex;
             width: 100%;
             max-width: 900px;
             min-height: 500px;
-            border-radius: 20px;
+            border-radius: var(--rp-radius-xl);
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            box-shadow: var(--rp-shadow-lg);
         }
         .login-brand {
             flex: 1;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #0f172a 100%);
+            background: var(--rp-gradient-slate);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 3rem;
-            color: white;
+            color: #fff;
             position: relative;
             overflow: hidden;
         }
         .login-brand::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 100%;
+            top: -50%; right: -50%;
+            width: 100%; height: 100%;
             background: radial-gradient(circle, rgba(233,69,96,0.15) 0%, transparent 70%);
             border-radius: 50%;
         }
         .login-brand::after {
             content: '';
             position: absolute;
-            bottom: -30%;
-            left: -30%;
-            width: 80%;
-            height: 80%;
-            background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+            bottom: -30%; left: -30%;
+            width: 80%; height: 80%;
+            background: radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%);
             border-radius: 50%;
         }
         .brand-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 20px;
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: var(--rp-radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 2.5rem;
             margin-bottom: 1.5rem;
             position: relative;
-            border: 1px solid rgba(255,255,255,0.1);
         }
-        .brand-title {
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            position: relative;
-        }
-        .brand-subtitle {
-            font-size: 0.95rem;
-            opacity: 0.7;
-            text-align: center;
-            line-height: 1.5;
-            position: relative;
-        }
+        .brand-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; position: relative; }
+        .brand-subtitle { font-size: 0.95rem; opacity: 0.7; text-align: center; line-height: 1.5; position: relative; }
+
         .login-form-side {
             flex: 1;
-            background: white;
+            background: #fff;
             padding: 3rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-        .login-form-side h2 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 0.5rem;
-        }
-        .login-form-side .subtitle {
-            color: #64748b;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-        }
-        .form-group { margin-bottom: 1.25rem; }
-        .form-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #475569;
-            margin-bottom: 0.4rem;
-        }
-        .form-group .input-wrap {
-            position: relative;
-        }
-        .form-group .input-wrap i {
+        .login-form-side h2 { font-size: 1.6rem; font-weight: 700; color: var(--rp-text-strong); margin-bottom: 0.5rem; }
+        .login-form-side .subtitle { color: var(--rp-text-muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+        /* Password toggle */
+        .rp-pwd-wrap { position: relative; }
+        .rp-pwd-wrap .rp-pwd-toggle {
             position: absolute;
-            left: 14px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
-            color: #94a3b8;
-            font-size: 1.1rem;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 0.8rem 1rem 0.8rem 2.8rem;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-            background: #f8fafc;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: #e94560;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(233,69,96,0.1);
-        }
-        .form-group input::placeholder { color: #94a3b8; }
-        .btn-login {
-            width: 100%;
-            padding: 0.85rem;
-            background: #e94560;
-            color: white;
+            background: transparent;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
+            color: var(--rp-text-muted);
             cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 0.5rem;
+            padding: 4px 6px;
+            border-radius: var(--rp-radius-sm);
+            font-size: 1.05rem;
+            transition: var(--rp-transition);
         }
-        .btn-login:hover {
-            background: #d63851;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(233,69,96,0.3);
-        }
-        .btn-login:active { transform: translateY(0); }
-        .alert-error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 0.75rem 1rem;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            margin-bottom: 1.25rem;
+        .rp-pwd-wrap .rp-pwd-toggle:hover { color: var(--rp-accent); background: var(--rp-accent-soft); }
+        .rp-pwd-wrap .rp-pwd-toggle:focus-visible { outline: 2px solid var(--rp-accent); outline-offset: 1px; }
+        .rp-pwd-wrap .rp-input { padding-right: 2.6rem; }
+
+        /* Submit button con spinner */
+        .btn-submit {
+            position: relative;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
         }
+        .btn-submit.is-loading { pointer-events: none; }
+        .btn-submit .btn-label { transition: opacity 0.15s ease; }
+        .btn-submit.is-loading .btn-label { opacity: 0; }
+        .btn-submit .rp-spinner {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 1.1rem; height: 1.1rem; border-width: 2px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            border-color: rgba(255,255,255,0.3);
+            border-top-color: #fff;
+        }
+        .btn-submit.is-loading .rp-spinner { opacity: 1; }
+
+        /* Remember-me + forgot password */
+        .login-form-side .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0 1.25rem;
+            font-size: 0.85rem;
+        }
+        .login-form-side .form-check-label { color: var(--rp-text-muted); cursor: pointer; }
+        .login-form-side .forgot-link {
+            color: var(--rp-accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .login-form-side .forgot-link:hover { color: var(--rp-accent-hover); text-decoration: underline; }
+
         @media (max-width: 768px) {
-            body { 
-                background: #1e293b;
-                padding: 0;
-                align-items: stretch;
-            }
+            body { background: var(--rp-slate-800); }
+            .login-page { padding: 0; }
             .login-wrapper {
                 flex-direction: column;
                 max-width: 100%;
@@ -181,75 +157,161 @@
                 border-radius: 0;
                 box-shadow: none;
             }
-            .login-brand {
-                padding: 2.5rem 2rem 2rem;
-                flex: none;
-            }
-            .brand-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
-                margin-bottom: 1rem;
-            }
+            .login-brand { padding: 2.5rem 2rem 2rem; flex: none; }
+            .brand-icon { width: 60px; height: 60px; font-size: 2rem; margin-bottom: 1rem; }
             .brand-title { font-size: 1.6rem; }
             .brand-subtitle { font-size: 0.85rem; }
-            .login-form-side { 
+            .login-form-side {
                 padding: 2rem 1.5rem 3rem;
                 border-radius: 24px 24px 0 0;
                 margin-top: -1rem;
                 flex: 1;
             }
             .login-form-side h2 { font-size: 1.4rem; }
+            .login-form-side .form-options { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <!-- Brand Side -->
-        <div class="login-brand">
-            <div class="brand-icon">
-                <i class="bi bi-shop"></i>
-            </div>
-            <div class="brand-title">RestaurantPro</div>
-            <div class="brand-subtitle">
-                Sistema de gestión integral<br>para tu restaurante
-            </div>
-        </div>
+    <!-- Skip link para teclado (WCAG 2.4.1) -->
+    <a class="rp-skip-link" href="#loginForm">Saltar al formulario de inicio de sesión</a>
 
-        <!-- Form Side -->
-        <div class="login-form-side">
-            <h2>Bienvenido</h2>
-            <p class="subtitle">Ingresa tus credenciales para acceder al sistema</p>
-
-            <% if (error) { %>
-            <div class="alert-error">
-                <i class="bi bi-exclamation-circle"></i>
-                <%= error %>
+    <div class="login-page">
+        <div class="login-wrapper">
+            <div class="login-brand">
+                <div class="brand-icon" aria-hidden="true"><i class="bi bi-shop"></i></div>
+                <div class="brand-title">RestaurantPro</div>
+                <div class="brand-subtitle">Sistema de gestión integral<br>para tu restaurante</div>
             </div>
-            <% } %>
 
-            <form method="POST" action="/login">
-                <div class="form-group">
-                    <label>Correo electrónico</label>
-                    <div class="input-wrap">
-                        <i class="bi bi-envelope"></i>
-                        <input type="email" name="email" placeholder="tu@correo.com" required autofocus>
-                    </div>
+            <div class="login-form-side">
+                <h2>Bienvenido</h2>
+                <p class="subtitle">Ingresa tus credenciales para acceder al sistema</p>
+
+                <% if (error) { %>
+                <div class="rp-alert rp-alert-error" role="alert">
+                    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                    <span><%= error %></span>
                 </div>
+                <% } %>
 
-                <div class="form-group">
-                    <label>Contraseña</label>
-                    <div class="input-wrap">
-                        <i class="bi bi-lock"></i>
-                        <input type="password" name="password" placeholder="••••••••" required>
+                <form method="POST" action="/login" id="loginForm" novalidate>
+                    <div class="mb-3 rp-form-group">
+                        <label for="email" class="rp-label">
+                            Correo electrónico <span class="rp-required-mark" aria-hidden="true">*</span>
+                        </label>
+                        <div class="rp-input-wrap">
+                            <i class="bi bi-envelope" aria-hidden="true"></i>
+                            <input type="email"
+                                   id="email"
+                                   name="email"
+                                   placeholder="tu@correo.com"
+                                   required
+                                   autofocus
+                                   autocomplete="username"
+                                   inputmode="email"
+                                   class="rp-input"
+                                   aria-required="true"
+                                   aria-describedby="email-hint">
+                        </div>
+                        <div class="rp-form-hint" id="email-hint">Usa el correo con el que te registraste</div>
                     </div>
-                </div>
 
-                <button type="submit" class="btn-login">
-                    Iniciar Sesión
-                </button>
-            </form>
+                    <div class="mb-3 rp-form-group">
+                        <label for="password" class="rp-label">
+                            Contraseña <span class="rp-required-mark" aria-hidden="true">*</span>
+                        </label>
+                        <div class="rp-pwd-wrap rp-input-wrap">
+                            <i class="bi bi-lock" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="password"
+                                   name="password"
+                                   placeholder="••••••••"
+                                   required
+                                   minlength="4"
+                                   autocomplete="current-password"
+                                   class="rp-input"
+                                   aria-required="true"
+                                   aria-describedby="pwd-hint">
+                            <button type="button"
+                                    class="rp-pwd-toggle"
+                                    id="pwdToggle"
+                                    aria-label="Mostrar contraseña"
+                                    aria-pressed="false">
+                                <i class="bi bi-eye" id="pwdToggleIcon" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="rp-form-hint" id="pwd-hint">Mínimo 4 caracteres</div>
+                    </div>
+
+                    <div class="form-options">
+                        <div class="form-check">
+                            <input type="checkbox" id="remember" name="remember" class="form-check-input">
+                            <label for="remember" class="form-check-label">Recordarme</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="rp-btn rp-btn-primary w-100 btn-submit" id="loginBtn">
+                        <span class="btn-label">
+                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Iniciar Sesión
+                        </span>
+                        <span class="rp-spinner" aria-hidden="true"></span>
+                        <span class="sr-only">Cargando...</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
+
+    <footer class="rp-footer">
+        <div class="container-fluid">
+            <div class="rp-footer-inner">
+                <span class="rp-footer-brand">
+                    <i class="bi bi-shop" aria-hidden="true"></i> RestaurantPro
+                </span>
+                <span class="rp-footer-copy">
+                    &copy; <%= new Date().getFullYear() %>
+                    <strong>GestionXpress</strong> &middot; Todos los derechos reservados
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    (function() {
+        // Password toggle (MD: password-toggle)
+        const pwd = document.getElementById('password');
+        const toggle = document.getElementById('pwdToggle');
+        const icon = document.getElementById('pwdToggleIcon');
+        if (pwd && toggle && icon) {
+            toggle.addEventListener('click', () => {
+                const isVisible = pwd.type === 'text';
+                pwd.type = isVisible ? 'password' : 'text';
+                icon.className = isVisible ? 'bi bi-eye' : 'bi bi-eye-slash';
+                toggle.setAttribute('aria-label', isVisible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+                toggle.setAttribute('aria-pressed', String(!isVisible));
+                pwd.focus();
+            });
+        }
+
+        // Submit con loading state (MD: submit-feedback)
+        const form = document.getElementById('loginForm');
+        const btn = document.getElementById('loginBtn');
+        if (form && btn) {
+            form.addEventListener('submit', (e) => {
+                // Validación HTML5 + custom
+                if (!pwd.value || pwd.value.length < 4) {
+                    e.preventDefault();
+                    pwd.focus();
+                    return;
+                }
+                btn.classList.add('is-loading');
+                btn.setAttribute('aria-busy', 'true');
+                btn.disabled = true;
+                // No restauramos — el navegador recarga la página tras login
+            });
+        }
+    })();
+    </script>
 </body>
 </html>

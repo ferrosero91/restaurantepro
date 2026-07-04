@@ -6,6 +6,7 @@
     <title>Configuración - RestaurantPro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         html, body { height: 100%; }
         body { 
@@ -331,6 +332,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
+    <div class="rp-content">
     <main class="flex-grow-1">
     <div class="container-fluid px-3 px-md-4 py-3">
         
@@ -1139,9 +1141,6 @@
         </div>
     </div>
     </main>
-
-    <%- include('partials/footer') %>
-
     <script src="/vendor/jquery/jquery.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
@@ -2485,5 +2484,7 @@
             setTimeout(() => win.print(), 500);
         });
     </script>
+    </div>
+<%- include('partials/toasts') %>
 </body>
 </html> 

@@ -49,7 +49,16 @@ async function requireAuth(req, res, next) {
         
         req.user.permisos = permisos || [];
         req.user.permisosRutas = permisos.map(p => p.ruta);
-        
+
+        // Exponer helper de permisos a todas las vistas EJS (reemplaza el helper inline
+        // repetido en views/partials/navbar.ejs y otras vistas).
+        res.locals.hasPermission = (ruta) => {
+            if (!req.user) return false;
+            if (req.user.rol === 'superadmin') return true;
+            return !!(req.user.permisosRutas && req.user.permisosRutas.includes(ruta));
+        };
+        res.locals.currentUser = req.user;
+
         next();
     } catch (error) {
         console.error('Error en middleware de autenticación:', error);
