@@ -417,18 +417,38 @@
                             <input type="text" class="form-control" name="slogan" value="<%= config.slogan || '' %>" placeholder="Los mejores sabores de la ciudad" maxlength="255">
                             <small class="text-muted">Se muestra en la tienda online debajo del nombre.</small>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Valor Domicilio <span class="badge bg-warning text-dark">Delivery</span></label>
+                        <div class="col-md-12">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="inputDomiciliosEnabled" checked>
+                                <label class="form-check-label" for="inputDomiciliosEnabled">
+                                    <strong>Servicio de domicilios habilitado</strong>
+                                    <small class="d-block text-muted">Si está desactivado, los clientes de la tienda online no podrán hacer pedidos nuevos. Los pedidos existentes siguen su curso normal.</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor Domicilio</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" class="form-control" id="inputCostoDomicilio" value="0" min="0" placeholder="5000">
                             </div>
-                            <small class="text-muted">Costo de envío que se cobra al cliente en pedidos a domicilio.</small>
+                            <small class="text-muted">Costo de envío al cliente.</small>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Radio Cobertura (km)</label>
+                            <input type="number" class="form-control" id="inputRadioCobertura" value="5" min="0" max="100" placeholder="5">
+                            <small class="text-muted">Distancia máxima de entrega desde el local.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tiempo Preparación (min)</label>
+                            <input type="number" class="form-control" id="inputTiempoPreparacion" value="30" min="5" max="240" placeholder="30">
+                            <small class="text-muted">Estimado para mostrar al cliente.</small>
+                        </div>
+                        <div class="col-md-12 d-flex align-items-center">
                             <button type="button" class="btn btn-outline-warning btn-sm" id="btnGuardarDomicilio">
-                                <i class="bi bi-truck me-1"></i>Guardar Valor Domicilio
+                                <i class="bi bi-truck me-1"></i>Guardar Configuración de Domicilios
                             </button>
+                            <span class="ms-3 small text-muted" id="statusDomicilio"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">URL Tienda Online <span class="badge bg-info">Público</span></label>
@@ -2446,26 +2466,41 @@
                 if (resp.ok) {
                     const data = await resp.json();
                     document.getElementById('inputCostoDomicilio').value = data.costo_domicilio || 0;
+                    document.getElementById('inputRadioCobertura').value = data.radio_cobertura_km || 5;
+                    document.getElementById('inputTiempoPreparacion').value = data.tiempo_preparacion_min || 30;
+                    const enabledEl = document.getElementById('inputDomiciliosEnabled');
+                    if (enabledEl) enabledEl.checked = data.enabled !== false;
                 }
             } catch(e) {}
         })();
 
-        // Guardar valor domicilio
+        // Guardar configuración completa de domicilios (enabled + costo + radio + tiempo)
         document.getElementById('btnGuardarDomicilio')?.addEventListener('click', async function() {
-            const valor = parseFloat(document.getElementById('inputCostoDomicilio').value) || 0;
+            const enabledEl = document.getElementById('inputDomiciliosEnabled');
+            const payload = {
+                enabled: enabledEl ? enabledEl.checked : true,
+                costo_domicilio: parseFloat(document.getElementById('inputCostoDomicilio').value) || 0,
+                radio_cobertura_km: parseInt(document.getElementById('inputRadioCobertura').value) || 5,
+                tiempo_preparacion_min: parseInt(document.getElementById('inputTiempoPreparacion').value) || 30
+            };
+            const statusEl = document.getElementById('statusDomicilio');
             try {
                 const resp = await fetch('/configuracion/domicilio-config', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ costo_domicilio: valor })
+                    body: JSON.stringify(payload)
                 });
                 const data = await resp.json();
                 if (resp.ok) {
-                    Swal.fire({ icon: 'success', title: 'Valor domicilio guardado', text: `$${valor.toLocaleString('es-CO')}`, timer: 1500, showConfirmButton: false });
+                    const estado = data.enabled ? 'habilitado' : 'deshabilitado';
+                    if (statusEl) statusEl.textContent = `✓ Guardado — servicio ${estado}.`;
+                    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3500);
                 } else {
                     Swal.fire('Error', data.error, 'error');
                 }
-            } catch(e) { Swal.fire('Error', 'Error de conexión', 'error'); }
+            } catch(e) {
+                Swal.fire('Error', 'Error de conexión', 'error');
+            }
         });
 
         // Guardar slug de tienda online

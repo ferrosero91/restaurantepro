@@ -274,8 +274,20 @@ router.post('/:slug/login', loginRateLimiter, async (req, res) => {
 router.post('/:slug/pedido', async (req, res) => {
     try {
         const restaurante = await getRestauranteBySlug(req.params.slug);
-
         if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado' });
+
+        // Verificar que el módulo de domicilios esté habilitado (resolve hallazgo #17)
+        try {
+            const [domRows] = await db.query(
+                'SELECT enabled FROM domicilios_config WHERE restaurante_id = ? LIMIT 1',
+                [restaurante.id]
+            );
+            if (domRows.length > 0 && domRows[0].enabled === 0) {
+                return res.status(503).json({
+                    error: 'El servicio de domicilios no está disponible en este momento. Intenta más tarde.'
+                });
+            }
+        } catch (e) { /* continuar si la tabla no existe */ }
 
         const cliente = await getClienteFromSession(req, restaurante.id);
         if (!cliente) {

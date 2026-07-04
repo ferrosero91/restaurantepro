@@ -23,39 +23,67 @@ router.get('/printers', async (req, res) => {
     }
 });
 
-// GET /configuracion/domicilio-config - Obtener configuración de domicilios
+// GET /configuracion/domicilio-config - Obtener configuración completa de domicilios
 router.get('/domicilio-config', async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const [rows] = await db.query(
-            'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ?',
+            `SELECT enabled, costo_domicilio, radio_cobertura_km, tiempo_preparacion_min
+             FROM domicilios_config WHERE restaurante_id = ?`,
             [tenantId]
         );
         if (rows.length > 0) {
-            res.json({ costo_domicilio: rows[0].costo_domicilio });
+            res.json({
+                enabled: Boolean(rows[0].enabled),
+                costo_domicilio: rows[0].costo_domicilio,
+                radio_cobertura_km: rows[0].radio_cobertura_km,
+                tiempo_preparacion_min: rows[0].tiempo_preparacion_min
+            });
         } else {
-            res.json({ costo_domicilio: 0 });
+            // Defaults razonables si nunca se ha configurado
+            res.json({
+                enabled: true,
+                costo_domicilio: 0,
+                radio_cobertura_km: 5,
+                tiempo_preparacion_min: 30
+            });
         }
     } catch(e) {
-        res.json({ costo_domicilio: 0 });
+        res.json({
+            enabled: true, costo_domicilio: 0, radio_cobertura_km: 5, tiempo_preparacion_min: 30
+        });
     }
 });
 
-// PUT /configuracion/domicilio-config - Guardar configuración de domicilios
+// PUT /configuracion/domicilio-config - Guardar configuración completa de domicilios
 router.put('/domicilio-config', async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { costo_domicilio } = req.body;
-        const valor = Math.max(0, Number(costo_domicilio) || 0);
+        const {
+            enabled = true,
+            costo_domicilio = 0,
+            radio_cobertura_km = 5,
+            tiempo_preparacion_min = 30
+        } = req.body;
 
-        // Upsert
+        // Validar y normalizar
+        const enabledBool = enabled ? 1 : 0;
+        const costo = Math.max(0, Number(costo_domicilio) || 0);
+        const radio = Math.max(0, Math.min(100, parseInt(radio_cobertura_km) || 5));
+        const tiempo = Math.max(5, Math.min(240, parseInt(tiempo_preparacion_min) || 30));
+
         await db.query(`
-            INSERT INTO domicilios_config (restaurante_id, costo_domicilio) 
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE costo_domicilio = ?
-        `, [tenantId, valor, valor]);
+            INSERT INTO domicilios_config
+                (restaurante_id, enabled, costo_domicilio, radio_cobertura_km, tiempo_preparacion_min)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                enabled = VALUES(enabled),
+                costo_domicilio = VALUES(costo_domicilio),
+                radio_cobertura_km = VALUES(radio_cobertura_km),
+                tiempo_preparacion_min = VALUES(tiempo_preparacion_min)
+        `, [tenantId, enabledBool, costo, radio, tiempo]);
 
-        res.json({ success: true, costo_domicilio: valor });
+        res.json({ success: true, enabled: Boolean(enabledBool), costo_domicilio: costo, radio_cobertura_km: radio, tiempo_preparacion_min: tiempo });
     } catch(e) {
         console.error('Error guardando domicilio config:', e);
         res.status(500).json({ error: 'Error al guardar' });

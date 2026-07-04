@@ -121,26 +121,52 @@ router.get('/domiciliarios', async (req, res) => {
     }
 });
 
-// PUT /domicilios/:id/asignar - Asignar domiciliario a un pedido
+// PUT /domicilios/:id/asignar - Asignar (o reasignar) domiciliario a un pedido
+// body: { domiciliario_id: number | null }
+//   - Si se pasa un ID válido: asigna ese domiciliario
+//   - Si se pasa null explícito: desasigna (resuelve hallazgo #16)
 router.put('/:id/asignar', async (req, res) => {
     try {
         const pedidoId = parseInt(req.params.id);
         const { domiciliario_id } = req.body;
         const tenantId = req.tenantId;
 
-        if (!domiciliario_id) {
-            return res.status(400).json({ error: 'domiciliario_id requerido' });
+        // Si no se envía domiciliario_id → es desasignación explícita
+        // (null o ''). Si se envía vacío sin null, error de input.
+        const quiereAsignar = domiciliario_id !== null && domiciliario_id !== undefined && domiciliario_id !== '';
+        const quiereDesasignar = !quiereAsignar;
+
+        if (quiereAsignar) {
+            // Validar que el domiciliario pertenece al tenant
+            const [userRows] = await db.query(
+                `SELECT u.id FROM usuarios u
+                 INNER JOIN roles r ON r.id = u.rol_id
+                 WHERE u.id = ? AND u.restaurante_id = ? AND r.nombre = 'Domiciliario' AND u.activo = 1
+                 LIMIT 1`,
+                [domiciliario_id, tenantId]
+            );
+            if (userRows.length === 0) {
+                return res.status(400).json({ error: 'El domiciliario no pertenece a este restaurante o está inactivo' });
+            }
+
+            await db.query(
+                'UPDATE pedidos SET domiciliario_id = ? WHERE id = ? AND restaurante_id = ?',
+                [domiciliario_id, pedidoId, tenantId]
+            );
+
+            res.json({ success: true, message: `Domiciliario #${domiciliario_id} asignado al pedido #${pedidoId}` });
+        } else {
+            // Desasignar (resolve hallazgo #16)
+            await db.query(
+                'UPDATE pedidos SET domiciliario_id = NULL WHERE id = ? AND restaurante_id = ?',
+                [pedidoId, tenantId]
+            );
+
+            res.json({ success: true, message: `Domiciliario desasignado del pedido #${pedidoId}` });
         }
-
-        await db.query(
-            'UPDATE pedidos SET domiciliario_id = ? WHERE id = ? AND restaurante_id = ?',
-            [domiciliario_id, pedidoId, tenantId]
-        );
-
-        res.json({ success: true, message: `Domiciliario asignado al pedido #${pedidoId}` });
     } catch (error) {
-        console.error('Error asignando domiciliario:', error);
-        res.status(500).json({ error: 'Error al asignar domiciliario' });
+        console.error('Error asignando/desasignando domiciliario:', error);
+        res.status(500).json({ error: 'Error al actualizar domiciliario' });
     }
 });
 
