@@ -369,9 +369,9 @@ router.post('/:id/facturar', async (req, res) => {
                 // Si la tabla no existe, no rompemos la facturación
             }
 
-            // Cerrar pedido
+            // Marcar como facturado (no cerrar aún — el domiciliario debe entregar primero)
             await connection.query(
-                `UPDATE pedidos SET estado = 'cerrado', total = ? WHERE id = ?`,
+                `UPDATE pedidos SET estado = 'facturado', total = ? WHERE id = ?`,
                 [totalConPropina, pedidoId]
             );
 

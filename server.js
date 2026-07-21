@@ -253,16 +253,9 @@ app.use('/usuarios', requireAuth, requireTenant, requirePermission('/usuarios'),
 // Ruta para la página de productos
 app.get('/productos', requireAuth, requireTenant, async (req, res) => {
     try {
-        let sql = 'SELECT * FROM productos';
-        let params = [];
-        
-        if (req.tenantId) {
-            sql += ' WHERE restaurante_id = ?';
-            params.push(req.tenantId);
-        }
-        
-        sql += ' ORDER BY nombre';
-        const [productos] = await db.query(sql, params);
+        const ProductoService = require('./services/ProductoService');
+        const productoService = new ProductoService();
+        const productos = await productoService.listarSimple(req.tenantId);
         res.render('productos', { productos: productos || [], user: req.user });
     } catch (error) {
         console.error('Error al obtener productos:', error);

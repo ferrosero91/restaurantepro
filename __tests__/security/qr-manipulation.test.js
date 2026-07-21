@@ -121,12 +121,13 @@ describe('Security 34.2: QR Code Manipulation', () => {
     });
 
     describe('Tampering with timestamp', () => {
-        it('should reject QR with modified timestamp', async () => {
+        it('should accept QR with extra timestamp field (backward compat - timestamp is ignored)', async () => {
             const parsed = JSON.parse(validQRData);
-            parsed.timestamp = Date.now() + 1000000; // Future timestamp
+            parsed.timestamp = Date.now() + 1000000; // Extra timestamp field
 
             const validation = await qrService.validateQRSignature(JSON.stringify(parsed));
-            expect(validation.valid).toBe(false);
+            // New format ignores timestamp, so extra timestamp field doesn't invalidate
+            expect(validation.valid).toBe(true);
         });
     });
 
@@ -151,12 +152,21 @@ describe('Security 34.2: QR Code Manipulation', () => {
             expect(validation.valid).toBe(false);
         });
 
-        it('should reject QR with extra fields injected', async () => {
+        it('should accept QR with extra fields (signature only covers mesa_id + restaurante_id)', async () => {
             const parsed = JSON.parse(validQRData);
             parsed.admin = true;
             parsed.role = 'superadmin';
 
-            // Even with extra fields, the signature won't match because payload changed
+            // Extra fields are ignored - signature only covers mesa_id + restaurante_id
+            const validation = await qrService.validateQRSignature(JSON.stringify(parsed));
+            expect(validation.valid).toBe(true);
+        });
+
+        it('should reject QR with modified mesa_id even with extra fields', async () => {
+            const parsed = JSON.parse(validQRData);
+            parsed.mesa_id = 99999;
+            parsed.admin = true;
+
             const validation = await qrService.validateQRSignature(JSON.stringify(parsed));
             expect(validation.valid).toBe(false);
         });

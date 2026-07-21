@@ -171,7 +171,13 @@ router.get('/:slug/menu', async (req, res) => {
             }))
             .filter(cat => cat.productos.length > 0);
 
-        res.json({ categorias: resultado });
+        const [domCfg] = await db.query(
+            'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ? LIMIT 1',
+            [restaurante.id]
+        );
+        const costoDomicilio = Number(domCfg[0]?.costo_domicilio) || 0;
+
+        res.json({ categorias: resultado, costo_domicilio: costoDomicilio });
     } catch (error) {
         console.error('Error al cargar menú:', error);
         res.status(500).json({ error: 'Error al cargar menú' });
@@ -434,7 +440,7 @@ router.get('/:slug/track/:token', async (req, res) => {
 
         const [rows] = await db.query(
             `SELECT p.id, p.estado, p.total, p.created_at, p.notas_entrega, p.domiciliario_id,
-                    p.tipo_pedido, p.tracking_token,
+                    p.tipo_pedido, p.tracking_token, p.valor_domicilio,
                     c.nombre as cliente_nombre
              FROM pedidos p
              LEFT JOIN clientes c ON c.id = p.cliente_id

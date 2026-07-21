@@ -92,6 +92,45 @@ async function ensureSchema() {
             );
             console.log('✅ Columna factura_pagos.metodo migrada a VARCHAR');
         }
+
+        // Tabla de cola de reintentos de impresión (para comandas fallidas)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS print_queue (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                restaurante_id INT NOT NULL,
+                pedido_id INT NOT NULL,
+                command_data JSON NOT NULL,
+                status ENUM('pending', 'printing', 'printed', 'failed') DEFAULT 'pending',
+                retry_count INT DEFAULT 0,
+                last_error TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                printed_at TIMESTAMP NULL,
+                FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+                FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+                INDEX idx_status (status),
+                INDEX idx_restaurante (restaurante_id)
+            )
+        `);
+
+        // Columnas printer_name y printer_type en configuracion_impresion (para impresión USB)
+        const [printerNameCol] = await pool.query(
+            `SELECT COLUMN_NAME
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'configuracion_impresion'
+               AND COLUMN_NAME = 'printer_name'
+             LIMIT 1`
+        );
+
+        if (printerNameCol.length === 0) {
+            console.log('🔄 Agregando columnas printer_name y printer_type a configuracion_impresion...');
+            await pool.query(
+                `ALTER TABLE configuracion_impresion
+                 ADD COLUMN printer_name VARCHAR(100) NULL AFTER font_size,
+                 ADD COLUMN printer_type VARCHAR(20) DEFAULT 'escpos' AFTER printer_name`
+            );
+            console.log('✅ Columnas printer_name y printer_type agregadas');
+        }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err);

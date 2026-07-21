@@ -229,6 +229,8 @@ CREATE TABLE IF NOT EXISTS configuracion_impresion (
     pie_pagina TEXT,
     ancho_papel INT DEFAULT 80,
     font_size INT DEFAULT 1,
+    printer_name VARCHAR(100) NULL,
+    printer_type VARCHAR(20) DEFAULT 'escpos',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     logo_data LONGBLOB,
@@ -309,6 +311,23 @@ CREATE TABLE IF NOT EXISTS pedido_items (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
     FOREIGN KEY (producto_id) REFERENCES productos(id)
+);
+
+-- Cola de reintentos de impresión
+CREATE TABLE IF NOT EXISTS print_queue (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    restaurante_id INT NOT NULL,
+    pedido_id INT NOT NULL,
+    command_data JSON NOT NULL,
+    status ENUM('pending', 'printing', 'printed', 'failed') DEFAULT 'pending',
+    retry_count INT DEFAULT 0,
+    last_error TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    printed_at TIMESTAMP NULL,
+    FOREIGN KEY (restaurante_id) REFERENCES restaurantes(id) ON DELETE CASCADE,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+    INDEX idx_status (status),
+    INDEX idx_restaurante (restaurante_id)
 );
 
 -- Tabla de logs de auditoría

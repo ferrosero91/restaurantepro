@@ -169,6 +169,22 @@ class ProductoRepository extends BaseRepository {
             throw error;
         }
     }
+
+    /**
+     * Obtener todos los productos (para vista simple)
+     */
+    async findAll(tenantId = null) {
+        let sql = 'SELECT * FROM productos';
+        let params = [];
+
+        if (tenantId !== null) {
+            sql += ' WHERE restaurante_id = ?';
+            params.push(tenantId);
+        }
+
+        sql += ' ORDER BY nombre';
+        return await this.query(sql, params);
+    }
 }
 
 module.exports = ProductoRepository;

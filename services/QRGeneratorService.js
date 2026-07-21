@@ -32,11 +32,10 @@ class QRGeneratorService {
             throw new NotFoundError('Mesa');
         }
 
-        // Crear payload del QR
+        // Crear payload del QR (SOLO datos inmutables - sin timestamp para que el QR sea estable)
         const payload = {
             mesa_id: mesaId,
-            restaurante_id: restauranteId,
-            timestamp: Date.now()
+            restaurante_id: restauranteId
         };
 
         // Generar firma HMAC-SHA256
@@ -105,7 +104,7 @@ class QRGeneratorService {
     }
 
     /**
-     * Valida la firma de un código QR
+     * Valida la firma de un código QR (compatible con formato antiguo y nuevo)
      * @param {string} qrData - Datos del QR escaneado (JSON string)
      * @returns {Promise<{valid: boolean, mesaId?: number, restauranteId?: number}>}
      */
@@ -121,20 +120,34 @@ class QRGeneratorService {
             // Extraer signature y crear payload sin signature
             const { signature, ...payload } = data;
 
-            // Generar signature esperada
-            const expectedSignature = this._generateSignature(payload);
+            // Intentar validar con formato NUEVO (sin timestamp)
+            const payloadNew = { mesa_id: payload.mesa_id, restaurante_id: payload.restaurante_id };
+            const expectedSignatureNew = this._generateSignature(payloadNew);
+
+            // Intentar validar con formato ANTIGUO (con timestamp) si existe en payload
+            let expectedSignatureOld = null;
+            if (payload.timestamp) {
+                expectedSignatureOld = this._generateSignature(payload);
+            }
 
             // Validación timing-safe para prevenir timing attacks
-            const isValid = this._timingSafeEqual(signature, expectedSignature);
+            const isValidNew = this._timingSafeEqual(signature, expectedSignatureNew);
+            const isValidOld = expectedSignatureOld ? this._timingSafeEqual(signature, expectedSignatureOld) : false;
 
-            if (!isValid) {
+            if (!isValidNew && !isValidOld) {
                 return { valid: false };
             }
 
             // Verificar que el QR esté activo en la base de datos
+            // Buscar por cualquiera de las dos firmas posibles
+            const signaturesToCheck = [expectedSignatureNew];
+            if (expectedSignatureOld) signaturesToCheck.push(expectedSignatureOld);
+
             const [qrCodes] = await db.query(
-                'SELECT is_active FROM qr_codes WHERE restaurante_id = ? AND mesa_id = ? AND signature = ?',
-                [payload.restaurante_id, payload.mesa_id, signature]
+                `SELECT is_active FROM qr_codes 
+                 WHERE restaurante_id = ? AND mesa_id = ? AND signature IN (?)
+                 AND is_active = TRUE`,
+                [payload.restaurante_id, payload.mesa_id, signaturesToCheck]
             );
 
             if (!qrCodes || qrCodes.length === 0 || !qrCodes[0] || !qrCodes[0].is_active) {

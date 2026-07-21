@@ -36,6 +36,7 @@
         .badge-en_preparacion { background-color: #fd7e14; color: #fff; }
         .badge-en_camino { background-color: #6f42c1; color: #fff; }
         .badge-entregado { background-color: #198754; color: #fff; }
+        .badge-facturado { background-color: #0dcaf0; color: #000; }
         .badge-cancelado { background-color: #dc3545; color: #fff; }
         .tiempo-alerta { color: #dc3545; font-weight: 700; }
         .empty-state {
@@ -274,6 +275,7 @@
             'en_preparacion': 'En Preparación',
             'en_camino': 'En Camino',
             'entregado': 'Entregado',
+            'facturado': 'Facturado',
             'cancelado': 'Cancelado'
         };
 
@@ -283,6 +285,7 @@
             'en_preparacion': 'bi-fire',
             'en_camino': 'bi-bicycle',
             'entregado': 'bi-check2-all',
+            'facturado': 'bi-receipt',
             'cancelado': 'bi-x-circle'
         };
 
@@ -292,6 +295,7 @@
             'confirmado': [{ estado: 'en_preparacion', label: 'Preparar', icon: 'bi-fire', clase: 'btn-warning' }],
             'en_preparacion': [{ estado: 'en_camino', label: 'Enviar', icon: 'bi-bicycle', clase: 'btn-purple', style: 'background-color:#6f42c1;border-color:#6f42c1;color:#fff;' }],
             'en_camino': [{ estado: 'entregado', label: 'Entregado', icon: 'bi-check2-all', clase: 'btn-success' }],
+            'facturado': [{ estado: 'entregado', label: 'Entregado', icon: 'bi-check2-all', clase: 'btn-success' }],
             'entregado': [],
             'cancelado': []
         };
@@ -416,10 +420,10 @@
                 </button>
             `).join('');
 
-            // Botón Facturar para pedidos confirmados o entregados
+            // Botón Facturar para pedidos activos (confirmado, en_preparacion, en_camino, entregado)
             if (['confirmado', 'en_preparacion', 'en_camino', 'entregado'].includes(p.estado)) {
                 html += `
-                <button class="btn btn-sm btn-success" onclick="facturarDomicilio(${p.id})" title="Facturar pedido">
+                <button class="btn btn-sm btn-success" onclick="facturarDomicilio(${p.id}, '${p.estado}')" title="Facturar pedido">
                     <i class="bi bi-cash-coin me-1"></i>Facturar
                 </button>`;
             }
@@ -488,6 +492,8 @@
 
                     // Construir historial de estados
                     const historialHtml = renderHistorialEstados(p.historial_estados || [], p);
+                    const subtotalItems = (p.items || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
+                    const valorDom = Number(p.valor_domicilio) || 0;
 
                     document.getElementById('detalleBody').innerHTML = `
                         <div class="mb-3">
@@ -505,7 +511,11 @@
                         <table class="table table-sm">
                             <thead><tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
                             <tbody>${itemsHtml || '<tr><td colspan="3" class="text-muted">Sin items</td></tr>'}</tbody>
-                            <tfoot><tr><td colspan="2" class="text-end fw-bold">Total:</td><td class="fw-bold">$${formatNumber(p.total)}</td></tr></tfoot>
+                            <tfoot>
+                                <tr><td colspan="2" class="text-end text-muted">Subtotal:</td><td class="text-muted">$${formatNumber(subtotalItems)}</td></tr>
+                                ${valorDom > 0 ? `<tr><td colspan="2" class="text-end text-muted">Domicilio:</td><td class="text-muted">$${formatNumber(valorDom)}</td></tr>` : ''}
+                                <tr><td colspan="2" class="text-end fw-bold">Total:</td><td class="fw-bold">$${formatNumber(p.total)}</td></tr>
+                            </tfoot>
                         </table>
                         ${historialHtml}
                     `;
@@ -590,7 +600,7 @@
         function actualizarKPIs() {
             // Contar todos los pedidos sin filtro para KPIs
             const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
-            const enCurso = pedidos.filter(p => ['confirmado', 'en_preparacion', 'en_camino'].includes(p.estado)).length;
+            const enCurso = pedidos.filter(p => ['confirmado', 'en_preparacion', 'en_camino', 'facturado'].includes(p.estado)).length;
             const entregados = pedidos.filter(p => p.estado === 'entregado').length;
 
             document.getElementById('countPendientes').textContent = pendientes;
@@ -932,8 +942,25 @@
         window.facturarDomicilio = facturarDomicilio;
 
         // --- Facturar domicilio (Requirement 9.8) ---
-        async function facturarDomicilio(pedidoId) {
+        async function facturarDomicilio(pedidoId, estadoActual) {
             try {
+                // Si el pedido no está entregado, pedir confirmación
+                if (estadoActual && estadoActual !== 'entregado') {
+                    const labels = {'confirmado':'Confirmado','en_preparacion':'En Preparación','en_camino':'En Camino'};
+                    const labelEstado = labels[estadoActual] || estadoActual;
+                    const result = await Swal.fire({
+                        title: '¿Facturar sin entregar?',
+                        html: `El pedido está en estado <strong>${labelEstado}</strong> y aún no ha sido entregado al cliente.<br><br>¿Deseas generar la factura de todas formas?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#e94560',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, facturar',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    if (!result.isConfirmed) return;
+                }
+
                 const response = await fetch(`/domicilios/${pedidoId}`);
                 const data = await response.json();
                 if (!data.success) {

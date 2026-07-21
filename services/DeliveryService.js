@@ -25,7 +25,7 @@ class DeliveryService {
      * Estados válidos para pedidos a domicilio
      * Requirement 8.4
      */
-    static ESTADOS = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino', 'entregado', 'cancelado'];
+    static ESTADOS = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino', 'facturado', 'entregado', 'cancelado'];
 
     /**
      * Transiciones de estado válidas (excepto cancelado, que se permite desde cualquier estado)
@@ -36,6 +36,7 @@ class DeliveryService {
         'confirmado': ['en_preparacion', 'cancelado'],
         'en_preparacion': ['en_camino', 'cancelado'],
         'en_camino': ['entregado', 'cancelado'],
+        'facturado': ['entregado', 'cancelado'],
         'entregado': [],
         'cancelado': []
     };
@@ -245,6 +246,14 @@ class DeliveryService {
             'UPDATE pedidos SET estado = ? WHERE id = ?',
             [nuevoEstado, pedidoId]
         );
+
+        // Si el pedido estaba facturado y ahora se marca como entregado, cerrarlo automáticamente
+        if (pedido.estado === 'facturado' && nuevoEstado === 'entregado') {
+            await db.query(
+                "UPDATE pedidos SET estado = 'cerrado' WHERE id = ?",
+                [pedidoId]
+            );
+        }
 
         // Requirement 8.9, 9.7: Cuando estado cambia a 'en_preparacion', enviar a cocina
         // Usa el mismo flujo que pedidos de mesa (AutoCommandService.onPedidoEnCocina)

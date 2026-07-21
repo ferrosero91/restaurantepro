@@ -11,6 +11,13 @@ class ProductoService {
     }
 
     /**
+     * Listar todos los productos (versión simple para vista)
+     */
+    async listarSimple(tenantId) {
+        return await this.productoRepo.findAll(tenantId);
+    }
+
+    /**
      * Listar todos los productos
      */
     async listar(tenantId, options = {}) {
@@ -179,6 +186,7 @@ class ProductoService {
     async contar(tenantId) {
         return await this.productoRepo.count(tenantId);
     }
+
 }
 
 module.exports = ProductoService;
