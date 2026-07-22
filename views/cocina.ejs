@@ -86,7 +86,7 @@
                 <input id="buscarCocina" class="form-control" placeholder="Buscar por mesa, producto o nota...">
               </div>
             </div>
-            <div class="col-12 col-md-6 d-flex justify-content-md-end gap-2">
+            <div class="col-12 col-md-6 d-flex flex-wrap justify-content-md-end gap-2">
               <span class="badge text-bg-primary kpi-badge">Enviados: <span id="countEnviados">0</span></span>
               <span class="badge text-bg-warning kpi-badge">Preparando: <span id="countPreparando">0</span></span>
               <span class="badge text-bg-success kpi-badge">Listos: <span id="countListos">0</span></span>
@@ -94,7 +94,7 @@
           </div>
         </div>
 
-        <ul class="nav nav-pills gap-2" id="tabsCocina" role="tablist">
+        <ul class="nav nav-pills gap-2 flex-nowrap overflow-auto pb-1" id="tabsCocina" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tabEnviados-tab" data-bs-toggle="tab" data-bs-target="#tabEnviados" type="button" role="tab" aria-controls="tabEnviados" aria-selected="true">
               <i class="bi bi-send me-1"></i>Enviados <span class="badge text-bg-light ms-1" id="pillEnviados">0</span>

@@ -43,21 +43,21 @@
     <main class="flex-grow-1">
     <div class="container">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                     <i class="bi bi-box-fill me-2"></i>
                     Gestión de Productos
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
                         <i class="bi bi-plus-lg me-1"></i>
-                        Nuevo Producto
+                        Nuevo
                     </button>
-                    <button id="btnDescargarPlantilla" class="btn btn-outline-success">
-                        <i class="bi bi-file-earmark-excel"></i> Plantilla Excel
+                    <button id="btnDescargarPlantilla" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-file-earmark-excel"></i> Plantilla
                     </button>
-                    <button id="btnImportarProductos" class="btn btn-outline-primary">
-                        <i class="bi bi-upload"></i> Importar Excel
+                    <button id="btnImportarProductos" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-upload"></i> Importar
                     </button>
                     <input type="file" id="archivoImport" accept=".xlsx" class="d-none">
                 </div>

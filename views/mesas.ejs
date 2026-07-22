@@ -16,6 +16,13 @@
         .mesa-card{border:none;box-shadow:0 .5rem 1rem rgba(0,0,0,.05);transition:transform .1s}
         .mesa-card:hover{transform:translateY(-2px)}
         .estado-badge{position:absolute;top:.75rem;right:.75rem}
+        @media(max-width:575.98px){
+            .mesa-card .card-body{padding:.75rem}
+            .mesa-card .card-title{font-size:.95rem}
+            .mesa-card .btn{font-size:.75rem;padding:.3rem .5rem}
+            .mesa-card .btn-group .btn{font-size:.72rem;padding:.28rem .45rem}
+            .mesa-card .text-muted.small{font-size:.7rem;margin-bottom:.5rem!important}
+        }
     </style>
  </head>
 <body>
@@ -24,11 +31,11 @@
 
     <main class="flex-grow-1">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h4 class="mb-0"><i class="bi bi-grid me-2"></i>Mesas</h4>
-            <div>
-                <button id="btnGenerarQRTodas" class="btn btn-success me-2"><i class="bi bi-qr-code me-1"></i>Generar QR Todas</button>
-                <button id="btnNuevaMesa" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva mesa</button>
+            <div class="d-flex flex-wrap gap-2">
+                <button id="btnGenerarQRTodas" class="btn btn-success btn-sm"><i class="bi bi-qr-code me-1"></i>QR Todas</button>
+                <button id="btnNuevaMesa" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nueva mesa</button>
             </div>
         </div>
 
@@ -51,28 +58,28 @@
                             <p class="text-muted small mb-3"><%= m.descripcion || '' %></p>
                             <div class="d-grid gap-2">
                                 <button class="btn btn-outline-secondary btn-sm btnLiberarMesa">
-                                    <i class="bi bi-unlock me-1"></i> Liberar mesa
+                                    <i class="bi bi-unlock"></i> Liberar
                                 </button>
                                 <button class="btn btn-outline-primary btn-sm btnAbrirPedido">
-                                    <i class="bi bi-door-open me-1"></i> Abrir / Continuar pedido
+                                    <i class="bi bi-door-open"></i> Abrir / Continuar
                                 </button>
                                 <button class="btn btn-outline-secondary btn-sm btnVerPedido">
-                                    <i class="bi bi-list-ul me-1"></i> Ver pedido
+                                    <i class="bi bi-list-ul"></i> Ver pedido
                                 </button>
-                                <div class="btn-group" role="group" aria-label="Acciones mesa">
-                                    <button class="btn btn-outline-dark btn-sm btnEditarMesa">
-                                        <i class="bi bi-pencil-square me-1"></i> Editar
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Acciones mesa">
+                                    <button class="btn btn-outline-dark btnEditarMesa" title="Editar">
+                                        <i class="bi bi-pencil-square"></i>
                                     </button>
-                                    <button class="btn btn-outline-success btn-sm btnGenerarQR">
-                                        <i class="bi bi-qr-code me-1"></i> QR
+                                    <button class="btn btn-outline-success btnGenerarQR" title="QR">
+                                        <i class="bi bi-qr-code"></i>
                                     </button>
                                     <button
-                                        class="btn btn-outline-danger btn-sm btnEliminarMesa"
+                                        class="btn btn-outline-danger btnEliminarMesa"
                                         <%= (m.pedidos_abiertos || 0) > 0 ? 'disabled' : '' %>
                                         data-bs-toggle="tooltip"
                                         title="<%= (m.pedidos_abiertos || 0) > 0 ? 'No se puede eliminar: tiene pedido activo' : 'Eliminar mesa' %>"
                                     >
-                                        <i class="bi bi-trash me-1"></i> Eliminar
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </div>

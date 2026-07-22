@@ -77,6 +77,7 @@ body {
     color: var(--rp-text-strong);
     background: var(--rp-slate-50);
     line-height: 1.5;
+    overflow-x: hidden;
 }
 a { color: var(--rp-accent); text-decoration: none; }
 a:hover { color: var(--rp-accent-hover); }
@@ -249,6 +250,7 @@ a:hover { color: var(--rp-accent-hover); }
     padding: 1.75rem 1.75rem 2.5rem;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 .rp-content > :last-child:not(.rp-footer) { margin-bottom: 1rem; }
 
