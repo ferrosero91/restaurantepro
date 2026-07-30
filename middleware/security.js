@@ -39,11 +39,11 @@ const helmetConfig = helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"], // Bootstrap + CDN icons
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com"], // unsafe-eval REMOVIDO
             scriptSrcAttr: ["'unsafe-inline'"], // Permitir onclick, onload, etc.
             imgSrc: ["'self'", "data:", "blob:"],
-            fontSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
+            fontSrc: ["'self'", "data:", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
             connectSrc: ["'self'", "ws:", "wss:", "https://static.cloudflareinsights.com"],
             frameSrc: ["'none'"],
             objectSrc: ["'none'"]
