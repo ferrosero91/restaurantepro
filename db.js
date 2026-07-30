@@ -131,6 +131,25 @@ async function ensureSchema() {
             );
             console.log('✅ Columnas printer_name y printer_type agregadas');
         }
+
+        // Columna activo en productos (para soft-delete)
+        const [activoCol] = await pool.query(
+            `SELECT COLUMN_NAME
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'productos'
+               AND COLUMN_NAME = 'activo'
+             LIMIT 1`
+        );
+
+        if (activoCol.length === 0) {
+            console.log('🔄 Agregando columna activo a productos...');
+            await pool.query(
+                `ALTER TABLE productos
+                 ADD COLUMN activo BOOLEAN DEFAULT TRUE AFTER imagen`
+            );
+            console.log('✅ Columna activo agregada a productos');
+        }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err);

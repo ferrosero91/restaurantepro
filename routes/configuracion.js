@@ -8,15 +8,39 @@ const path = require('path');
 let pdfPrinter = null;
 try {
     pdfPrinter = require('pdf-to-printer');
-} catch(e) { /* not available */ }
+} catch(e) { /* not available on Linux */ }
 
-// GET /configuracion/printers - Listar impresoras instaladas en Windows
+const { execSync } = require('child_process');
+
+// GET /configuracion/printers - Listar impresoras (Windows + Linux)
 router.get('/printers', async (req, res) => {
     try {
-        if (!pdfPrinter) {
-            return res.json({ printers: [] });
+        const printers = [];
+
+        // 1) Windows: usar pdf-to-printer
+        if (pdfPrinter && process.platform === 'win32') {
+            try {
+                const winPrinters = await pdfPrinter.getPrinters();
+                winPrinters.forEach(p => {
+                    printers.push({ name: p.name || p.deviceId || p, source: 'windows' });
+                });
+            } catch(e) { /* ignore */ }
         }
-        const printers = await pdfPrinter.getPrinters();
+
+        // 2) Linux/macOS: usar lpstat (CUPS) si está disponible
+        if (process.platform !== 'win32') {
+            try {
+                const output = execSync('lpstat -p 2>/dev/null', { encoding: 'utf8', timeout: 3000 });
+                const lines = output.trim().split('\n');
+                lines.forEach(line => {
+                    const match = line.match(/^printer\s+(\S+)/);
+                    if (match) {
+                        printers.push({ name: match[1], source: 'cups' });
+                    }
+                });
+            } catch(e) { /* lpstat no disponible o sin impresoras */ }
+        }
+
         res.json({ printers });
     } catch (error) {
         res.json({ printers: [] });

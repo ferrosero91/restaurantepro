@@ -55,7 +55,7 @@ class PrintService {
             const commandDocument = this._formatCommand(commandData, config);
             
             // Si no hay impresora configurada o librería no disponible, log a consola
-            if (!config.printer_name || !this.printerLibrary) {
+            if ((!config.printer_name && !config.printer_ip) || !this.printerLibrary) {
                 console.log('\n========================================');
                 console.log('COMANDA (Console Output - No Printer)');
                 console.log('========================================');
@@ -177,6 +177,8 @@ class PrintService {
                 telefono,
                 printer_name,
                 printer_type,
+                printer_ip,
+                printer_port,
                 ancho_papel,
                 font_size
              FROM configuracion_impresion 
@@ -273,7 +275,7 @@ class PrintService {
     }
 
     /**
-     * Envía el documento a la impresora física USB
+     * Envía el documento a la impresora física (USB o Red TCP/IP)
      * @private
      * @param {string} document - Documento formateado
      * @param {Object} config - Configuración de impresora
@@ -299,16 +301,46 @@ class PrintService {
                 default:
                     printerType = PrinterTypes.EPSON;
             }
+
+            // Resolver interfaz de impresora
+            // Detectar si printer_ip es una IP o un nombre de impresora
+            let printerInterface;
+            const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
             
-            // Configurar impresora USB
+            if (config.printer_ip && config.printer_ip.trim()) {
+                const val = config.printer_ip.trim();
+                if (ipPattern.test(val)) {
+                    // Es una IP → impresora de red TCP/IP
+                    const port = config.printer_port ? parseInt(config.printer_port, 10) : 9100;
+                    printerInterface = `tcp://${val}:${port}`;
+                    console.log(`[PrintService] Using network printer: ${printerInterface}`);
+                } else {
+                    // Es un nombre de impresora (seleccionada del dropdown)
+                    printerInterface = val;
+                    console.log(`[PrintService] Using printer by name: ${printerInterface}`);
+                }
+            } else if (config.printer_name && config.printer_name.trim()) {
+                printerInterface = config.printer_name.trim();
+                console.log(`[PrintService] Using USB printer: ${printerInterface}`);
+            } else {
+                throw new Error('No hay impresora configurada (ni IP ni nombre)');
+            }
+
+            // Configurar impresora
             const printer = new ThermalPrinter({
                 type: printerType,
-                interface: config.printer_name || 'printer', // USB printer name
+                interface: printerInterface,
                 characterSet: 'SLOVENIA',
                 removeSpecialCharacters: false,
                 lineCharacter: '=',
                 width: config.ancho_papel === 58 ? 32 : 48
             });
+            
+            // Verificar conexión antes de imprimir
+            const connected = await printer.isPrinterConnected();
+            if (!connected) {
+                throw new Error(`No se pudo conectar a la impresora en ${printerInterface}`);
+            }
             
             // Enviar documento
             printer.println(document);

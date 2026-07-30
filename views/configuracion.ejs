@@ -527,13 +527,14 @@
             
             <!-- TAB: Impresión -->
             <div class="tab-pane fade" id="impresion" role="tabpanel">
-                <form action="/configuracion" method="POST">
+                <form action="/configuracion" method="POST" id="formImpresion">
                     <div class="section-title">
                         <i class="bi bi-printer-fill me-2"></i>Configuración de Impresión
                     </div>
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
-                        Selecciona las impresoras instaladas en este equipo para comandas y facturas. La impresión se realizará directamente sin mostrar diálogo.
+                        Selecciona impresoras de la lista o ingresa la IP de impresoras de red (TCP/IP, puerto 9100 por defecto).
+                        En servidores Docker se recomienda usar impresoras de red.
                     </div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
@@ -541,14 +542,34 @@
                             <select class="form-control" name="printer_name" id="selectPrinterCocina">
                                 <option value="">Cargando impresoras...</option>
                             </select>
-                            <small class="text-muted">Se usará para imprimir comandas automáticamente</small>
+                            <div id="manualPrinterCocina" class="mt-2" style="display:none;">
+                                <div class="input-group">
+                                    <span class="input-group-text">IP:</span>
+                                    <input type="text" class="form-control" id="inputPrinterCocinaIP"
+                                           placeholder="192.168.1.100" value="">
+                                    <span class="input-group-text">Puerto:</span>
+                                    <input type="number" class="form-control" id="inputPrinterCocinaPort"
+                                           placeholder="9100" value="9100" style="max-width:90px;">
+                                </div>
+                                <small class="text-muted">IP de la impresora térmica de cocina</small>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Impresora de Caja (Facturas)</label>
+                            <label class="form-label fw-bold">Impresora de Caja (Tickets/Facturas)</label>
                             <select class="form-control" name="printer_ip" id="selectPrinterCaja">
                                 <option value="">Cargando impresoras...</option>
                             </select>
-                            <small class="text-muted">Se usará para imprimir facturas</small>
+                            <div id="manualPrinterCaja" class="mt-2" style="display:none;">
+                                <div class="input-group">
+                                    <span class="input-group-text">IP:</span>
+                                    <input type="text" class="form-control" id="inputPrinterCajaIP"
+                                           placeholder="192.168.1.101" value="">
+                                    <span class="input-group-text">Puerto:</span>
+                                    <input type="number" class="form-control" id="inputPrinterCajaPort"
+                                           placeholder="9100" value="9100" style="max-width:90px;">
+                                </div>
+                                <small class="text-muted">IP de la impresora de tickets/facturas</small>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Ancho de Papel</label>
@@ -567,11 +588,11 @@
                             <small class="text-muted">Cuando llega un pedido a cocina, se imprime automáticamente</small>
                         </div>
                     </div>
-                    <!-- Campos ocultos para mantener compatibilidad -->
-                    <input type="hidden" name="printer_port" value="<%= config.printer_port || '' %>">
+                    <!-- Campos ocultos para IP/puerto manual de cocina -->
+                    <input type="hidden" name="printer_port" id="hiddenPrinterPort" value="<%= config.printer_port || '' %>">
                     <input type="hidden" name="font_size" value="<%= config.font_size || 1 %>">
                     
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save me-2"></i>Guardar Cambios
                         </button>
@@ -2416,7 +2437,7 @@
         // PRUEBA DE IMPRESORA
         // ===========================
         
-        // Cargar impresoras de Windows en los selects
+        // Cargar impresoras disponibles y configurar UI de impresión
         async function cargarImpresoras() {
             try {
                 const resp = await fetch('/configuracion/printers');
@@ -2425,32 +2446,53 @@
                 
                 const selectCocina = document.getElementById('selectPrinterCocina');
                 const selectCaja = document.getElementById('selectPrinterCaja');
+                const manualCocina = document.getElementById('manualPrinterCocina');
+                const manualCaja = document.getElementById('manualPrinterCaja');
                 
                 const currentCocina = '<%= config.printer_name || "" %>';
                 const currentCaja = '<%= config.printer_ip || "" %>';
                 
                 const buildOptions = (select, currentValue) => {
-                    select.innerHTML = '<option value="">(Ninguna - usar diálogo de Windows)</option>';
+                    select.innerHTML = '<option value="">(Ninguna - imprimir en consola)</option>';
                     printers.forEach(p => {
-                        const name = p.name || p.deviceId || p;
+                        const name = p.name || p;
                         const opt = document.createElement('option');
                         opt.value = name;
-                        opt.textContent = name;
+                        opt.textContent = name + (p.source === 'cups' ? ' (CUPS)' : '');
                         if (name === currentValue) opt.selected = true;
                         select.appendChild(opt);
                     });
+                    // Opción manual
+                    const manualOpt = document.createElement('option');
+                    manualOpt.value = '__manual_network__';
+                    manualOpt.textContent = '✏️ Otra impresora de red (ingresar IP...)';
+                    select.appendChild(manualOpt);
                 };
                 
-                if (printers.length > 0) {
-                    buildOptions(selectCocina, currentCocina);
-                    buildOptions(selectCaja, currentCaja);
-                } else {
-                    selectCocina.innerHTML = '<option value="">No se detectaron impresoras</option>';
-                    selectCaja.innerHTML = '<option value="">No se detectaron impresoras</option>';
-                    if (data.error) {
-                        console.warn('Error cargando impresoras:', data.error);
-                    }
+                // Construir opciones para ambos selects
+                buildOptions(selectCocina, currentCocina);
+                buildOptions(selectCaja, currentCaja);
+                
+                // Detectar si la IP actual no está en la lista → mostrar campo manual
+                if (currentCaja && !printers.find(p => p.name === currentCaja)) {
+                    selectCaja.value = '__manual_network__';
+                    manualCaja.style.display = 'block';
                 }
+                if (currentCocina && !printers.find(p => p.name === currentCocina)) {
+                    selectCocina.value = '__manual_network__';
+                    manualCocina.style.display = 'block';
+                }
+                
+                // Toggle manual Cocina
+                selectCocina.addEventListener('change', function() {
+                    manualCocina.style.display = this.value === '__manual_network__' ? 'block' : 'none';
+                });
+                
+                // Toggle manual Caja
+                selectCaja.addEventListener('change', function() {
+                    manualCaja.style.display = this.value === '__manual_network__' ? 'block' : 'none';
+                });
+                
             } catch(e) {
                 console.error('Error cargando impresoras:', e);
                 document.getElementById('selectPrinterCocina').innerHTML = '<option value="">Error al cargar</option>';
@@ -2458,6 +2500,30 @@
             }
         }
         cargarImpresoras();
+
+        // Pre-guardado: sincronizar campos antes de submit
+        document.getElementById('formImpresion').addEventListener('submit', function() {
+            const selectCocina = document.getElementById('selectPrinterCocina');
+            const selectCaja = document.getElementById('selectPrinterCaja');
+            const hiddenPort = document.getElementById('hiddenPrinterPort');
+            
+            // Cocina: si es manual, guardar nombre con formato IP:puerto
+            if (selectCocina.value === '__manual_network__') {
+                const ip = document.getElementById('inputPrinterCocinaIP').value.trim();
+                const port = document.getElementById('inputPrinterCocinaPort').value.trim() || '9100';
+                selectCocina.value = ip ? `Impresora Cocina [${ip}:${port}]` : '';
+            }
+            
+            // Caja: si es manual, el campo printer_ip lleva la IP directamente
+            if (selectCaja.value === '__manual_network__') {
+                const ip = document.getElementById('inputPrinterCajaIP').value.trim();
+                const port = document.getElementById('inputPrinterCajaPort').value.trim() || '9100';
+                selectCaja.value = ip; // El campo se llama printer_ip, guarda la IP directamente
+                hiddenPort.value = port;
+            } else {
+                hiddenPort.value = '';
+            }
+        });
 
         // Cargar valor domicilio
         (async function() {
