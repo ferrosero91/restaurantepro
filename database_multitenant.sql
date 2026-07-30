@@ -280,7 +280,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     mesa_id INT NULL,
     cliente_id INT,
     usuario_id INT,
-    estado ENUM('abierto', 'activo', 'en_cocina', 'preparando', 'listo', 'servido', 'cerrado', 'cancelado') DEFAULT 'abierto',
+    estado ENUM('abierto', 'activo', 'en_cocina', 'preparando', 'listo', 'servido', 'cerrado', 'cancelado', 'facturado') DEFAULT 'abierto',
     total DECIMAL(10,2) NOT NULL DEFAULT 0,
     notas TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

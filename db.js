@@ -150,6 +150,25 @@ async function ensureSchema() {
             );
             console.log('✅ Columna activo agregada a productos');
         }
+
+        // Agregar 'facturado' al ENUM de estado en pedidos si no existe
+        const [estadoCol] = await pool.query(
+            `SELECT COLUMN_TYPE
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'pedidos'
+               AND COLUMN_NAME = 'estado'
+             LIMIT 1`
+        );
+
+        if (estadoCol.length > 0 && !estadoCol[0].COLUMN_TYPE.includes('facturado')) {
+            console.log('🔄 Agregando "facturado" al ENUM de estado en pedidos...');
+            await pool.query(
+                `ALTER TABLE pedidos
+                 MODIFY COLUMN estado ENUM('abierto','activo','en_cocina','preparando','listo','servido','cerrado','cancelado','facturado') DEFAULT 'abierto'`
+            );
+            console.log('✅ Estado "facturado" agregado a pedidos');
+        }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err);
