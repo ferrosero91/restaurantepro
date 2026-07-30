@@ -171,11 +171,16 @@ router.get('/:slug/menu', async (req, res) => {
             }))
             .filter(cat => cat.productos.length > 0);
 
-        const [domCfg] = await db.query(
-            'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ? LIMIT 1',
-            [restaurante.id]
-        );
-        const costoDomicilio = Number(domCfg[0]?.costo_domicilio) || 0;
+        let costoDomicilio = 0;
+        try {
+            const [domCfg] = await db.query(
+                'SELECT costo_domicilio FROM domicilios_config WHERE restaurante_id = ? LIMIT 1',
+                [restaurante.id]
+            );
+            costoDomicilio = Number(domCfg[0]?.costo_domicilio) || 0;
+        } catch (e) {
+            // Tabla domicilios_config podría no existir aún
+        }
 
         res.json({ categorias: resultado, costo_domicilio: costoDomicilio });
     } catch (error) {
