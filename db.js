@@ -163,6 +163,11 @@ async function ensureSchema() {
 
         if (estadoCol.length > 0 && !estadoCol[0].COLUMN_TYPE.includes('facturado')) {
             console.log('🔄 Agregando "facturado" al ENUM de estado en pedidos...');
+            // Primero limpiar valores inválidos que no están en el ENUM actual
+            await pool.query(
+                `UPDATE pedidos SET estado = 'abierto'
+                 WHERE estado NOT IN ('abierto','activo','en_cocina','preparando','listo','servido','cerrado','cancelado')`
+            );
             await pool.query(
                 `ALTER TABLE pedidos
                  MODIFY COLUMN estado ENUM('abierto','activo','en_cocina','preparando','listo','servido','cerrado','cancelado','facturado') DEFAULT 'abierto'`
