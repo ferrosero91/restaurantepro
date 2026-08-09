@@ -311,18 +311,46 @@ $(function() {
                   <div class="fw-bold">${item.producto_nombre || item.nombre || item.producto_id}</div>
                   <small class="text-muted">${formatear(precio)} / ${item.unidad_medida || 'UND'}</small>
                 </div>
-                <button class="btn btn-sm btn-outline-danger" data-idx="${idx}">
+                <button class="btn btn-sm btn-outline-danger btn-eliminar-item" data-idx="${idx}">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <div class="text-muted">Cantidad: <strong>${cantidad}</strong></div>
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-outline-secondary btn-cantidad btn-cantidad-menos" data-idx="${idx}">
+                    <i class="bi bi-dash"></i>
+                  </button>
+                  <span class="cantidad-display fw-bold">${cantidad}</span>
+                  <button class="btn btn-outline-secondary btn-cantidad btn-cantidad-mas" data-idx="${idx}">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
                 <div class="fw-bold text-success">${formatear(subtotal)}</div>
               </div>
             </div>
         `;
         });
         container.innerHTML = html;
+
+        // Asignar event listeners a los botones +/-
+        container.querySelectorAll('.btn-cantidad-menos').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.idx);
+            cambiarCantidadItem(idx, -1);
+          });
+        });
+        container.querySelectorAll('.btn-cantidad-mas').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.idx);
+            cambiarCantidadItem(idx, 1);
+          });
+        });
+        container.querySelectorAll('.btn-eliminar-item').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.idx);
+            eliminarItemPedido(idx);
+          });
+        });
       }
     }
     
@@ -1210,147 +1238,74 @@ $(function() {
             const itemExistente = items.find(item => String(item.producto_id) === String(id));
             
             if (itemExistente) {
-                // Si existe, preguntar si quiere agregar nota o solo incrementar cantidad
-                const result = await Swal.fire({
-                    title: `${nombre}`,
-                    text: 'Este producto ya está en el pedido',
-                    icon: 'question',
-                    showDenyButton: true,
-                    showCancelButton: true,
-                    confirmButtonText: 'Solo aumentar cantidad',
-                    denyButtonText: 'Agregar con nota',
-                    cancelButtonText: 'Cancelar'
-                });
-                
-                if (result.isConfirmed) {
-                    // Solo incrementar cantidad
-                    const index = items.indexOf(itemExistente);
-                    items[index].cantidad = Number(items[index].cantidad) + 1;
-                    items[index].subtotal = Number(items[index].cantidad) * Number(items[index].precio_unitario);
-                    
-                    // Actualizar en UI
-                    renderizarItemsPedido();
-                    calcularTotal();
-                    
-                    // Feedback visual
-                    const Toast = Swal.mixin({
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 1500,
-                        timerProgressBar: true
-                    });
-                    Toast.fire({
-                        icon: 'success',
-                        title: `${nombre} (cantidad: ${items[index].cantidad})`
-                    });
-                } else if (result.isDenied) {
-                    // Agregar como nuevo item con nota
-                    const notaRes = await Swal.fire({
-                        title: 'Nota para cocina (opcional)',
-                        input: 'text',
-                        inputPlaceholder: 'Ej: sin cebolla, sin queso...',
-                        showCancelButton: true,
-                        didOpen: () => {
-                            const inp = document.querySelector('.swal2-input');
-                            if (inp) {
-                                ['keydown','keyup','keypress','paste','copy','cut','contextmenu'].forEach(evt => {
-                                    inp.addEventListener(evt, (e) => e.stopPropagation());
-                                });
-                            }
-                        }
-                    });
-                    
-                    if (notaRes.isConfirmed) {
-                        const body = { 
-                            producto_id: id, 
-                            cantidad: 1, 
-                            unidad: 'UND', 
-                            precio: Number(precio), 
-                            nota: notaRes.value || '' 
-                        };
-                        const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/items`, { 
-                            method:'POST', 
-                            headers:{'Content-Type':'application/json'}, 
-                            body: JSON.stringify(body) 
+                // Producto ya existe: incrementar cantidad directamente
+                const index = items.indexOf(itemExistente);
+                const nuevaCantidad = Number(itemExistente.cantidad) + 1;
+                const nuevoSubtotal = nuevaCantidad * Number(itemExistente.precio_unitario);
+
+                // Actualizar en servidor
+                if (itemExistente.id) {
+                    try {
+                        await fetch(`/api/mesas/items/${itemExistente.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cantidad: nuevaCantidad, nota: itemExistente.nota || '' })
                         });
-                        const data = await resp.json();
-                        if(!resp.ok) {
-                            Swal.fire({icon:'error', title: data.error||'Error al agregar'});
-                            return;
-                        }
-                        
-                        // Recargar items del pedido
-                        await cargarPedido(pedidoActual.id);
-                        
-                        // Feedback visual
-                        const Toast = Swal.mixin({
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 1500,
-                            timerProgressBar: true
-                        });
-                        Toast.fire({
-                            icon: 'success',
-                            title: `${nombre} agregado con nota`
-                        });
-                    }
+                    } catch(e) { console.error('Error actualizando cantidad:', e); }
                 }
+
+                // Actualizar local
+                items[index].cantidad = nuevaCantidad;
+                items[index].subtotal = nuevoSubtotal;
+                renderItems();
+
+                // Feedback visual
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: `${nombre} (cantidad: ${nuevaCantidad})`
+                });
             } else {
-                // Si no existe, preguntar por nota
-                const notaRes = await Swal.fire({
-                    title: 'Nota para cocina (opcional)',
-                    input: 'text',
-                    inputPlaceholder: 'Ej: sin cebolla, sin queso...',
-                    showCancelButton: true,
-                    confirmButtonText: 'Agregar',
-                    cancelButtonText: 'Cancelar',
-                    didOpen: () => {
-                        const inp = document.querySelector('.swal2-input');
-                        if (inp) {
-                            ['keydown','keyup','keypress','paste','copy','cut','contextmenu'].forEach(evt => {
-                                inp.addEventListener(evt, (e) => e.stopPropagation());
-                            });
-                        }
-                    }
+                // Producto nuevo: agregar directamente sin pedir nota
+                const body = {
+                    producto_id: id,
+                    cantidad: 1,
+                    unidad: 'UND',
+                    precio: Number(precio),
+                    nota: ''
+                };
+                const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
                 });
-                
-                if (notaRes.isConfirmed) {
-                    const body = { 
-                        producto_id: id, 
-                        cantidad: 1, 
-                        unidad: 'UND', 
-                        precio: Number(precio), 
-                        nota: notaRes.value || '' 
-                    };
-                    const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/items`, { 
-                        method:'POST', 
-                        headers:{'Content-Type':'application/json'}, 
-                        body: JSON.stringify(body) 
-                    });
-                    const data = await resp.json();
-                    if(!resp.ok) {
-                        Swal.fire({icon:'error', title: data.error||'Error al agregar'});
-                        return;
-                    }
-                    
-                    // Recargar items del pedido
-                    await cargarPedido(pedidoActual.id);
-                    
-                    // Feedback visual
-                    const Toast = Swal.mixin({
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 1500,
-                        timerProgressBar: true
-                    });
-                    Toast.fire({
-                        icon: 'success',
-                        title: `${nombre} agregado`
-                    });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    Swal.fire({ icon: 'error', title: data.error || 'Error al agregar' });
+                    return;
                 }
+
+                // Recargar items del pedido
+                await cargarPedido(pedidoActual.id);
+
+                // Feedback visual
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: `${nombre} agregado`
+                });
             }
         } catch(err) {
             Swal.fire({icon:'error', title: err.message || 'Error al agregar producto'});
@@ -1405,25 +1360,48 @@ function renderizarItemsPedido() {
     container.innerHTML = html;
 }
 
-// Cambiar cantidad de un item
-function cambiarCantidadItem(index, delta) {
-    if (items[index]) {
-        items[index].cantidad = Number(items[index].cantidad) + Number(delta);
-        if (items[index].cantidad <= 0) {
-            items.splice(index, 1);
-        } else {
-            items[index].subtotal = Number(items[index].cantidad) * Number(items[index].precio_unitario);
+// Cambiar cantidad de un item (persiste al servidor)
+async function cambiarCantidadItem(index, delta) {
+    if (!items[index]) return;
+    const item = items[index];
+    const nuevaCantidad = Number(item.cantidad) + Number(delta);
+
+    if (nuevaCantidad <= 0) {
+        // Eliminar item del servidor
+        if (item.id) {
+            try {
+                await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
+            } catch(e) { console.error('Error eliminando item:', e); }
         }
-        renderizarItemsPedido();
-        calcularTotal();
+        items.splice(index, 1);
+    } else {
+        // Actualizar cantidad en servidor
+        item.cantidad = nuevaCantidad;
+        item.subtotal = nuevaCantidad * Number(item.precio_unitario);
+        if (item.id) {
+            try {
+                await fetch(`/api/mesas/items/${item.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cantidad: nuevaCantidad, nota: item.nota || '' })
+                });
+            } catch(e) { console.error('Error actualizando cantidad:', e); }
+        }
     }
+    renderItems();
 }
 
-// Eliminar item del pedido
-function eliminarItemPedido(index) {
+// Eliminar item del pedido (persiste al servidor)
+async function eliminarItemPedido(index) {
+    const item = items[index];
+    if (!item) return;
+    if (item.id) {
+        try {
+            await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
+        } catch(e) { console.error('Error eliminando item:', e); }
+    }
     items.splice(index, 1);
-    renderizarItemsPedido();
-    calcularTotal();
+    renderItems();
 }
 
 // Calcular total
