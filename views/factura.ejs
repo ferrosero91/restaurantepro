@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Factura #<%= factura.id %></title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        @page {
+            size: <%= config.ancho_papel %>mm auto;
+            margin: 2mm;
+        }
+
         @media print {
             body {
                 width: <%= config.ancho_papel %>mm;
