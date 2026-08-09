@@ -1182,7 +1182,9 @@ $(function() {
     productosFiltrados.forEach(producto => {
         const categoria = categorias.find(c => c.id == producto.categoria_id);
         const imagenUrl = producto.imagen || null;
-        const nombreEscapado = String(producto.nombre).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const nombreStr = typeof producto.nombre === 'string' ? producto.nombre : String(producto.nombre || '');
+        const nombreEscapado = nombreStr.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const descripcionStr = typeof producto.descripcion === 'string' ? producto.descripcion : '';
         
         html += `
             <div class="producto-card" 
@@ -1192,15 +1194,15 @@ $(function() {
                     ${categoria ? `<span class="categoria-badge" style="background-color: ${categoria.color}; color: white;">${categoria.nombre}</span>` : ''}
                     
                     ${imagenUrl ? 
-                        `<img src="${imagenUrl}" alt="${producto.nombre}" class="producto-img">` :
+                        `<img src="${imagenUrl}" alt="${nombreStr}" class="producto-img">` :
                         `<div class="producto-img-placeholder">
                             <i class="bi bi-image"></i>
                         </div>`
                     }
                     
                     <div class="producto-info">
-                        <div class="producto-nombre">${producto.nombre}</div>
-                        ${producto.descripcion ? `<div class="producto-descripcion">${producto.descripcion}</div>` : ''}
+                        <div class="producto-nombre">${nombreStr}</div>
+                        ${descripcionStr ? `<div class="producto-descripcion">${descripcionStr}</div>` : ''}
                         <div class="producto-precio">$${Number(producto.precio_unidad).toLocaleString('es-CO')}</div>
                     </div>
                 </div>
