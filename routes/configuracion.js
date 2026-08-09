@@ -295,9 +295,17 @@ router.post('/', upload.fields([
             printer_type,
             printer_ip,
             printer_port,
-            whatsapp,
             slogan
         } = req.body;
+
+        // WhatsApp: asegurar que sea string, no binario
+        let whatsapp = req.body.whatsapp;
+        if (whatsapp && typeof whatsapp !== 'string') {
+            whatsapp = String(whatsapp).replace(/[^\d+]/g, '').substring(0, 20) || null;
+        }
+        if (whatsapp && Buffer.isBuffer(whatsapp)) {
+            whatsapp = null;
+        }
 
         const [results] = await db.query('SELECT * FROM configuracion_impresion WHERE restaurante_id = ? LIMIT 1', [tenantId]);
 
