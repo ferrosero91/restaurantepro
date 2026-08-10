@@ -464,11 +464,24 @@ $(function() {
       });
       const unidad = 'UND';
       const precio = p.precio_unidad;
-      const body = { producto_id: p.id, cantidad: Number(cantidadRes.value), unidad, precio: Number(precio), nota: notaRes.value || '' };
+      const cantidad = Number(cantidadRes.value);
+      const body = { producto_id: p.id, cantidad, unidad, precio: Number(precio), nota: notaRes.value || '' };
       const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/items`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const data = await resp.json();
       if(!resp.ok) return Swal.fire({icon:'error', title: data.error||'Error al agregar'});
-      await cargarPedido(pedidoActual.id);
+
+      // Agregar al array local inmediatamente (como mostrador)
+      items.push({
+          id: data.id,
+          producto_id: Number(p.id),
+          producto_nombre: p.nombre,
+          cantidad: cantidad,
+          unidad_medida: unidad,
+          precio_unitario: Number(precio),
+          subtotal: cantidad * Number(precio),
+          nota: notaRes.value || ''
+      });
+      renderItems();
       // limpiar y enfocar el buscador para el siguiente producto
       $('#buscarProductoMesa').val('').focus();
     });
@@ -1293,8 +1306,18 @@ $(function() {
                     return;
                 }
 
-                // Recargar items del pedido
-                await cargarPedido(pedidoActual.id);
+                // Agregar al array local inmediatamente (como mostrador)
+                items.push({
+                    id: data.id,
+                    producto_id: Number(id),
+                    producto_nombre: nombre,
+                    cantidad: 1,
+                    unidad_medida: 'UND',
+                    precio_unitario: Number(precio),
+                    subtotal: Number(precio),
+                    nota: ''
+                });
+                renderItems();
 
                 // Feedback visual
                 const Toast = Swal.mixin({
