@@ -744,16 +744,16 @@
         window.dlvAgregarProducto = function(productoId) {
             const p = dlvProductos.find(x => x.id === productoId);
             if (!p) return;
-            const precio = p.precio_unidad || p.precio_kg || p.precio_libra || 0;
+            const precio = Number(p.precio_unidad || p.precio_kg || p.precio_libra || 0);
             const unidad = p.precio_unidad ? 'UND' : p.precio_kg ? 'KG' : 'LB';
 
             // Verificar si el producto ya existe
             const existente = dlvItems.find(i => i.producto_id === p.id);
             if (existente) {
-                existente.cantidad++;
-                existente.subtotal = existente.cantidad * existente.precio;
+                existente.cantidad = Number(existente.cantidad) + 1;
+                existente.subtotal = Number(existente.cantidad) * Number(existente.precio);
             } else {
-                dlvItems.push({ producto_id: p.id, nombre: p.nombre, cantidad: 1, unidad_medida: unidad, precio, subtotal: precio, nota: '' });
+                dlvItems.push({ producto_id: p.id, nombre: p.nombre, cantidad: 1, unidad_medida: unidad, precio: precio, subtotal: precio, nota: '' });
             }
             renderDlvItems();
             renderDlvTotals();
@@ -787,11 +787,11 @@
         }
 
         window.dlvCambiarCantidad = function(idx, delta) {
-            dlvItems[idx].cantidad += delta;
+            dlvItems[idx].cantidad = Number(dlvItems[idx].cantidad) + Number(delta);
             if (dlvItems[idx].cantidad <= 0) {
                 dlvItems.splice(idx, 1);
             } else {
-                dlvItems[idx].subtotal = dlvItems[idx].cantidad * dlvItems[idx].precio;
+                dlvItems[idx].subtotal = Number(dlvItems[idx].cantidad) * Number(dlvItems[idx].precio);
             }
             renderDlvItems();
             renderDlvTotals();
@@ -800,14 +800,17 @@
         window.dlvUpdateItem = function(idx, field, val) {
             if (field === 'cantidad') { dlvItems[idx].cantidad = parseFloat(val) || 1; }
             if (field === 'precio') { dlvItems[idx].precio = parseFloat(val) || 0; }
-            dlvItems[idx].subtotal = dlvItems[idx].cantidad * dlvItems[idx].precio;
+            dlvItems[idx].subtotal = Number(dlvItems[idx].cantidad) * Number(dlvItems[idx].precio);
             renderDlvItems();
             renderDlvTotals();
         };
         window.dlvRemoveItem = function(idx) { dlvItems.splice(idx, 1); renderDlvItems(); renderDlvTotals(); };
 
         function renderDlvTotals() {
-            const subtotal = dlvItems.reduce((s, i) => s + i.subtotal, 0);
+            let subtotal = 0;
+            for (let i = 0; i < dlvItems.length; i++) {
+                subtotal += Number(dlvItems[i].subtotal) || (Number(dlvItems[i].cantidad) * Number(dlvItems[i].precio)) || 0;
+            }
             const domicilio = parseFloat(document.getElementById('dlvValorDomicilio').value) || 0;
             const total = subtotal + domicilio + dlvPropina;
             document.getElementById('dlvSubtotal').textContent = '$' + formatNumber(subtotal);
