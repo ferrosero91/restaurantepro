@@ -746,7 +746,15 @@
             if (!p) return;
             const precio = p.precio_unidad || p.precio_kg || p.precio_libra || 0;
             const unidad = p.precio_unidad ? 'UND' : p.precio_kg ? 'KG' : 'LB';
-            dlvItems.push({ producto_id: p.id, nombre: p.nombre, cantidad: 1, unidad_medida: unidad, precio, subtotal: precio, nota: '' });
+
+            // Verificar si el producto ya existe
+            const existente = dlvItems.find(i => i.producto_id === p.id);
+            if (existente) {
+                existente.cantidad++;
+                existente.subtotal = existente.cantidad * existente.precio;
+            } else {
+                dlvItems.push({ producto_id: p.id, nombre: p.nombre, cantidad: 1, unidad_medida: unidad, precio, subtotal: precio, nota: '' });
+            }
             renderDlvItems();
             renderDlvTotals();
         };
@@ -762,19 +770,32 @@
                     <div class="flex-grow-1">
                         <div class="small fw-bold">${item.nombre}</div>
                         <div class="d-flex gap-1 align-items-center mt-1">
-                            <input type="number" class="form-control form-control-sm" style="width:55px;" value="${item.cantidad}" min="1" onchange="dlvUpdateItem(${idx},'cantidad',this.value)">
+                            <button class="btn btn-outline-secondary btn-sm" style="width:30px;height:30px;padding:0;" onclick="dlvCambiarCantidad(${idx},-1)"><i class="bi bi-dash"></i></button>
+                            <span class="fw-bold text-center" style="min-width:30px;">${item.cantidad}</span>
+                            <button class="btn btn-outline-secondary btn-sm" style="width:30px;height:30px;padding:0;" onclick="dlvCambiarCantidad(${idx},1)"><i class="bi bi-plus"></i></button>
                             <span class="text-muted small">${item.unidad_medida}</span>
                             <span class="text-muted small">×</span>
-                            <input type="number" class="form-control form-control-sm" style="width:80px;" value="${item.precio}" min="0" onchange="dlvUpdateItem(${idx},'precio',this.value)">
+                            <span class="text-muted small">$${formatNumber(item.precio)}</span>
                         </div>
                     </div>
                     <div class="text-end">
-                        <div class="fw-bold small">$${formatNumber(item.subtotal)}</div>
+                        <div class="fw-bold small text-success">$${formatNumber(item.subtotal)}</div>
                         <button class="btn btn-sm btn-outline-danger mt-1" onclick="dlvRemoveItem(${idx})"><i class="bi bi-trash3"></i></button>
                     </div>
                 </div>
             `).join('');
         }
+
+        window.dlvCambiarCantidad = function(idx, delta) {
+            dlvItems[idx].cantidad += delta;
+            if (dlvItems[idx].cantidad <= 0) {
+                dlvItems.splice(idx, 1);
+            } else {
+                dlvItems[idx].subtotal = dlvItems[idx].cantidad * dlvItems[idx].precio;
+            }
+            renderDlvItems();
+            renderDlvTotals();
+        };
 
         window.dlvUpdateItem = function(idx, field, val) {
             if (field === 'cantidad') { dlvItems[idx].cantidad = parseFloat(val) || 1; }
