@@ -295,44 +295,69 @@
         flex-direction: column;
         height: 100%;
     }
-    
-    /* Panel de productos ocupa el espacio disponible */
+
     .modal-fullscreen .modal-body .col-md-8 {
         width: 100%;
         max-width: 100%;
         flex: 1;
         overflow-y: auto;
         border-right: none;
+        padding-bottom: 80px;
     }
-    
-    /* Panel de carrito fijo en la parte inferior */
+
+    /* Panel carrito: bottom sheet oculto por defecto */
     .modal-fullscreen .modal-body .col-md-4 {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
         width: 100%;
         max-width: 100%;
-        height: auto;
-        max-height: 40vh;
+        max-height: 70vh;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        z-index: 1040;
+        background: white;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
         border-top: 3px solid #0d6efd;
-        border-left: none;
-        flex-shrink: 0;
         display: flex;
         flex-direction: column;
     }
-    
-    /* Hacer el área de items scrolleable */
+
+    .modal-fullscreen .modal-body .col-md-4.show {
+        transform: translateY(0);
+    }
+
+    /* Items: que tome todo el espacio disponible */
     .modal-fullscreen .modal-body .col-md-4 .flex-grow-1 {
-        max-height: 25vh;
+        max-height: 35vh;
         overflow-y: auto;
+    }
+
+    /* Botones más compactos en móvil */
+    .modal-fullscreen .modal-body .col-md-4 .d-grid .btn-lg {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .modal-fullscreen .modal-body .col-md-4 .d-grid .btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-toggle-carrito {
+        display: flex;
     }
 }
 
-/* Para pantallas muy pequeñas, hacer el carrito colapsable */
+/* Pantallas muy pequeñas */
 @media (max-width: 576px) {
     .modal-fullscreen .modal-body .col-md-4 {
-        max-height: 35vh;
+        max-height: 65vh;
     }
-    
+
     .modal-fullscreen .modal-body .col-md-4 .flex-grow-1 {
-        max-height: 20vh;
+        max-height: 30vh;
     }
 }
 
@@ -348,11 +373,11 @@
     color: white;
     border: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    z-index: 1050;
+    z-index: 1060;
     transition: all 0.3s;
 }
 
@@ -376,31 +401,10 @@
     font-weight: bold;
 }
 
-@media (max-width: 768px) {
+/* btn-toggle-carrito: visible en móvil, oculto en desktop */
+@media (min-width: 769px) {
     .btn-toggle-carrito {
-        display: flex;
-    }
-    
-    /* Ocultar carrito por defecto en móvil */
-    .modal-fullscreen .modal-body .col-md-4 {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        transform: translateY(100%);
-        transition: transform 0.3s ease;
-        z-index: 1040;
-        background: white;
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
-    }
-    
-    .modal-fullscreen .modal-body .col-md-4.show {
-        transform: translateY(0);
-    }
-    
-    /* Ajustar panel de productos para que no quede detrás del botón */
-    .modal-fullscreen .modal-body .col-md-8 {
-        padding-bottom: 80px;
+        display: none;
     }
 }
 

@@ -31,6 +31,7 @@
         .estado-en_camino { border-left: 4px solid #6f42c1; }
         .estado-entregado { border-left: 4px solid #198754; }
         .estado-cancelado { border-left: 4px solid #dc3545; }
+        .estado-cerrado { border-left: 4px solid #6c757d; }
         .badge-pendiente { background-color: #ffc107; color: #000; }
         .badge-confirmado { background-color: #0d6efd; color: #fff; }
         .badge-en_preparacion { background-color: #fd7e14; color: #fff; }
@@ -38,6 +39,7 @@
         .badge-entregado { background-color: #198754; color: #fff; }
         .badge-facturado { background-color: #0dcaf0; color: #000; }
         .badge-cancelado { background-color: #dc3545; color: #fff; }
+        .badge-cerrado { background-color: #6c757d; color: #fff; }
         .tiempo-alerta { color: #dc3545; font-weight: 700; }
         .empty-state {
             border: 1px dashed rgba(0,0,0,.15);
@@ -276,6 +278,7 @@
             'en_camino': 'En Camino',
             'entregado': 'Entregado',
             'facturado': 'Facturado',
+            'cerrado': 'Cerrado',
             'cancelado': 'Cancelado'
         };
 
@@ -286,6 +289,7 @@
             'en_camino': 'bi-bicycle',
             'entregado': 'bi-check2-all',
             'facturado': 'bi-receipt',
+            'cerrado': 'bi-lock',
             'cancelado': 'bi-x-circle'
         };
 
@@ -297,6 +301,7 @@
             'en_camino': [{ estado: 'entregado', label: 'Entregado', icon: 'bi-check2-all', clase: 'btn-success' }],
             'facturado': [{ estado: 'entregado', label: 'Entregado', icon: 'bi-check2-all', clase: 'btn-success' }],
             'entregado': [],
+            'cerrado': [],
             'cancelado': []
         };
 
@@ -494,6 +499,7 @@
                     const historialHtml = renderHistorialEstados(p.historial_estados || [], p);
                     const subtotalItems = (p.items || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
                     const valorDom = Number(p.valor_domicilio) || 0;
+                    const propinaVal = Number(p.propina) || 0;
 
                     document.getElementById('detalleBody').innerHTML = `
                         <div class="mb-3">
@@ -514,6 +520,7 @@
                             <tfoot>
                                 <tr><td colspan="2" class="text-end text-muted">Subtotal:</td><td class="text-muted">$${formatNumber(subtotalItems)}</td></tr>
                                 ${valorDom > 0 ? `<tr><td colspan="2" class="text-end text-muted">Domicilio:</td><td class="text-muted">$${formatNumber(valorDom)}</td></tr>` : ''}
+                                ${propinaVal > 0 ? `<tr><td colspan="2" class="text-end text-muted">Propina:</td><td class="text-muted">$${formatNumber(propinaVal)}</td></tr>` : ''}
                                 <tr><td colspan="2" class="text-end fw-bold">Total:</td><td class="fw-bold">$${formatNumber(p.total)}</td></tr>
                             </tfoot>
                         </table>
@@ -1082,8 +1089,8 @@
                 if (resp.ok) tipConfig = await resp.json();
             } catch(e) {}
 
-            let propinaMonto = 0;
-            let totalFinal = subtotalProductos + valorDomicilio;
+            let propinaMonto = Number(pedido.propina) || 0;
+            let totalFinal = subtotalProductos + valorDomicilio + propinaMonto;
 
             const mediosOptions = mediosPago.map(m => 
                 `<option value="${m.codigo}">${m.nombre}</option>`
@@ -1096,7 +1103,7 @@
                         `<button type="button" class="btn btn-outline-success btn-sm pm-tip-btn" data-pct="${pct}">${pct}%</button>`
                     ).join('')}
                     <button type="button" class="btn btn-outline-secondary btn-sm pm-tip-btn" data-pct="0">Sin</button>
-                    <span class="ms-auto align-self-center fw-bold text-success" id="pmPropinaMonto">$0</span>
+                    <span class="ms-auto align-self-center fw-bold text-success" id="pmPropinaMonto">${formatMoney(propinaMonto)}</span>
                 </div>` : '';
 
             const result = await Swal.fire({
@@ -1114,8 +1121,8 @@
                             ${valorDomicilio > 0 ? `<div class="d-flex justify-content-between small">
                                 <span>Valor domicilio:</span><strong>${formatMoney(valorDomicilio)}</strong>
                             </div>` : ''}
-                            <div id="pmPropinaLine" class="d-flex justify-content-between small" style="display:none!important;">
-                                <span>Propina:</span><strong id="pmPropinaLineVal">$0</strong>
+                            <div id="pmPropinaLine" class="d-flex justify-content-between small" style="${propinaMonto > 0 ? '' : 'display:none!important;'}">
+                                <span>Propina:</span><strong id="pmPropinaLineVal">${formatMoney(propinaMonto)}</strong>
                             </div>
                             <hr class="my-1">
                             <div class="d-flex justify-content-between fw-bold">

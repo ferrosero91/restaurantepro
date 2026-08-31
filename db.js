@@ -219,6 +219,17 @@ async function ensureSchema() {
             await pool.query(`ALTER TABLE pedidos ADD INDEX idx_tracking_token (tracking_token)`);
             console.log('✅ Columnas de domiciliario y tracking agregadas a pedidos');
         }
+
+        // Columna propina en pedidos (para domicilios)
+        const [propinaCol] = await pool.query(
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'propina' LIMIT 1`
+        );
+        if (propinaCol.length === 0) {
+            console.log('🔄 Agregando columna propina a pedidos...');
+            await pool.query(`ALTER TABLE pedidos ADD COLUMN propina DECIMAL(10,2) DEFAULT 0 AFTER valor_domicilio`);
+            console.log('✅ Columna propina agregada a pedidos');
+        }
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err);

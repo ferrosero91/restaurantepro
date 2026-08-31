@@ -65,6 +65,9 @@
                                 </button>
                                 <button class="btn btn-outline-secondary btn-sm btnVerPedido">
                                     <i class="bi bi-list-ul"></i> Ver pedido
+                                    <% if ((m.pedidos_abiertos || 0) > 0) { %>
+                                        <span class="badge bg-primary ms-1">Activo</span>
+                                    <% } %>
                                 </button>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Acciones mesa">
                                     <button class="btn btn-outline-dark btnEditarMesa" title="Editar">

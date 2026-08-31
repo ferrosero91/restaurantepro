@@ -85,8 +85,8 @@ router.post('/crear', async (req, res) => {
         const propina = Number(req.body.propina) || 0;
         if (valorDomicilio > 0 || propina > 0) {
             await db.query(
-                'UPDATE pedidos SET valor_domicilio = ?, total = total + ? WHERE id = ?',
-                [valorDomicilio, valorDomicilio, result.pedidoId]
+                'UPDATE pedidos SET valor_domicilio = ?, propina = ?, total = total + ? WHERE id = ?',
+                [valorDomicilio, propina, valorDomicilio + propina, result.pedidoId]
             );
         }
 

@@ -380,6 +380,13 @@ $(function() {
     $('#panelCarrito').removeClass('show');
   });
 
+  // Mostrar carrito en móvil programáticamente
+  window.mostrarCarritoMovil = function() {
+    if (window.innerWidth <= 768) {
+      $('#panelCarrito').addClass('show');
+    }
+  };
+
   // Cargar pedido por mesa
   async function abrirPedido(mesaId, mesaNumero){
     try{
@@ -479,7 +486,8 @@ $(function() {
           unidad_medida: unidad,
           precio_unitario: Number(precio),
           subtotal: cantidad * Number(precio),
-          nota: notaRes.value || ''
+          nota: notaRes.value || '',
+          estado: 'pendiente'
       });
       renderItems();
       // limpiar y enfocar el buscador para el siguiente producto
@@ -487,14 +495,17 @@ $(function() {
     });
   }
 
-  // Eliminar item del pedido
+  // Eliminar item del pedido (handler para botones con data-idx del renderItems)
   // Relacionado con: routes/mesas.js (DELETE /api/mesas/items/:itemId)
-  $(document).on('click', '.btn-outline-danger[data-idx]', async function(e){
+  $(document).off('click', '.btn-outline-danger[data-idx]').on('click', '.btn-outline-danger[data-idx]', async function(e){
     e.preventDefault();
-    const idx = Number($(this).data('idx'));
+    e.stopPropagation();
+    const btn = this;
+    if (btn.disabled) return;
+    const idx = Number($(btn).data('idx'));
     const item = items[idx];
-    if(!item || !item.id) return;
-    
+    if(!item) return;
+
     const confirmacion = await Swal.fire({
       title: '¿Eliminar producto?',
       text: `¿Está seguro de eliminar ${item.producto_nombre || item.nombre || 'este producto'}?`,
@@ -505,15 +516,30 @@ $(function() {
     });
     
     if(!confirmacion.isConfirmed) return;
-    
+
+    btn.disabled = true;
     try{
-      const resp = await fetch(`/api/mesas/items/${item.id}`, { method:'DELETE' });
-      const data = await resp.json();
-      if(!resp.ok) throw new Error(data.error || 'Error al eliminar');
-      await cargarPedido(pedidoActual.id);
-      Swal.fire({icon:'success', title:'Producto eliminado'});
+      if (item.id) {
+        const resp = await fetch(`/api/mesas/items/${item.id}`, { method:'DELETE' });
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          // Si 404, el item ya no existe en DB: limpiar local igualmente
+          if (resp.status === 404) {
+            items.splice(idx, 1);
+            renderItems();
+            Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Item ya eliminado', showConfirmButton: false, timer: 1500 });
+            return;
+          }
+          throw new Error(data.error || 'Error al eliminar');
+        }
+      }
+      items.splice(idx, 1);
+      renderItems();
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Producto eliminado', showConfirmButton: false, timer: 1500 });
     }catch(err){
       Swal.fire({icon:'error', title: err.message || 'No se pudo eliminar el producto'});
+    } finally {
+      btn.disabled = false;
     }
   });
 
@@ -957,7 +983,9 @@ $(function() {
     const card = $(this).closest('.card');
     const mesaId = card.data('mesa-id');
     const titulo = card.find('.card-title').text().replace('Mesa ','');
-    abrirPedido(mesaId, titulo);
+    abrirPedido(mesaId, titulo).then(() => {
+      mostrarCarritoMovil();
+    });
   });
 
   // Crear nueva mesa (rápida)
@@ -1315,7 +1343,8 @@ $(function() {
                     unidad_medida: 'UND',
                     precio_unitario: Number(precio),
                     subtotal: Number(precio),
-                    nota: ''
+                    nota: '',
+                    estado: 'pendiente'
                 });
                 renderItems();
 
@@ -1395,8 +1424,16 @@ async function cambiarCantidadItem(index, delta) {
         // Eliminar item del servidor
         if (item.id) {
             try {
-                await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
-            } catch(e) { console.error('Error eliminando item:', e); }
+                const resp = await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    throw new Error(data.error || 'Error al eliminar');
+                }
+            } catch(e) {
+                console.error('Error eliminando item:', e);
+                Swal.fire({ icon: 'error', title: e.message || 'Error al eliminar' });
+                return;
+            }
         }
         items.splice(index, 1);
     } else {
@@ -1405,12 +1442,20 @@ async function cambiarCantidadItem(index, delta) {
         item.subtotal = nuevaCantidad * Number(item.precio_unitario);
         if (item.id) {
             try {
-                await fetch(`/api/mesas/items/${item.id}`, {
+                const resp = await fetch(`/api/mesas/items/${item.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cantidad: nuevaCantidad, nota: item.nota || '' })
                 });
-            } catch(e) { console.error('Error actualizando cantidad:', e); }
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    throw new Error(data.error || 'Error al actualizar');
+                }
+            } catch(e) {
+                console.error('Error actualizando cantidad:', e);
+                Swal.fire({ icon: 'error', title: e.message || 'Error al actualizar cantidad' });
+                return;
+            }
         }
     }
     renderItems();
@@ -1420,13 +1465,40 @@ async function cambiarCantidadItem(index, delta) {
 async function eliminarItemPedido(index) {
     const item = items[index];
     if (!item) return;
-    if (item.id) {
-        try {
-            await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
-        } catch(e) { console.error('Error eliminando item:', e); }
+
+    const confirmacion = await Swal.fire({
+        title: '¿Eliminar producto?',
+        text: `¿Está seguro de eliminar ${item.producto_nombre || item.nombre || 'este producto'}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+        if (item.id) {
+            const resp = await fetch(`/api/mesas/items/${item.id}`, { method: 'DELETE' });
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                // Si 404, el item ya no existe en DB: limpiar local igualmente
+                if (resp.status === 404) {
+                    items.splice(index, 1);
+                    renderItems();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Item ya eliminado', showConfirmButton: false, timer: 1500 });
+                    return;
+                }
+                throw new Error(data.error || 'Error al eliminar');
+            }
+        }
+        items.splice(index, 1);
+        renderItems();
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Producto eliminado', showConfirmButton: false, timer: 1500 });
+    } catch(e) {
+        console.error('Error eliminando item:', e);
+        Swal.fire({ icon: 'error', title: e.message || 'No se pudo eliminar el producto' });
     }
-    items.splice(index, 1);
-    renderItems();
 }
 
 // Calcular total
